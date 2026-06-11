@@ -782,7 +782,13 @@ void PYTHIA_scan(int group = 1){
 
     // RECO MUON LOOP
     double leadingMuonPt = 0.0;
-    if(triggerIsOn(triggerDecision_mu12,triggerDecision_mu12_Prescl)){
+    int loopMuonTrigger = 0;
+    if(fillMu5) loopMuonTrigger = triggerDecision_mu5;
+    else if(fillMu7) loopMuonTrigger = triggerDecision_mu7;
+    else if(fillMu12) loopMuonTrigger = triggerDecision_mu12;
+    else loopMuonTrigger = 1;
+    double etaCut_Zloop = 2.4;
+    if(triggerIsOn(loopMuonTrigger,1)){
       for(int m = 0; m < em->nMu; m++){
 
 	double muPt_m = em->muPt->at(m);
@@ -793,7 +799,7 @@ void PYTHIA_scan(int group = 1){
 
 	// skip if muon has already been matched to a jet in this event
 	// muon kinematic cuts
-	if(muPt_m < muPtCut || muPt_m > muPtMaxCut || fabs(muEta_m) > 2.0) continue;
+	if(muPt_m < muPtCut || muPt_m > muPtMaxCut || fabs(muEta_m) > etaCut_Zloop) continue;
 	// muon quality cuts
 	if(fillMu12){
 	  if(!isQualityMuon_tight(em->muChi2NDF->at(m),
@@ -828,30 +834,42 @@ void PYTHIA_scan(int group = 1){
 	  double muEta_k = em->muEta->at(k);
 	  double muPhi_k = em->muPhi->at(k);
 
-	  if(muPt_k < muPtCut || muPt_k > muPtMaxCut || fabs(muEta_k) > 2.0) continue;
+	  if(muPt_k < muPtCut || muPt_k > muPtMaxCut || fabs(muEta_k) > etaCut_Zloop) continue;
 
-	  if(!isQualityMuon_tight(em->muChi2NDF->at(k),
-				  em->muInnerD0->at(k),
-				  em->muInnerDz->at(k),
-				  em->muMuonHits->at(k),
-				  em->muPixelHits->at(k),
-				  em->muIsGlobal->at(k),
-				  em->muIsPF->at(k),
-				  em->muStations->at(k),
-				  em->muTrkLayers->at(k))) continue; // skip if muon doesnt pass quality cuts
+	  if(fillMu12){
+	    if(!isQualityMuon_tight(em->muChi2NDF->at(k),
+				    em->muInnerD0->at(k),
+				    em->muInnerDz->at(k),
+				    em->muMuonHits->at(k),
+				    em->muPixelHits->at(k),
+				    em->muIsGlobal->at(k),
+				    em->muIsPF->at(k),
+				    em->muStations->at(k),
+				    em->muTrkLayers->at(k))) continue; // skip if muon doesnt pass quality cuts
+	  }
+	  else if(fillMu5 || fillMu7){
+	    if(!isQualityMuon_hybridSoft(em->muChi2NDF->at(k),
+					 em->muInnerD0->at(k),
+					 em->muInnerDz->at(k),
+					 em->muPixelHits->at(k),
+					 em->muIsTracker->at(k),
+					 em->muIsGlobal->at(k),
+					 em->muTrkLayers->at(k))) continue; // skip if muon doesnt pass quality cuts
+	  }
+	  else{};
 
 	  if(em->muCharge->at(m)*em->muCharge->at(k) == -1){
 
 	    h_dimuonMass->Fill(calculateDimuonMass(muPt_m,muEta_m,muPhi_m,muPt_k,muEta_k,muPhi_k),w);
-	   	  
+
 	  }
 
 	  else if(em->muCharge->at(m)*em->muCharge->at(k) == 1){
 
 	    h_dimuonMass_sameSign->Fill(calculateDimuonMass(muPt_m,muEta_m,muPhi_m,muPt_k,muEta_k,muPhi_k),w);
-	    	  
+
 	  }
-	
+
 	}
 
       }
@@ -1047,7 +1065,7 @@ void PYTHIA_scan(int group = 1){
 
       bool hasGenJetMatch = false;
       
-      if(TMath::Abs(recoJetEta_i) > 1.6 || recoJetPt_i < jetPtCut) continue;
+      if(TMath::Abs(recoJetEta_i) > etaMax || recoJetPt_i < jetPtCut) continue;
 		
       int jetPtIndex = getJetPtBin(recoJetPt_i);
       int jetPtSmearIndex = getJetPtBin(recoJetPt_JERSmear_i);
@@ -1625,7 +1643,7 @@ void PYTHIA_scan(int group = 1){
       
 
       
-      if(TMath::Abs(genJetEta_i) > 1.6 || genJetPt_i < jetPtCut) continue;
+      if(TMath::Abs(genJetEta_i) > etaMax || genJetPt_i < jetPtCut) continue;
 
       if(genJetPt_i > leadingGenJetPt) leadingGenJetPt = genJetPt_i;
 

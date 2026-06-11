@@ -555,12 +555,8 @@ void PbPb_scan(int group = 1){
     TH1D *neutrino_tag_fraction;
     f_neutrino_tag_fraction->GetObject("neutrino_tag_fraction",neutrino_tag_fraction);
 
-    TF1 *fxn_JES_Corr = new TF1("fxn_JES_Corr","[0] + [1]*x",80,500);
-    fxn_JES_Corr->SetParameter(0,0.907383);
-    fxn_JES_Corr->SetParameter(1,0.000114088);
 
 
-  
     // jet-energy resolution fit function
     TF1 *JER_fxn = new TF1("JER_fxn","sqrt([0]*[0] + [1]*[1]/x + [2]*[2]/(x*x))",50,500);
     JER_fxn->SetParameter(0,1.26585e-01);

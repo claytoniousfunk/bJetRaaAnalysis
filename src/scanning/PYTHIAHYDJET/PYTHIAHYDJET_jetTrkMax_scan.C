@@ -557,8 +557,7 @@ void PYTHIAHYDJET_jetTrkMax_scan(int group = 1){
       if(fabs(jetFlavorInt) == 5 && bHadronNumber == 2) jetFlavorInt = 17; // 17 = bJet from gluon-splitting 
       
       // jet kinematic cuts
-      //if(TMath::Abs(recoJetEta_i) > 1.6 || recoJetPt_i < 80.) continue;
-      if(TMath::Abs(recoJetEta_i) > 1.6) continue;
+      if(TMath::Abs(recoJetEta_i) > 1.6 || recoJetPt_i < 80.) continue;
       if(jetTrkMax_i < 14.) continue;
 		        
       int jetPtIndex = getJetPtBin(recoJetPt_i);
