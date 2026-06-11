@@ -1,1 +1,0 @@
-bPurityResults folder

@@ -37,9 +37,7 @@
 // jet uncertainty
 #include "../../../JetEnergyCorrections/JetUncertainty.h"
 // general analysis variables
-//#include "../../../headers/AnalysisSetupV2p2.h" // coarse centrality bins
-//#include "../../../headers/AnalysisSetupV2p3.h" // nominal centrality bins
-#include "../../../headers/AnalysisSetupV2p4.h" // fine centrality bins
+#include "../config_centrality.h"
 // vz-fit parameters
 //#include "../../../headers/fitParameters/vzFitParams_PH_mu5.h"
 //#include "../../../headers/fitParameters/vzFitParams_PH_mu7.h"
@@ -94,10 +92,6 @@ TF1 *fitFxn_PYTHIAHYDJET_HLT_C4, *fitFxn_PYTHIAHYDJET_HLT_C3, *fitFxn_PYTHIAHYDJ
 #include "../../../headers/functions/getDr.h"
 // getJetPtBin function
 #include "../../../headers/functions/getJetPtBin.h"
-// getCentBin function
-//#include "../../../headers/functions/getCentBin_v2.h" // course centrality binning
-//#include "../../../headers/functions/getCentBin.h" // nominal centrality binning
-#include "../../../headers/functions/getCentBin_V2p4.h" // ultra-fine centrality binning 
 // getPtRel function
 #include "../../../headers/functions/getPtRel.h"
 // isQualityMuon_hybridSoft function
@@ -398,11 +392,9 @@ void HYDJET_scan(int group = 1){
 						   fillMu7,
 						   fillMu12);
 
-    //TString suffixEdit = "";
-    TString suffixEdit = "_ultraFineCentBins";
-    
+    TString suffixEdit = CENT_SCHEME_SUFFIX;
+
     TString output = Form("%s%s%s/HYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data(),group);
-    //TString output = Form("%s%s_ultraFineCentBins/HYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
 
     std::cout << "output dataset = " << output << std::endl;
 

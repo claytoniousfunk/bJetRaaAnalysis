@@ -35,19 +35,13 @@
 // jet corrector
 #include "../../../JetEnergyCorrections/JetCorrector.h"
 // general analysis variables
-//#include "../../../headers/AnalysisSetupV2p2.h"
-#include "../../../headers/AnalysisSetupV2p3.h"
-//#include "../../../headers/AnalysisSetupV2p4.h" // ultra-fine cent bins
+#include "../config_centrality.h"
 // eta-phi mask function
 #include "../../../headers/functions/etaPhiMask.h"
 // getDr function
 #include "../../../headers/functions/getDr.h"
 // getJetPtBin function
 #include "../../../headers/functions/getJetPtBin.h"
-// getCentBin function
-//#include "../../../headers/functions/getCentBin_v2.h" // course cent bins
-#include "../../../headers/functions/getCentBin.h" // nominal cent bins
-//#include "../../../headers/functions/getCentBin_v3.h" // ultra-fine
 // getPtRel function
 #include "../../../headers/functions/getPtRel.h"
 // isQualityMuon_hybridSoft function

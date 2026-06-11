@@ -188,6 +188,12 @@ TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_fakeJets, TH1D *h_jet60, TH1D *h_jet8
 
   TH1D *h_return = (TH1D*) h_jet100->Clone("h_return");
 
+  // double jetMB_pTmin = 60.;
+  // double jet60_pTmin = 200;
+  // double jet80_pTmin = 300;
+  // double jet100_pTmin = 500;
+  // double smallShift = 0.01;
+
   double jetMB_pTmin = 60.;
   double jet60_pTmin = 100;
   double jet80_pTmin = 150;
@@ -226,7 +232,7 @@ TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_fakeJets, TH1D *h_jet60, TH1D *h_jet8
   h_fakeJets_scaled->Scale(N_jet60_scaled / N_jetMB);
     
   // subtract fake jets
-  if(isPbPb) h_jetMB_scaled->Add(h_fakeJets_scaled,-1);
+  //if(isPbPb) h_jetMB_scaled->Add(h_fakeJets_scaled,-1);
   
   for(int i = 0; i < h_jet60->GetSize(); i++){
     double pT = h_jet60->GetBinCenter(i);

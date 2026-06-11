@@ -77,6 +77,9 @@ TF1 *fitFxn_pp_HLT;
 //#include "../../../headers/config/config_pp_MB.h"
 // read config
 #include "../../../headers/config/readConfig.h"
+// shared scanning helpers
+#include "../scan_jet_corrections.h"
+#include "../scan_muon_tag.h"
 // dataset naming functions
 #include "../../../headers/functions/getDatasetName/getDatasetName_pp.h"
 #include "../../../headers/functions/getInputFileName/getInputFileName_pp.h"
@@ -434,7 +437,6 @@ void pp_scan(int group = 1){
 
     TFile *f_neutrino_energy_map = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/neutrino_energy_map.root");
     TH2D *neutrino_energy_map;
-    TH1D *neutrino_energy_map_proj;
     f_neutrino_energy_map->GetObject("neutrino_energy_map",neutrino_energy_map);
 
     TFile *f_neutrino_tag_fraction = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/neutrino_tag_fraction.root");
@@ -618,7 +620,6 @@ void pp_scan(int group = 1){
 	double inJetMuEta_i = em->mueta[i];
 	double inJetMuPhi_i = em->muphi[i];
 	double inJetMuPtRel_i = em->muptrel[i];
-	double muJetDr_i = -99.0;
 
 	if(doJetTrkMaxFilter){
 	  if(!passesJetTrkMaxFilter(jetTrkMax_i,x)) continue;
@@ -633,123 +634,30 @@ void pp_scan(int group = 1){
 	}
 
 
-	// initialize
-	double correctedPt_down = 1.0;
-	double correctedPt_up = 1.0;
+	x = applyJEU_JER(x, JEU, JER_fxn, randomGenerator,
+	                 fitFxn_PYTHIA_JERCorrection,
+	                 neutrino_tag_fraction, neutrino_energy_map);
+	if(x < 0) continue;
 
-	if(apply_JEU_shift_up){
-	  correctedPt_up = x * (1 + JEU.GetUncertainty().second);
-	  x = correctedPt_up;
-	}
-	else if(apply_JEU_shift_down){
-	  correctedPt_down = x * (1 - JEU.GetUncertainty().first);
-	  x = correctedPt_down;
-	}
-
-	double mu = 1.0;
-	double sigma = 0.2;
-	double smear = 0.0;
-
-	if(apply_JER_smear){
-	  sigma = 0.663*JER_fxn->Eval(x); // apply a 20% smear
-	  smear = randomGenerator->Gaus(mu,sigma);
-	  x = x * smear;
-	}
-      
-	double skipDoBJetNeutrinoEnergyShift_diceRoll = 0.0;
-	double smear_doBJetNeutrinoEnergyShift = 0.0;
-	if(doBJetNeutrinoEnergyShift){
-	  //if(doBJetNeutrinoEnergyShift && hasRecoJetMuon){
-	  skipDoBJetNeutrinoEnergyShift_diceRoll = randomGenerator->Rndm();
-	  if(skipDoBJetNeutrinoEnergyShift_diceRoll > neutrino_tag_fraction->GetBinContent(neutrino_tag_fraction->FindBin(x))) continue;
-	  neutrino_energy_map_proj = (TH1D*) neutrino_energy_map->ProjectionX("neutrino_energy_map_proj", neutrino_energy_map->GetYaxis()->FindBin(x),neutrino_energy_map->GetYaxis()->FindBin(x)+1);
-	  smear_doBJetNeutrinoEnergyShift = neutrino_energy_map_proj->GetRandom();
-	  x += smear_doBJetNeutrinoEnergyShift;
-	}
-
-	double mu_JERCorrection = 1.0;
-	double sigma_JERCorrection = 0.2;
-	double smear_JERCorrection = 0.0; // smeared pT
-	double k_JERCorrection = 0.0; // smearing parameter
-	if(doJERCorrection){
-	  k_JERCorrection = TMath::Sqrt(fitFxn_PYTHIA_JERCorrection->Eval(x)*fitFxn_PYTHIA_JERCorrection->Eval(x) - 1.);
-	  sigma_JERCorrection = k_JERCorrection*JER_fxn->Eval(x);
-	  smear_JERCorrection = randomGenerator->Gaus(mu_JERCorrection,sigma_JERCorrection);
-	  x = x * smear_JERCorrection;
-	}
-
-      
 	//cout << "x" << endl;
      
 	double muPtRel = -1.0;
 	double muPt = -1.0;
 	double muEta = -99.0;
 	double muPhi = -99.0;
-	double muDr = -99.0;
+	double muJetDr = -99.0;
 
-	bool hasInclRecoMuonTag = false;
-		
 	// jet kinematic cuts
 	if(TMath::Abs(y) > etaMax || x < jetPtCut) continue;
 
 	eventHasGoodJet = true;
 	if(x > leadingRecoJetPt) leadingRecoJetPt = x;
-  
+
 	int jetPtIndex = getJetPtBin(x);
 
-	// look for recoMuon match to recoJet		
-	for(int m = 0; m < em->nMu; m++){
-
-	  double muPt_m = em->muPt->at(m);
-	  double muEta_m = em->muEta->at(m);
-	  double muPhi_m = em->muPhi->at(m);
-	  // skip if muon has already been matched to a jet in this event
-	  if(matchFlagR[m] == 1) continue;
-	  // muon kinematic cuts
-	  if(muPt_m < muPtCut || muPt_m > muPtMaxCut || fabs(muEta_m) > 2.0) continue;
-	  // muon quality cuts
-	  if(fillMu12){
-	    if(!isQualityMuon_tight(em->muChi2NDF->at(m),
-				    em->muInnerD0->at(m),
-				    em->muInnerDz->at(m),
-				    em->muMuonHits->at(m),
-				    em->muPixelHits->at(m),
-				    em->muIsGlobal->at(m),
-				    em->muIsPF->at(m),
-				    em->muStations->at(m),
-				    em->muTrkLayers->at(m))) continue; // skip if muon doesnt pass quality cuts
-	  }
-
-	  else if(fillMu5 || fillMu7){
-	    if(!isQualityMuon_hybridSoft(em->muChi2NDF->at(m),
-					 em->muInnerD0->at(m),
-					 em->muInnerDz->at(m),
-					 em->muPixelHits->at(m),
-					 em->muIsTracker->at(m),
-					 em->muIsGlobal->at(m),
-					 em->muTrkLayers->at(m))) continue; // skip if muon doesnt pass quality cuts     
-	  }
-	  else{};
-
-	  if(doWDecayFilter){
-	    if(isWDecayMuon(muPt_m,x)) continue; // skip if "WDecay" muon (has majority of jet pt) 
-	  }
-	  // match to recoJets
-	  if(getDr(muEta_m,muPhi_m,y,z) < epsilon_mm){
-
-	    matchFlagR[m] = 1;
-				
-	    hasInclRecoMuonTag = true;
-
-	    muPtRel = getPtRel(muPt_m,muEta_m,muPhi_m,x,y,z);
-	    muPt = muPt_m;
-	    muEta = muEta_m;
-	    muPhi = muPhi_m;
-	    muJetDr_i = getDr(muEta_m,muPhi_m,y,z);
-
-	  }
-
-	}
+	// look for recoMuon match to recoJet
+	bool hasInclRecoMuonTag = findRecoMuonTag(em, x, y, z, matchFlagR,
+	                                          muPtRel, muPt, muEta, muPhi, muJetDr);
      
 	if(applyMu12TriggerEfficiencyCorrection){
 	  w_trig = w / fitFxn_pp_HLT->Eval(muPt);
@@ -794,7 +702,7 @@ void pp_scan(int group = 1){
 	    h_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muPt,x,w_trig);
 	    h_mueta_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muEta,x,w_trig);
 	    h_muphi_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muPhi,x,w_trig);
-	    h_muJetDr_recoJetPt->Fill(muJetDr_i,x,w_trig);
+	    h_muJetDr_recoJetPt->Fill(muJetDr,x,w_trig);
 
 	  
 	  } 

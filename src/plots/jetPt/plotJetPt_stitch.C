@@ -58,13 +58,17 @@ TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_jet60, TH1D *h_jet80, TH1D *h_jet100,
   TH1D *h_return = (TH1D*) h_jet100->Clone("h_return");
 
   double jetMB_pTmin = 60.;
-  double jet60_pTmin = 100;
-  double jet80_pTmin = 150;
-  double jet100_pTmin = 200;
+  double jet60_pTmin = 90;
+  double jet80_pTmin = 110;
+  double jet100_pTmin = 130;
   double smallShift = 0.01;
 
   if(!isPP){
     jet60_pTmin = jet80_pTmin;
+    jetMB_pTmin = 60.;
+    jet60_pTmin = 150;
+    jet80_pTmin = 150;
+    jet100_pTmin = 200;
   }
 
   double N_jet100 = h_jet100->Integral(h_jet100->FindBin(jet100_pTmin + smallShift),h_jet100->FindBin(500. - smallShift));

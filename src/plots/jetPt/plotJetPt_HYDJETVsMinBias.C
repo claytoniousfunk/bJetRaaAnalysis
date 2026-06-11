@@ -1,3 +1,5 @@
+#include "../../../headers/functions/divideByBinwidth.h"
+
 double integrate(TH1D *h, double lowerBound, double upperBound){
 
   double result = 0.0;
@@ -55,7 +57,7 @@ TString getCentString(bool doC16 = false,
 
 }
 
-int getCentHiBinLowerBound(bool doC16 = false,
+double getCentHiBinLowerBound(bool doC16 = false,
 			   bool doC15 = false,
 			   bool doC14 = false,
 			   bool doC13 = false,
@@ -72,31 +74,31 @@ int getCentHiBinLowerBound(bool doC16 = false,
 			   bool doC2 = false,
 			   bool doC1 = false){
 
-  int result = 0;
+  double result = 0.;
 
-  if(doC16) result = 150;
-  else if(doC15) result = 140;
-  else if(doC14) result = 130;
-  else if(doC13) result = 120;
-  else if(doC12) result = 110;
-  else if(doC11) result = 100;
-  else if(doC10) result = 90;
-  else if(doC9) result = 80;
-  else if(doC8) result = 70;
-  else if(doC7) result = 60;
-  else if(doC6) result = 50;
-  else if(doC5) result = 40;
-  else if(doC4) result = 30;
-  else if(doC3) result = 20;
-  else if(doC2) result = 10;
-  else if(doC1) result = 0;
+  if(doC16) result = 150.;
+  else if(doC15) result = 140.;
+  else if(doC14) result = 130.;
+  else if(doC13) result = 120.;
+  else if(doC12) result = 110.;
+  else if(doC11) result = 100.;
+  else if(doC10) result = 90.;
+  else if(doC9) result = 80.;
+  else if(doC8) result = 70.;
+  else if(doC7) result = 60.;
+  else if(doC6) result = 50.;
+  else if(doC5) result = 40.;
+  else if(doC4) result = 30.;
+  else if(doC3) result = 20.;
+  else if(doC2) result = 10.;
+  else if(doC1) result = 0.;
   else{};
   
   return result;
 
 }
 
-int getCentHiBinUpperBound(bool doC16 = false,
+double getCentHiBinUpperBound(bool doC16 = false,
 			   bool doC15 = false,
 			   bool doC14 = false,
 			   bool doC13 = false,
@@ -113,24 +115,24 @@ int getCentHiBinUpperBound(bool doC16 = false,
 			   bool doC2 = false,
 			   bool doC1 = false){
 
-  int result = 0;
+  double result = 0.;
 
-  if(doC16) result = 160;
-  else if(doC15) result = 150;
-  else if(doC14) result = 140;
-  else if(doC13) result = 130;
-  else if(doC12) result = 120;
-  else if(doC11) result = 110;
-  else if(doC10) result = 100;
-  else if(doC9) result = 90;
-  else if(doC8) result = 80;
-  else if(doC7) result = 70;
-  else if(doC6) result = 60;
-  else if(doC5) result = 50;
-  else if(doC4) result = 40;
-  else if(doC3) result = 30;
-  else if(doC2) result = 20;
-  else if(doC1) result = 10;
+  if(doC16) result = 160.;
+  else if(doC15) result = 150.;
+  else if(doC14) result = 140.;
+  else if(doC13) result = 130.;
+  else if(doC12) result = 120.;
+  else if(doC11) result = 110.;
+  else if(doC10) result = 100.;
+  else if(doC9) result = 90.;
+  else if(doC8) result = 80.;
+  else if(doC7) result = 70.;
+  else if(doC6) result = 60.;
+  else if(doC5) result = 50.;
+  else if(doC4) result = 40.;
+  else if(doC3) result = 30.;
+  else if(doC2) result = 20.;
+  else if(doC1) result = 10.;
   else{};
   
   return result;
@@ -261,7 +263,17 @@ void stylizeHistograms(TH1D *h1,
   
 }
 
+void stylizeHiBinHistograms(TH1D *h1, TH1D *h2){
 
+  h1->SetLineColor(kRed-4);
+  h2->SetLineColor(kBlue-4);
+  
+  h1->SetLineWidth(2);
+  h2->SetLineWidth(2);
+
+  
+
+}
 
 void plotJetPt_HYDJETVsMinBias(bool doC16 = true,
 			       bool doC15 = false,
@@ -283,14 +295,79 @@ void plotJetPt_HYDJETVsMinBias(bool doC16 = true,
   bool doPerEventNormalization = true;
   bool doPerJetNormalization = false;
 
-  TFile *f_HYDJET = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/HYDJET/canonical/HYDJET_pThat-unweighted_mu12_pTmu-15to999_tight_hiBinShift-10_jetTrkMaxFilter_WDecayFilter_2026-5-28_ultraFineCentBins.root");
+  // TFile *f_HYDJET = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/HYDJET/canonical/HYDJET_pThat-unweighted_mu12_pTmu-15to999_tight_hiBinShift-10_jetTrkMaxFilter_WDecayFilter_2026-5-28_ultraFineCentBins.root");
+  TFile *f_HYDJET = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/HYDJET/canonical/HYDJET_pThat-unweighted_mu12_pTmu-15to999_tight_hiBinShift-0_jetTrkMaxFilter_WDecayFilter_2026-6-1_ultraFineCentBins.root");
   
-  TFile *f_MinBias = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PbPb/canonical/PbPb_MinBias_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_2026-5-28_ultraFineCentBins.root");
+  TFile *f_MinBias = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PbPb/canonical/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_2026-5-29_ultraFineCentBins.root");
 
+  TLatex *la = new TLatex();
+  la->SetTextSize(0.045);
+
+  TLine *li = new TLine();
+  li->SetLineStyle(7);
+  
   TH2D *H1;
   TH1D *h1, *h2; // jet histograms
   TH1D *n1, *n2; // event-counting histograms
+  TH1D *h_hiBin_HYDJET, *h_hiBin_MinBias;
 
+  f_HYDJET->GetObject("h_hiBin",h_hiBin_HYDJET);
+  f_MinBias->GetObject("h_hiBin",h_hiBin_MinBias);
+
+  stylizeHiBinHistograms(h_hiBin_HYDJET,h_hiBin_MinBias);
+
+  TH1D *h_hiBin_HYDJET_clone = (TH1D*) h_hiBin_HYDJET->Clone("h_hiBin_HYDJET_clone");
+  TH1D *h_hiBin_MinBias_clone = (TH1D*) h_hiBin_MinBias->Clone("h_hiBin_MinBias_clone");
+
+  h_hiBin_HYDJET_clone->Scale(1./h_hiBin_HYDJET_clone->Integral());
+  h_hiBin_MinBias_clone->Scale(1./h_hiBin_MinBias_clone->Integral());
+  divideByBinwidth(h_hiBin_HYDJET_clone);
+  divideByBinwidth(h_hiBin_MinBias_clone);
+  TH1D *r_hiBin = (TH1D*) h_hiBin_MinBias_clone->Clone("r_hiBin");
+  r_hiBin->Divide(h_hiBin_MinBias_clone,h_hiBin_HYDJET_clone,1,1,"");
+
+  TCanvas *canv_hiBin = new TCanvas("canv_hiBin","hiBin distributions",700,700);
+  canv_hiBin->cd();
+  TPad *pad_hiBin_u = new TPad("pad_hiBin_u","pad_hiBin_u",0,0.4,1,1);
+  TPad *pad_hiBin_l = new TPad("pad_hiBin_l","pad_hiBin_l",0,0,1,0.4);
+  pad_hiBin_u->SetLeftMargin(0.18);
+  pad_hiBin_l->SetLeftMargin(0.18);
+  pad_hiBin_u->SetBottomMargin(0.);
+  pad_hiBin_l->SetBottomMargin(0.15);
+  pad_hiBin_u->SetTopMargin(0.1);
+  pad_hiBin_l->SetTopMargin(0.);
+  pad_hiBin_u->Draw();
+  pad_hiBin_l->Draw();
+  pad_hiBin_u->cd();
+  h_hiBin_MinBias_clone->GetYaxis()->SetLabelSize(0.05);
+  h_hiBin_MinBias_clone->GetYaxis()->SetTitleSize(0.06);
+  h_hiBin_MinBias_clone->GetYaxis()->SetTitle("#frac{1}{#it{N}^{evt}_{tot}} #frac{d#it{N}^{evt}}{d(hiBin)}");
+  h_hiBin_MinBias_clone->GetYaxis()->SetRangeUser(0.005,0.008);
+  h_hiBin_MinBias_clone->SetTitle("");
+  h_hiBin_MinBias_clone->SetStats(0);
+  h_hiBin_MinBias_clone->Draw();
+  h_hiBin_HYDJET_clone->Draw("same");
+  TLegend *leg_hiBin = new TLegend(0.65,0.65,0.8,0.8);
+  leg_hiBin->SetTextSize(0.055);
+  leg_hiBin->SetBorderSize(0.);
+  leg_hiBin->AddEntry(h_hiBin_MinBias,"PbPb MinBias");
+  leg_hiBin->AddEntry(h_hiBin_HYDJET,"HYDJET");
+  leg_hiBin->Draw();
+  pad_hiBin_l->cd();
+  r_hiBin->GetYaxis()->SetLabelSize(0.06);
+  r_hiBin->GetYaxis()->SetTitleSize(0.07);
+  r_hiBin->GetYaxis()->SetTitle("Data / MC");
+  r_hiBin->GetYaxis()->SetRangeUser(0.75,1.25);
+  r_hiBin->GetXaxis()->SetLabelSize(0.06);
+  r_hiBin->GetXaxis()->SetTitleSize(0.07);
+  r_hiBin->GetXaxis()->SetTitle("hiBin");
+  r_hiBin->SetTitle("");
+  r_hiBin->SetStats(0);
+  r_hiBin->Draw();
+  li->DrawLine(20,1,200,1);
+  
+  canv_hiBin->SaveAs("../../../figures/hiBin/hiBin_HYDJETVsMinBias.pdf");
+  
   TString centString = getCentString(doC16,doC15,doC14,doC13,doC12,doC11,doC10,doC9,doC8,doC7,doC6,doC5,doC4,doC3,doC2,doC1);
 
   f_HYDJET->GetObject(Form("h_inclRecoJetPt_flavor_%s",centString.Data()),H1);
@@ -310,6 +387,21 @@ void plotJetPt_HYDJETVsMinBias(bool doC16 = true,
   
   stylizeHistograms(h1,h2,doC16,doC15,doC14,doC13,doC12,doC11,doC10,doC9,doC8,doC7,doC6,doC5,doC4,doC3,doC2,doC1);
 
+
+  const int N_edge = 11;
+  double newAxis[N_edge] = {20,30,40,50,60,70,80,100,120,150,200};
+  bool doRebinHistograms = true;
+  if(doRebinHistograms){
+    h1 = (TH1D*) h1->Rebin(N_edge-1,"h1",newAxis);
+    h2 = (TH1D*) h2->Rebin(N_edge-1,"h2",newAxis);
+    divideByBinwidth(h1);
+    divideByBinwidth(h2);
+  }
+
+
+
+  
+
   if(doPerEventNormalization){
     h1->Scale(1./N1);
     h2->Scale(1./N2);
@@ -326,11 +418,7 @@ void plotJetPt_HYDJETVsMinBias(bool doC16 = true,
   TH1D *r = (TH1D*) h2->Clone("r");
   r->Divide(h2,h1,1,1,"");
 
-  TLatex *la = new TLatex();
-  la->SetTextSize(0.045);
 
-  TLine *li = new TLine();
-  li->SetLineStyle(7);
   
   TCanvas *canv = new TCanvas("canv","canv",700,700);
   canv->cd();
@@ -367,10 +455,10 @@ void plotJetPt_HYDJETVsMinBias(bool doC16 = true,
   r->GetYaxis()->SetLabelSize(0.05);
   r->GetXaxis()->SetLabelSize(0.05);
   r->GetYaxis()->SetTitle("Data / MC  ");
-  r->GetYaxis()->SetRangeUser(0,2.6);
+  r->GetYaxis()->SetRangeUser(0,3.6);
   r->Draw();
-  li->DrawLine(0,1,500,1);
-  li->DrawLine(80,0,80,2.6);
+  li->DrawLine(20,1,200,1);
+  li->DrawLine(80,0,80,3.6);
 
   canv->SaveAs(Form("../../../figures/jetPt/HYDJETVsMinBias/jetPt_HYDJETVsMinBias_%s.pdf",centString.Data()));
 
