@@ -12,9 +12,14 @@ exe = 'pp_scan.C'
 time_flavour = '"workday"'  # 8h
 nsplit = 5  # input files per condor job
 
-# Scripts and logs go to AFS home so the schedd can reach them
-# regardless of whether the repo is on EOS or AFS.
-afs_job_dir = os.path.join(os.getenv('HOME'), 'condor_jobs', jobname)
+# Scripts and logs must be on AFS so the condor schedd can reach them.
+# On lxplus, $HOME may be an EOS path (/eos/user/…); in that case fall
+# back to the explicit AFS home (/afs/cern.ch/user/X/username/).
+_home = os.getenv('HOME', '')
+_user = os.getenv('USER', os.getenv('LOGNAME', ''))
+if _home.startswith('/eos') or not _home:
+    _home = f'/afs/cern.ch/user/{_user[0]}/{_user}'
+afs_job_dir = os.path.join(_home, 'condor_jobs', jobname)
 
 # -----------------------------------------------------------------------
 
