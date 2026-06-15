@@ -1,4 +1,4 @@
-#!/bin/tcsh
+#!/bin/bash
 
 ENV_SETUP
 

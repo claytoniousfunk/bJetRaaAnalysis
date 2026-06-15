@@ -75,8 +75,8 @@ class jobManager:
         pwd = os.getenv('PWD')
         base = os.getenv('CMSSW_BASE')
         if base is None:
-            # no CMSSW environment — plain ROOT job, just cd to the job directory
-            cmd = 'pushd ' + pwd + '/' + self.jobname + '\n'
+            # no CMSSW environment — plain ROOT job, run from the submission directory
+            cmd = 'cd ' + pwd + '\n'
         else:
             cmd = 'pushd ' + base + '/src\n' + 'eval `scramv1 runtime -csh`\npushd '
             cmd = cmd + pwd + '/' + self.jobname + '\n'
@@ -147,8 +147,8 @@ class jobManager:
             cmdline = ''
             for f in files[starti:endi]:
                 if self.method == 'root':
-                    cmdline = (cmdline + self.binary + ' ' + self.executable +
-                               '\\("' + f.rstrip() + '","' + outputname + '_' + str(ifiles) + '.root")\\\n')
+                    cmdline = (cmdline + self.binary + " '" + self.executable +
+                               '("' + f.rstrip() + '","' + outputname + '_' + str(ifiles) + '.root")' + "'\n")
                 else:
                     cmdline = (cmdline + self.binary + ' ' + self.executable + ' ' +
                                f.rstrip() + ' ' + outputname + '_' + str(ifiles) + '.root\n')

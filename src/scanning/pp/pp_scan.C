@@ -160,7 +160,7 @@ TH1D *h_dimuonMass_sameSign;
 
 
 ///////////////////////  start the program
-void pp_scan(int group = 1){
+void pp_scan(TString inputFile = "", TString outputFile = ""){
 
 
   if(fillMu5){
@@ -178,26 +178,8 @@ void pp_scan(int group = 1){
   }
   else{};
 
-  std::string inputFileList = "";
-  if(doSingleMuonSample) inputFileList = "../../../fileNames/fileNames_pp_SingleMuon.txt";
-  else if(doHighEGJetSample) inputFileList = "../../../fileNames/fileNames_pp_HighEGJet.txt";
-  else{};
-
-  std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
-  if(!instr.is_open()){
-    cout << "filelist not found!! Exiting..." << endl;
-    return;
-  }
-  std::string filename;
-  Int_t ifile = 0;
-
-  while(instr>>filename){
-
-    ifile++;
-
-    if(ifile != group) continue;
-
-    std::string input = filename.c_str();
+  {
+    std::string input = std::string(inputFile.Data());
 
     // TString inputDataset = "";
     // TString inputFileName = "";
@@ -245,15 +227,9 @@ void pp_scan(int group = 1){
 						   fillMu7,
 						   fillMu12);
 
-    TString output = Form("%s%s/pp_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
-    //TString output = Form("%s%s_rawJetPt/pp_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
+    TString output = outputFile;
 
     std::cout << "output dataset = " << output << std::endl;
-
-    if(gSystem->AccessPathName(Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()))){
-      std::cout << "\033[1;31m Output directory not found: \033[0m " << Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()) << std::endl;
-      return;
-    }
 
     // JET ENERGY CORRECTIONS
     vector<string> Files;
