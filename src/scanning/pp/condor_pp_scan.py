@@ -2,7 +2,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 from myProcesses.condor.condor_utility import jobManager
 
-jobname = 'pp_HighEGJet_Jet15_scan'
+jobname = 'pp_HighEGJet_Jet30_scan'
 
 #put the file list here
 #dblist = '../../../fileNames/fileNames_pp_SingleMuon_24Oct23.txt'

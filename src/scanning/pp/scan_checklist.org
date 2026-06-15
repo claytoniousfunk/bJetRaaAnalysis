@@ -14,7 +14,7 @@ Keep: ~doHighEGJetSample = true~, ~fillMu12 = true~, ~doWDecayFilter = true~,
 
 * Scans
 
-** TODO Jet15 — ~applyJet15Trigger = true~
+** IN-PROGRESS Jet15 — ~applyJet15Trigger = true~
 - Expected output dir: ~output_pp_HighEGJet_Jet15HLT_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter~
 - Create EOS dir before submitting condor job
 
