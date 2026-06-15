@@ -1,7 +1,7 @@
 import os
 import math
 
-jobname = 'pp_HighEGJet_Jet100_scan'
+jobname = 'pp_HighEGJet_Jet30_scan'
 
 #put the file list here
 #dblist = '../../../fileNames/fileNames_pp_SingleMuon_24Oct23.txt'
