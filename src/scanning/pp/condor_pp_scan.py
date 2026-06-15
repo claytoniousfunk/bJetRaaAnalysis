@@ -12,48 +12,51 @@ exe = 'pp_scan.C'
 time_flavour = '"workday"'  # 8h
 nsplit = 5  # input files per condor job
 
+# Scripts and logs go to AFS home so the schedd can reach them
+# regardless of whether the repo is on EOS or AFS.
+afs_job_dir = os.path.join(os.getenv('HOME'), 'condor_jobs', jobname)
+
 # -----------------------------------------------------------------------
 
-pwd = os.getenv('PWD')
+src_dir = os.getenv('PWD')  # where pp_scan.C lives (may be on EOS)
 files = [l.strip() for l in open(dblist).readlines() if l.strip()]
 nfiles = len(files)
 njobs = int(math.ceil(float(nfiles) / nsplit))
 
-os.makedirs(jobname, exist_ok=True)
-os.makedirs(f'{jobname}/log', exist_ok=True)
+os.makedirs(afs_job_dir, exist_ok=True)
+os.makedirs(os.path.join(afs_job_dir, 'log'), exist_ok=True)
 
-sub_blocks = [
-    'Universe = vanilla',
-    f'Log        = {pwd}/{jobname}/log/job_$(ProcId).log',
-    f'Output     = {pwd}/{jobname}/log/job_$(ProcId).out',
-    f'Error      = {pwd}/{jobname}/log/job_$(ProcId).err',
-    'getenv     = True',
-    'x509userproxy = $ENV(X509_USER_PROXY)',
-    'use_x509userproxy = True',
-    f'+JobFlavour = {time_flavour}',
-    '',
-]
-
+# generate one script per job
 for i in range(njobs):
     start = i * nsplit + 1        # 1-indexed group numbers for pp_scan.C
     end   = min((i + 1) * nsplit, nfiles)
 
-    script = f'#!/bin/bash\ncd {pwd}\n'
+    script = f'#!/bin/bash\ncd {src_dir}\n'
     for idx in range(start, end + 1):
         script += f"root -l -b -q '{exe}({idx})'\n"
 
-    script_path = f'{pwd}/{jobname}/script_{i}.sh'
+    script_path = os.path.join(afs_job_dir, f'script_{i}.sh')
     with open(script_path, 'w') as f:
         f.write(script)
     os.chmod(script_path, 0o755)
 
-    sub_blocks.append(f'Executable = {script_path}')
-    sub_blocks.append('Queue')
-    sub_blocks.append('')
+# single submit file with one Queue statement
+sub = f"""Universe   = vanilla
+Executable = {afs_job_dir}/script_$(ProcId).sh
+Log        = {afs_job_dir}/log/job_$(ProcId).log
+Output     = {afs_job_dir}/log/job_$(ProcId).out
+Error      = {afs_job_dir}/log/job_$(ProcId).err
+getenv     = True
+x509userproxy = $ENV(X509_USER_PROXY)
+use_x509userproxy = True
++JobFlavour = {time_flavour}
+Queue {njobs}
+"""
 
-sub_path = f'{jobname}/condor_submit.cfg'
+sub_path = os.path.join(afs_job_dir, 'condor_submit.cfg')
 with open(sub_path, 'w') as f:
-    f.write('\n'.join(sub_blocks))
+    f.write(sub)
 
 print(f'Generated {njobs} jobs for {nfiles} input files (nsplit={nsplit})')
+print(f'Scripts/logs → {afs_job_dir}')
 os.system(f'condor_submit {sub_path}')
