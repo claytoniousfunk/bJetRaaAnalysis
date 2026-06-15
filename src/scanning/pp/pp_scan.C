@@ -160,7 +160,44 @@ TH1D *h_dimuonMass_sameSign;
 
 
 ///////////////////////  start the program
-void pp_scan(TString inputFile = "", TString outputFile = ""){
+
+// standalone entry point: pp_scan(N) reads file N from the list and writes to EOS
+void pp_scan(int group = 1){
+
+  if(fillMu5){ muPtCut = 7.0; muPtMaxCut = 9.0; }
+  else if(fillMu7){ muPtCut = 9.0; muPtMaxCut = 15.0; }
+  else if(fillMu12){ muPtCut = 15.0; muPtMaxCut = 999.0; }
+
+  std::string inputFileList = "";
+  if(doSingleMuonSample) inputFileList = "../../../fileNames/fileNames_pp_SingleMuon.txt";
+  else if(doHighEGJetSample) inputFileList = "../../../fileNames/fileNames_pp_HighEGJet.txt";
+
+  std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
+  if(!instr.is_open()){ cout << "filelist not found!! Exiting..." << endl; return; }
+  std::string filename; Int_t ifile = 0;
+  while(instr >> filename){ ifile++; if(ifile == group) break; }
+  TString inputFile = TString(filename.c_str());
+
+  TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
+  TString outputDatasetName = configureOutputDatasetName(doSingleMuonSample,doMinBiasSample,doHighEGJetSample,
+    applyJet15Trigger,applyJet30Trigger,applyJet40Trigger,applyJet60Trigger,applyJet80Trigger,applyJet100Trigger,
+    applyAntiMu5Jet30Trigger,applyAntiMu5Jet40Trigger,applyAntiMu5Jet60Trigger,
+    applyMu12TriggerEfficiencyCorrection,doJetTrkMaxFilter,doEtaPhiMask,doWDecayFilter,
+    doJESCorrection,doBJetNeutrinoEnergyShift,doJERCorrection,
+    apply_JER_smear,apply_JEU_shift_up,apply_JEU_shift_down,muPtCut,muPtMaxCut,fillMu5,fillMu7,fillMu12);
+  TString outputFile = Form("%s%s/pp_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
+
+  if(gSystem->AccessPathName(Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()))){
+    std::cout << "\033[1;31m Output directory not found: \033[0m "
+              << Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()) << std::endl;
+    return;
+  }
+
+  pp_scan(inputFile, outputFile);
+}
+
+// condor entry point: called by jobManager with explicit file paths
+void pp_scan(TString inputFile, TString outputFile){
 
 
   if(fillMu5){
