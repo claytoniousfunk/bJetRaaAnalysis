@@ -134,14 +134,15 @@ class jobManager:
         script_temp = os.path.join(_here, 'utility', 'script_condor_template.sh')
         cfg_temp = os.path.join(_here, 'utility', 'condor_template.cfg')
 
+        job_dir = pwd + '/' + workfolder
         ifiles = 0
         outputname = ''
         for i in range(njobs):
             if nsplit != 1:
-                outputname = './temp' + str(i) + '/' + outputname0
-                prerun_cmd = 'mkdir temp' + str(i) + '\n'
+                outputname = job_dir + '/temp' + str(i) + '/' + outputname0
+                prerun_cmd = 'mkdir ' + job_dir + '/temp' + str(i) + '\n'
             else:
-                outputname = './data/' + outputname0
+                outputname = job_dir + '/data/' + outputname0
             starti = i * nsplit
             endi = (i + 1) * nsplit
             cmdline = ''
@@ -157,10 +158,11 @@ class jobManager:
                 ifiles = ifiles + 1
             if nsplit != 1:
                 file_keep = 'job_output_part' + str(i) + '.root'
-                cmdline = cmdline + 'hadd -f data/' + file_keep + ' ./temp' + str(i) + '/*.root\n'
-                cmdline = cmdline + 'rm -r temp' + str(i) + '\n'
+                cmdline = (cmdline + 'hadd -f ' + job_dir + '/data/' + file_keep +
+                           ' ' + job_dir + '/temp' + str(i) + '/*.root\n')
+                cmdline = cmdline + 'rm -r ' + job_dir + '/temp' + str(i) + '\n'
             else:
-                file_keep = 'data/' + outputname + str(i) + '.root'
+                file_keep = job_dir + '/data/' + outputname0 + str(i) + '.root'
             parlist = {'EXECUTABLE': cmdline}
             parlist['ENV_SETUP'] = env_setup
             parlist['PRERUN'] = prerun_cmd
