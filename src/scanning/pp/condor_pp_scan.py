@@ -12,9 +12,6 @@ exe = 'pp_scan.C'
 time_flavour = '"workday"'  # 8h
 nsplit = 5  # input files per condor job
 
-# EOS output directory — must exist before submitting
-eos_output_dir = '/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/output_pp_HighEGJet_Jet15HLT_mu12_pTmu- 15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter'
-
 # -----------------------------------------------------------------------
 
 pwd = os.getenv('PWD')
@@ -37,14 +34,13 @@ sub_blocks = [
     '',
 ]
 
-ifile = 0
 for i in range(njobs):
+    start = i * nsplit + 1        # 1-indexed group numbers for pp_scan.C
+    end   = min((i + 1) * nsplit, nfiles)
+
     script = f'#!/bin/bash\ncd {pwd}\n'
-    for idx in range(i * nsplit, min((i + 1) * nsplit, nfiles)):
-        input_file = files[idx]
-        output_file = f'{eos_output_dir}/pp_scan_output_{ifile}.root'
-        script += f"root -l -b -q '{exe}(\"{input_file}\",\"{output_file}\")'\n"
-        ifile += 1
+    for idx in range(start, end + 1):
+        script += f"root -l -b -q '{exe}({idx})'\n"
 
     script_path = f'{pwd}/{jobname}/script_{i}.sh'
     with open(script_path, 'w') as f:
@@ -60,5 +56,4 @@ with open(sub_path, 'w') as f:
     f.write('\n'.join(sub_blocks))
 
 print(f'Generated {njobs} jobs for {nfiles} input files (nsplit={nsplit})')
-print(f'Output → {eos_output_dir}')
 os.system(f'condor_submit {sub_path}')
