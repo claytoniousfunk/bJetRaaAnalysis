@@ -74,8 +74,12 @@ class jobManager:
     def set_run_environment_local(self):
         pwd = os.getenv('PWD')
         base = os.getenv('CMSSW_BASE')
-        cmd = 'pushd ' + base + '/src\n' + 'eval `scramv1 runtime -csh`\npushd '
-        cmd = cmd + pwd + '/' + self.jobname + '\n'
+        if base is None:
+            # no CMSSW environment — plain ROOT job, just cd to the job directory
+            cmd = 'pushd ' + pwd + '/' + self.jobname + '\n'
+        else:
+            cmd = 'pushd ' + base + '/src\n' + 'eval `scramv1 runtime -csh`\npushd '
+            cmd = cmd + pwd + '/' + self.jobname + '\n'
         return cmd
 
     def set_run_environment_tarball(self):
