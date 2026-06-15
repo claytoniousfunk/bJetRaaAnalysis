@@ -12,14 +12,10 @@ exe = 'pp_scan.C'
 time_flavour = '"workday"'  # 8h
 nsplit = 5  # input files per condor job
 
-# Scripts and logs must be on AFS so the condor schedd can reach them.
-# On lxplus, $HOME may be an EOS path (/eos/user/…); in that case fall
-# back to the explicit AFS home (/afs/cern.ch/user/X/username/).
-_home = os.getenv('HOME', '')
-_user = os.getenv('USER', os.getenv('LOGNAME', ''))
-if _home.startswith('/eos') or not _home:
-    _home = f'/afs/cern.ch/user/{_user[0]}/{_user}'
-afs_job_dir = os.path.join(_home, 'condor_jobs', jobname)
+# Use $HOME directly (may be on EOS on modern lxplus).
+# The submit file uses +EOS = True to route to the EosSubmit schedds,
+# which support /eos paths natively.
+afs_job_dir = os.path.join(os.getenv('HOME'), 'condor_jobs', jobname)
 
 # -----------------------------------------------------------------------
 
@@ -55,6 +51,7 @@ getenv     = True
 x509userproxy = $ENV(X509_USER_PROXY)
 use_x509userproxy = True
 +JobFlavour = {time_flavour}
++EOS = True
 Queue {njobs}
 """
 
