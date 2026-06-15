@@ -160,6 +160,7 @@ TH1D *h_dimuonMass_sameSign;
 
 
 ///////////////////////  start the program
+void pp_scan(TString inputFile, TString outputFile); // forward declaration
 
 // standalone entry point: pp_scan(N) reads file N from the list and writes to EOS
 void pp_scan(int group = 1){
