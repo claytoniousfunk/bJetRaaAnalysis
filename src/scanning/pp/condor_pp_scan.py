@@ -1,7 +1,7 @@
 import os
 import math
 
-jobname = 'pp_HighEGJet_Jet30_scan'
+jobname = 'pp_HighEGJet_Jet15_scan'
 
 #put the file list here
 #dblist = '../../../fileNames/fileNames_pp_SingleMuon_24Oct23.txt'
@@ -13,7 +13,7 @@ time_flavour = '"workday"'  # 8h
 nsplit = 5  # input files per condor job
 
 # EOS output directory — must exist before submitting
-eos_output_dir = '/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/output_pp_HighEGJet_Jet30HLT_mu12_pTmu- 15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter'
+eos_output_dir = '/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/output_pp_HighEGJet_Jet15HLT_mu12_pTmu- 15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter'
 
 # -----------------------------------------------------------------------
 
