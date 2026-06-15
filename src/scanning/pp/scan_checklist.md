@@ -1,0 +1,45 @@
+# pp HighEGJet Trigger Scan Checklist
+
+Goal: produce one scan output per jet trigger threshold so the spectra can be
+stitched together in place of the old ZeroBias/MinBias sample.
+
+Stitch order (lowest → highest): Jet15 → Jet30 → Jet40 → Jet60 → Jet80 → Jet100
+
+## config_pp.h settings for each scan
+
+For each scan, set exactly ONE `applyJetXXTrigger = true`; all others false.
+Keep: `doHighEGJetSample = true`, `fillMu12 = true`, `doWDecayFilter = true`,
+`doJetTrkMaxFilter = true`, `deltaR = 40` (epsilon_mm = 0.40).
+
+## Scans
+
+- [ ] **Jet15** — `applyJet15Trigger = true`
+  - Expected output dir: `output_pp_HighEGJet_Jet15HLT_mu12_pTmu- 15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter`
+  - Create EOS dir before submitting condor job
+
+- [ ] **Jet30** — `applyJet30Trigger = true`
+  - Expected output dir: `output_pp_HighEGJet_Jet30HLT_mu12_pTmu- 15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter`
+  - Create EOS dir before submitting condor job
+
+- [ ] **Jet40** — `applyJet40Trigger = true`
+  - Expected output dir: `output_pp_HighEGJet_Jet40HLT_mu12_pTmu- 15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter`
+  - Create EOS dir before submitting condor job
+
+- [ ] **Jet60** — `applyJet60Trigger = true`
+  - Existing file (bJetMuonTaggingAnalysis): `pp_HighEGJet_Jet60HLT_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_2026-3-10.root`
+  - Note: missing WDecayFilter — re-scan or confirm acceptable
+
+- [ ] **Jet80** — `applyJet80Trigger = true`
+  - Existing file (bJetMuonTaggingAnalysis): `pp_HighEGJet_Jet80HLT_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_2026-3-10.root`
+  - Note: missing WDecayFilter — re-scan or confirm acceptable
+
+- [ ] **Jet100** — `applyJet100Trigger = true`
+  - Existing file (bJetMuonTaggingAnalysis): `pp_HighEGJet_Jet100HLT_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-3-11.root`
+  - Status: ready (has WDecayFilter)
+
+## After all scans complete
+
+- [ ] hadd per-file outputs → one merged root file per trigger
+- [ ] copy/symlink merged files into `rootFiles/scanningOutput/pp/latest/`
+- [ ] update `plotJetPt_stitch.C` to use new Jet15/30/40 files and remove MinBias
+- [ ] update `calculateRAA.C` stitch logic accordingly
