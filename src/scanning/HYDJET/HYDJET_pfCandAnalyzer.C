@@ -41,6 +41,10 @@
 #include "../../../headers/AnalysisSetup/centrality_ultraFineCentBins.h"
 #include "../../../headers/AnalysisSetup/pseudoJets.h"
 
+#ifdef DO_FASTJET
+#include "fastjet/ClusterSequence.hh"
+#endif
+
 // vz-fit parameters
 //#include "../../../headers/fitParameters/vzFitParams_PH_mu5.h"
 //#include "../../../headers/fitParameters/vzFitParams_PH_mu7.h"
@@ -307,17 +311,6 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 
   double pi = TMath::Pi();
   double dR_max = 0.4;
-
-  if(doFastJetClustering){
-    if(gSystem->Load(fastjetLibPath) < 0){
-      printf("ERROR: could not load FastJet library '%s'. "
-             "Set fastjetLibPath in pseudoJets.h or ensure libfastjet.so is on LD_LIBRARY_PATH.\n",
-             fastjetLibPath);
-      return;
-    }
-    gInterpreter->AddIncludePath("$FASTJET_HOME/include");
-    gInterpreter->Declare("#include \"fastjet/ClusterSequence.hh\"");
-  }
 
   if(fillMu5){
     muPtCut = 7.0;
@@ -1405,6 +1398,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       }
 
       // FastJet anti-kT clustering on PF candidates
+#ifdef DO_FASTJET
       if(doFastJetClustering){
         std::vector<fastjet::PseudoJet> fjInputs;
         for(int l = 0; l < em->nPFpart; l++){
@@ -1412,7 +1406,6 @@ void HYDJET_pfCandAnalyzer(int group = 1){
           double eta = em->pfEta->at(l);
           double phi = em->pfPhi->at(l);
           if(pt < pseudoJetCandPt_min) continue;
-          // massless 4-vector from (pt, eta, phi)
           double px = pt * TMath::Cos(phi);
           double py = pt * TMath::Sin(phi);
           double pz = pt * TMath::SinH(eta);
@@ -1428,6 +1421,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
           h_fastJetPt[CentralityIndex]->Fill(jet.pt(), w);
         }
       }
+#endif
 
       em->getEvent(evi);
 

@@ -15,29 +15,6 @@
 #include "TF2.h"
 #include "TF3.h"
 
-class JetCorrector;
-class SingleJetCorrector;
-
-class JetCorrector
-{
-private:
-   std::vector<SingleJetCorrector> JEC;
-   double JetPT, JetEta, JetPhi, JetArea, Rho;
-public:
-   JetCorrector()                               {}
-   JetCorrector(std::string File)               { Initialize(File); }
-   JetCorrector(std::vector<std::string> Files) { Initialize(Files); }
-   void Initialize(std::string File)            { std::vector<std::string> X; X.push_back(File); Initialize(X); }
-   void Initialize(std::vector<std::string> Files);
-   void SetJetPT(double value)     { JetPT = value; }
-   void SetJetEta(double value)    { JetEta = value; }
-   void SetJetPhi(double value)    { JetPhi = value; }
-   void SetJetArea(double value)   { JetArea = value; }
-   void SetRho(double value)       { Rho = value; }
-   double GetCorrection();
-   double GetCorrectedPT();
-};
-
 class SingleJetCorrector
 {
 private:
@@ -72,7 +49,27 @@ public:
 private:
    std::string Hack4(std::string Formula, char V, int N);
 };
-   
+
+class JetCorrector
+{
+private:
+   std::vector<SingleJetCorrector> JEC;
+   double JetPT, JetEta, JetPhi, JetArea, Rho;
+public:
+   JetCorrector()                               {}
+   JetCorrector(std::string File)               { Initialize(File); }
+   JetCorrector(std::vector<std::string> Files) { Initialize(Files); }
+   void Initialize(std::string File)            { std::vector<std::string> X; X.push_back(File); Initialize(X); }
+   void Initialize(std::vector<std::string> Files);
+   void SetJetPT(double value)     { JetPT = value; }
+   void SetJetEta(double value)    { JetEta = value; }
+   void SetJetPhi(double value)    { JetPhi = value; }
+   void SetJetArea(double value)   { JetArea = value; }
+   void SetRho(double value)       { Rho = value; }
+   double GetCorrection();
+   double GetCorrectedPT();
+};
+
 void JetCorrector::Initialize(std::vector<std::string> Files)
 {
    //cout << "Flag 1" << endl;
