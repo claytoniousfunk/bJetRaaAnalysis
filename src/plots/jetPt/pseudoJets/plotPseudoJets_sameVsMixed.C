@@ -4,13 +4,14 @@
 // Fill in f_mixed_path once the hadd is complete.
 
 const char *f_same_path =
-  "/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/HYDJET/canonical/pfCandAnalyzer/"
+  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/HYDJET/"
   "HYDJET_pThat-unweighted_mu12_pTmu-15to999_tight_hiBinShift-0_jetTrkMaxFilter_WDecayFilter_"
-  "sameEventPseudoJets_pseudoJetCandPtMin-0.0_subleadingPFCandPtMin-15_2026-6-9_ultraFineCentBins_pfCandAnalyzer.root";
+  "sameEventPseudoJets_pfCandCS_pseudoJetCandPtMin-0.0_subleadingPFCandPtMin-15_2026-6-16_ultraFineCentBins.root";
 
 const char *f_mixed_path =
   "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/HYDJET/"
-  "HYDJET_pfCandAnalyzer_mixedEventPseudoJets.root";  // <-- fill in after hadd
+  "HYDJET_pThat-unweighted_mu12_pTmu-15to999_tight_hiBinShift-0_jetTrkMaxFilter_WDecayFilter_"
+  "mixedEventPseudoJets_pfCandCS_pseudoJetCandPtMin-0.0_subleadingPFCandPtMin-15_2026-6-16_ultraFineCentBins.root";
 
 // centrality labels for C1..C16 (hiBin step = 10 → 5% steps)
 const char *centLabel[17] = {
