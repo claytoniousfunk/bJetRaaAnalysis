@@ -5,7 +5,7 @@ jobname = 'HYDJET_pfCandAnalyzer_sameEventPseudoJets_noCS'
 
 dblist = '../../../fileNames/fileNames_MinBias_Hydjet_Drum5F_2018_5p02TeV_withTracksAndPFCandidates.txt'
 
-exe = 'HYDJET_pfCandAnalyzer.C'
+exe = 'run_pfCandAnalyzer.C'
 time_flavour = '"workday"'  # 8h
 nsplit = 1  # input files per condor job
 
