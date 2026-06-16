@@ -5,7 +5,7 @@ void run_pfCandAnalyzer(int group = 1){
   const char *fjHome = gSystem->Getenv("FASTJET_HOME");
   if(fjHome && strlen(fjHome) > 0){
     gSystem->AddIncludePath(Form("-DDO_FASTJET -I%s/include", fjHome));
-    gSystem->AddLinkerOpts("-lfastjet");
+    gSystem->AddLinkedLibs("-lfastjet");
   } else {
     printf("WARNING: FASTJET_HOME not set — compiling without FastJet support\n");
   }
