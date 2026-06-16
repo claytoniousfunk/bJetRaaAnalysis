@@ -184,6 +184,10 @@ void pp_scan(int group = 1){
   if(!instr.is_open()){ cout << "filelist not found!! Exiting..." << endl; return; }
   std::string filename; Int_t ifile = 0;
   while(instr >> filename){ ifile++; if(ifile == group) break; }
+  if(ifile < group){
+    cout << "File index " << group << " out of range (list has " << ifile << " files). Exiting." << endl;
+    return;
+  }
   TString inputFile = TString(filename.c_str());
 
   TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
