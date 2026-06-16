@@ -773,8 +773,14 @@ void calculateRAA(){
   // h_C2_jetMB->Add(h_fakeJets_C2,-1);
   // h_C1_jetMB->Add(h_fakeJets_C1,-1);
 
+  // clip negative bins (fake rate can exceed MinBias in 20-30 GeV range)
+  // for(TH1D *h : {h_C4_jetMB, h_C3_jetMB, h_C2_jetMB, h_C1_jetMB}){
+  //   for(int b = 1; b <= h->GetNbinsX(); b++){
+  //     if(h->GetBinContent(b) < 0.){ h->SetBinContent(b,0.); h->SetBinError(b,0.); }
+  //   }
+  // }
 
-  
+
   h_pp = (TH1D*) stitchSamples(h_pp_jetMB,h_fakeJets_C4, h_pp_jet60,h_pp_jet80,h_pp_jet100,1,0); // pp hist will ignore fakeJet entry
   h_C4 = (TH1D*) stitchSamples(h_C4_jetMB,h_fakeJets_C4, h_C4_jet60,h_C4_jet80,h_C4_jet100,0,1);
   h_C3 = (TH1D*) stitchSamples(h_C3_jetMB,h_fakeJets_C3, h_C3_jet60,h_C3_jet80,h_C3_jet100,0,1);

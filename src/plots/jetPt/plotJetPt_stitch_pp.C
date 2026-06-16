@@ -132,7 +132,7 @@ void plotJetPt_stitch_pp(){
   // common axis limits
   double xmin = 15., xmax = 400.;
   double ymin_raw = 1., ymax_raw = 5.e7;
-  double lm = 0.16, bm = 0.14;
+  double lm = 0.16, bm = 0.14, tm = 0.12;
 
   TLine *li = new TLine();
   li->SetLineStyle(2);
@@ -152,7 +152,7 @@ void plotJetPt_stitch_pp(){
 
     TCanvas *c = new TCanvas("c_baseline","",700,700);
     TPad *p = new TPad("p_baseline","",0,0,1,1);
-    p->SetLeftMargin(lm); p->SetBottomMargin(bm);
+    p->SetLeftMargin(lm); p->SetBottomMargin(bm); p->SetTopMargin(tm);
     p->SetLogy(); p->Draw(); p->cd();
 
     hR15->SetTitle("");
@@ -166,17 +166,16 @@ void plotJetPt_stitch_pp(){
 
     TLatex *lat = new TLatex();
     lat->SetNDC(); lat->SetTextSize(0.038);
-    lat->DrawLatex(0.18,0.88,"pp #sqrt{#it{s}} = 5.02 TeV");
-    lat->DrawLatex(0.18,0.84,"anti-#it{k}_{T} #it{R} = 0.4");
+    lat->DrawLatex(lm+0.02, 1.-tm+0.03, "pp #sqrt{#it{s}} = 5.02 TeV");
+    lat->DrawLatex(lm+0.02, 1.-tm-0.02, "anti-#it{k}_{T} #it{R} = 0.4");
 
     c->SaveAs(outDir + "jetPt_pp_baseline.pdf");
   }
 
   // =====================================================================
-  // PLOT 2: Turn-on curves — h_leadJetPt per trigger (from Jet15 file)
+  // PLOT 2: Turn-on curves + ratio pad (trigger / Jet15 per bin)
   // =====================================================================
   {
-    // normalise each to Jet15 sample (show efficiency vs Jet15 reference)
     double n15 = hTO15->Integral();
     if(n15 > 0){
       hTO15 ->Scale(1./n15); hTO30 ->Scale(1./n15);
@@ -184,39 +183,85 @@ void plotJetPt_stitch_pp(){
       hTO80 ->Scale(1./n15); hTO100->Scale(1./n15);
     }
 
-    TLegend *leg = makeLeg(0.50,0.55,0.88,0.88);
-    leg->AddEntry(hTO15,  "HLT\\_Jet15 (reference)", "l");
-    leg->AddEntry(hTO30,  "HLT\\_Jet30",  "l");
-    leg->AddEntry(hTO40,  "HLT\\_Jet40",  "l");
-    leg->AddEntry(hTO60,  "HLT\\_Jet60",  "l");
-    leg->AddEntry(hTO80,  "HLT\\_Jet80",  "l");
-    leg->AddEntry(hTO100, "HLT\\_Jet100", "l");
+    // ratio histograms: trigger / Jet15 bin-by-bin
+    auto makeRatio = [&](TH1D *hNum, const char *name) -> TH1D* {
+      TH1D *hr = (TH1D*) hNum->Clone(name);
+      hr->Divide(hTO15);
+      return hr;
+    };
+    TH1D *hR30  = makeRatio(hTO30,  "rTO30");
+    TH1D *hR40  = makeRatio(hTO40,  "rTO40");
+    TH1D *hR60  = makeRatio(hTO60,  "rTO60");
+    TH1D *hR80  = makeRatio(hTO80,  "rTO80");
+    TH1D *hR100 = makeRatio(hTO100, "rTO100");
 
-    TCanvas *c = new TCanvas("c_turnon","",700,700);
-    TPad *p = new TPad("p_turnon","",0,0,1,1);
-    p->SetLeftMargin(lm); p->SetBottomMargin(bm);
-    p->SetLogy(); p->Draw(); p->cd();
+    TLegend *leg = makeLeg(0.55,0.38,0.88,0.73);
+    leg->AddEntry(hTO15,  "Jet15 (ref)", "l");
+    leg->AddEntry(hTO30,  "Jet30",       "l");
+    leg->AddEntry(hTO40,  "Jet40",       "l");
+    leg->AddEntry(hTO60,  "Jet60",       "l");
+    leg->AddEntry(hTO80,  "Jet80",       "l");
+    leg->AddEntry(hTO100, "Jet100",      "l");
+
+    TCanvas *c = new TCanvas("c_turnon","",700,900);
+    c->cd();
+
+    TPad *pUp = new TPad("pUp","",0,0.35,1,1);
+    pUp->SetLeftMargin(lm); pUp->SetRightMargin(0.05);
+    pUp->SetBottomMargin(0.); pUp->SetTopMargin(tm);
+    pUp->SetLogy(); pUp->Draw(); pUp->cd();
 
     hTO15->SetTitle("");
-    hTO15->GetXaxis()->SetRangeUser(xmin,xmax);
-    hTO15->GetXaxis()->SetTitle("Leading Jet #it{p}_{T} [GeV]");
+    hTO15->GetXaxis()->SetRangeUser(xmin, xmax);
     hTO15->GetYaxis()->SetTitle("Fraction of Jet15 events");
+    hTO15->GetYaxis()->SetTitleSize(0.052);
+    hTO15->GetYaxis()->SetLabelSize(0.048);
+    hTO15->GetYaxis()->SetTitleOffset(1.35);
     hTO15->Draw(); hTO30->Draw("same"); hTO40->Draw("same");
     hTO60->Draw("same"); hTO80->Draw("same"); hTO100->Draw("same");
     leg->Draw();
 
     TLatex *lat = new TLatex();
-    lat->SetNDC(); lat->SetTextSize(0.038);
-    lat->DrawLatex(0.18,0.88,"pp #sqrt{#it{s}} = 5.02 TeV");
-    lat->DrawLatex(0.18,0.84,"Jet15-triggered events");
+    lat->SetNDC(); lat->SetTextSize(0.050);
+    lat->DrawLatex(lm+0.02, 1.-tm+0.03, "pp #sqrt{#it{s}} = 5.02 TeV");
+    lat->DrawLatex(lm+0.02, 1.-tm-0.05, "Jet15-triggered events");
 
-    // mark stitch points
-    li->SetLineColor(kGray+1);
+    li->SetLineColor(kGray+1); li->SetLineStyle(2); li->SetLineWidth(1);
     li->DrawLine(pT_15to30,  1.e-6, pT_15to30,  1.);
     li->DrawLine(pT_30to40,  1.e-6, pT_30to40,  1.);
     li->DrawLine(pT_40to60,  1.e-6, pT_40to60,  1.);
     li->DrawLine(pT_60to80,  1.e-6, pT_60to80,  1.);
     li->DrawLine(pT_80to100, 1.e-6, pT_80to100, 1.);
+
+    c->cd();
+    TPad *pDn = new TPad("pDn","",0,0,1,0.35);
+    pDn->SetLeftMargin(lm); pDn->SetRightMargin(0.05);
+    pDn->SetTopMargin(0.); pDn->SetBottomMargin(0.28);
+    pDn->Draw(); pDn->cd();
+
+    TLine *unity = new TLine();
+    unity->SetLineStyle(2); unity->SetLineColor(kGray+1); unity->SetLineWidth(1);
+
+    hR30->SetTitle("");
+    hR30->GetXaxis()->SetRangeUser(xmin, xmax);
+    hR30->GetXaxis()->SetTitle("Leading Jet #it{p}_{T} [GeV]");
+    hR30->GetYaxis()->SetTitle("Trigger / Jet15");
+    hR30->GetYaxis()->SetRangeUser(0., 1.4);
+    hR30->GetXaxis()->SetTitleSize(0.105);
+    hR30->GetXaxis()->SetLabelSize(0.090);
+    hR30->GetYaxis()->SetTitleSize(0.095);
+    hR30->GetYaxis()->SetLabelSize(0.085);
+    hR30->GetYaxis()->SetTitleOffset(0.65);
+    hR30->GetYaxis()->SetNdivisions(504);
+    hR30->Draw("hist"); hR40->Draw("hist same"); hR60->Draw("hist same");
+    hR80->Draw("hist same"); hR100->Draw("hist same");
+    unity->DrawLine(xmin, 1., xmax, 1.);
+
+    li->DrawLine(pT_15to30,  0., pT_15to30,  1.4);
+    li->DrawLine(pT_30to40,  0., pT_30to40,  1.4);
+    li->DrawLine(pT_40to60,  0., pT_40to60,  1.4);
+    li->DrawLine(pT_60to80,  0., pT_60to80,  1.4);
+    li->DrawLine(pT_80to100, 0., pT_80to100, 1.4);
 
     c->SaveAs(outDir + "jetPt_pp_turnon.pdf");
   }
@@ -235,7 +280,7 @@ void plotJetPt_stitch_pp(){
 
     TCanvas *c = new TCanvas("c_proc","",700,700);
     TPad *p = new TPad("p_proc","",0,0,1,1);
-    p->SetLeftMargin(lm); p->SetBottomMargin(bm);
+    p->SetLeftMargin(lm); p->SetBottomMargin(bm); p->SetTopMargin(tm);
     p->SetLogy(); p->Draw(); p->cd();
 
     h100->SetTitle("");
@@ -258,8 +303,8 @@ void plotJetPt_stitch_pp(){
 
     TLatex *lat = new TLatex();
     lat->SetNDC(); lat->SetTextSize(0.038);
-    lat->DrawLatex(0.18,0.88,"pp #sqrt{#it{s}} = 5.02 TeV");
-    lat->DrawLatex(0.18,0.84,"anti-#it{k}_{T} #it{R} = 0.4");
+    lat->DrawLatex(lm+0.02, 1.-tm+0.03, "pp #sqrt{#it{s}} = 5.02 TeV");
+    lat->DrawLatex(lm+0.02, 1.-tm-0.02, "anti-#it{k}_{T} #it{R} = 0.4");
 
     // label stitch pT on the line
     lat->SetNDC(false); lat->SetTextSize(14); lat->SetTextFont(43);
@@ -282,7 +327,7 @@ void plotJetPt_stitch_pp(){
 
     TCanvas *c = new TCanvas("c_stitch","",700,700);
     TPad *p = new TPad("p_stitch","",0,0,1,1);
-    p->SetLeftMargin(lm); p->SetBottomMargin(bm);
+    p->SetLeftMargin(lm); p->SetBottomMargin(bm); p->SetTopMargin(tm);
     p->SetLogy(); p->Draw(); p->cd();
 
     h_final->SetTitle("");
@@ -294,9 +339,9 @@ void plotJetPt_stitch_pp(){
 
     TLatex *lat = new TLatex();
     lat->SetNDC(); lat->SetTextSize(0.038);
-    lat->DrawLatex(0.18,0.88,"pp #sqrt{#it{s}} = 5.02 TeV");
-    lat->DrawLatex(0.18,0.84,"anti-#it{k}_{T} #it{R} = 0.4");
-    lat->DrawLatex(0.18,0.80,"Stitched: Jet15 #oplus Jet30 #oplus Jet40 #oplus Jet60 #oplus Jet80 #oplus Jet100");
+    lat->DrawLatex(lm+0.02, 1.-tm+0.03, "pp #sqrt{#it{s}} = 5.02 TeV");
+    lat->DrawLatex(lm+0.02, 1.-tm-0.02, "anti-#it{k}_{T} #it{R} = 0.4");
+    lat->DrawLatex(lm+0.02, 1.-tm-0.07, "Stitched: Jet15 #oplus Jet30 #oplus Jet40 #oplus Jet60 #oplus Jet80 #oplus Jet100");
 
     c->SaveAs(outDir + "jetPt_pp_stitched.pdf");
     c->SaveAs("/home/clayton/Analysis/code/bJetRaaAnalysis/figures/jetPt/stitch_pp/jetPt_pp_stitched.pdf");

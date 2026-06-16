@@ -301,11 +301,23 @@ TH2D *h_muptrel_hiBin_lJets[NJetPtIndices];
 TH1D *h_inclMuPt;
 TH1D *h_pfPt[NCentralityIndices];
 TH1D *h_pseudoJetPt[NCentralityIndices];
+TH1D *h_fastJetPt[NCentralityIndices];
 
 void HYDJET_pfCandAnalyzer(int group = 1){
 
   double pi = TMath::Pi();
   double dR_max = 0.4;
+
+  if(doFastJetClustering){
+    if(gSystem->Load(fastjetLibPath) < 0){
+      printf("ERROR: could not load FastJet library '%s'. "
+             "Set fastjetLibPath in pseudoJets.h or ensure libfastjet.so is on LD_LIBRARY_PATH.\n",
+             fastjetLibPath);
+      return;
+    }
+    gInterpreter->AddIncludePath("$FASTJET_HOME/include");
+    gInterpreter->Declare("#include \"fastjet/ClusterSequence.hh\"");
+  }
 
   if(fillMu5){
     muPtCut = 7.0;
@@ -529,6 +541,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	h_leadingGenJetPt_xJets_greaterThanPthat[i] = new TH1D(Form("h_leadingGenJetPt_xJets_greaterThanPthat_C%i",i),Form("leadingGenJetPt, xJets, pT > pThat, hiBin %i - %i",centEdges[0], centEdges[NCentralityIndices-1]),500,0,500);
 	h_pfPt[i] = new TH1D(Form("h_pfPt_C%i",i),Form("pfCand pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),100,0,100);
 	h_pseudoJetPt[i] = new TH1D(Form("h_pseudoJetPt_C%i",i),Form("PseudoJet pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt[i] = new TH1D(Form("h_fastJetPt_C%i",i),Form("FastJet anti-kT pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 
 	// fill templates
 
@@ -669,7 +682,8 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	h_leadingGenJetPt_xJets_greaterThanPthat[i] = new TH1D(Form("h_leadingGenJetPt_xJets_greaterThanPthat_C%i",i),Form("leadingGenJetPt, xJets, pT > pThat, hiBin %i - %i",centEdges[i-1], centEdges[i]),500,0,500);
 	h_pfPt[i] = new TH1D(Form("h_pfPt_C%i",i),Form("pfCand pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),100,0,100);
 	h_pseudoJetPt[i] = new TH1D(Form("h_pseudoJetPt_C%i",i),Form("PseudoJet pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-	
+	h_fastJetPt[i] = new TH1D(Form("h_fastJetPt_C%i",i),Form("FastJet anti-kT pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+
 	// fill templates
 	for(int t = 0; t < NTemplateIndices; t++){
 	  // allJets
@@ -809,6 +823,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       h_leadingGenJetPt_xJets_greaterThanPthat[i]->Sumw2();
       h_pfPt[i]->Sumw2();
       h_pseudoJetPt[i]->Sumw2();
+      h_fastJetPt[i]->Sumw2();
 
       for(int t = 0; t < NTemplateIndices; t++){
 	// allJets
@@ -1387,6 +1402,31 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	h_pseudoJetPt[0]->Fill(pseudoJetPt_k, w);
 	h_pseudoJetPt[CentralityIndex]->Fill(pseudoJetPt_k, w);
 
+      }
+
+      // FastJet anti-kT clustering on PF candidates
+      if(doFastJetClustering){
+        std::vector<fastjet::PseudoJet> fjInputs;
+        for(int l = 0; l < em->nPFpart; l++){
+          double pt  = em->pfPt->at(l);
+          double eta = em->pfEta->at(l);
+          double phi = em->pfPhi->at(l);
+          if(pt < pseudoJetCandPt_min) continue;
+          // massless 4-vector from (pt, eta, phi)
+          double px = pt * TMath::Cos(phi);
+          double py = pt * TMath::Sin(phi);
+          double pz = pt * TMath::SinH(eta);
+          double E  = pt * TMath::CosH(eta);
+          fjInputs.push_back(fastjet::PseudoJet(px, py, pz, E));
+        }
+        fastjet::JetDefinition jetDef(fastjet::antikt_algorithm, dR_max);
+        fastjet::ClusterSequence cs(fjInputs, jetDef);
+        std::vector<fastjet::PseudoJet> jets = fastjet::sorted_by_pt(cs.inclusive_jets(0.));
+        for(const auto& jet : jets){
+          if(TMath::Abs(jet.eta()) > 1.6) continue;
+          h_fastJetPt[0]->Fill(jet.pt(), w);
+          h_fastJetPt[CentralityIndex]->Fill(jet.pt(), w);
+        }
       }
 
       em->getEvent(evi);
@@ -2921,6 +2961,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       // h_leadingGenJetPt_xJets_greaterThanPthat[i]->Write();
       h_pfPt[i]->Write();
       h_pseudoJetPt[i]->Write();
+      h_fastJetPt[i]->Write();
 
       for(int t = 0; t < NTemplateIndices; t++){
 	// allJets
