@@ -42,6 +42,7 @@ TString configureOutputDatasetName(TString generator,
 				   bool fillMu12,
 				   double pseudoJetCandPt_min,
 				   bool doEventMixing,
+				   bool doConstituentSubtraction,
 				   double subleadingPFCandPt_min)
 {
 
@@ -84,8 +85,10 @@ TString configureOutputDatasetName(TString generator,
   if(apply_JEU_shift_up) result.Append("_applyJEUShiftUp");
   if(apply_JEU_shift_down) result.Append("_applyJEUShiftDown");
   if(doBJetNeutrinoEnergyShift) result.Append("_BJetNeutrinoEnergyShift");
-  if(doEventMixing) result.Append(Form("_mixedEventPseudoJets"));
-  if(!doEventMixing) result.Append(Form("_sameEventPseudoJets"));
+  if(doEventMixing) result.Append("_mixedEventPseudoJets");
+  if(!doEventMixing) result.Append("_sameEventPseudoJets");
+  if(doConstituentSubtraction) result.Append("_pfCandCS");
+  else result.Append("_pfCand");
   result.Append(Form("_pseudoJetCandPtMin-%1.1f",pseudoJetCandPt_min));
   result.Append(Form("_subleadingPFCandPtMin-%2.0f",subleadingPFCandPt_min));
   
