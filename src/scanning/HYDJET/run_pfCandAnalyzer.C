@@ -1,19 +1,23 @@
 // Wrapper to compile HYDJET_pfCandAnalyzer.C with ACLiC + FastJet support.
 // Usage: root -l -q 'run_pfCandAnalyzer.C(1)'
-// Requires the LCG view (or CMSSW) to be sourced so that FastJet headers
-// and libfastjet.so are on the compiler/linker search paths.
+// Requires the LCG view (or CMSSW) to be sourced so that fastjet-config is in PATH.
 
 void run_pfCandAnalyzer(int group = 1){
-  // If FASTJET_HOME is set, add its include path explicitly.
-  // If not (e.g. LCG view puts FastJet on the default search path),
-  // just define DO_FASTJET — the headers are already findable.
-  const char *fjHome = gSystem->Getenv("FASTJET_HOME");
-  if(fjHome && strlen(fjHome) > 0){
-    gSystem->AddIncludePath(Form("-DDO_FASTJET -I%s/include", fjHome));
+  TString fjCxxFlags = gSystem->GetFromPipe("fastjet-config --cxxflags 2>/dev/null");
+  TString fjLibs     = gSystem->GetFromPipe("fastjet-config --libs 2>/dev/null");
+
+  if(fjCxxFlags.Length() > 0 && fjLibs.Length() > 0){
+    gSystem->AddIncludePath(fjCxxFlags + " -DDO_FASTJET");
+    gSystem->AddLinkedLibs(fjLibs);
   } else {
-    gSystem->AddIncludePath("-DDO_FASTJET");
+    const char *fjHome = gSystem->Getenv("FASTJET_HOME");
+    if(fjHome && strlen(fjHome) > 0){
+      gSystem->AddIncludePath(Form("-DDO_FASTJET -I%s/include", fjHome));
+      gSystem->AddLinkedLibs(Form("-L%s/lib -lfastjet", fjHome));
+    } else {
+      printf("WARNING: fastjet-config not found and FASTJET_HOME not set — compiling without FastJet support\n");
+    }
   }
-  gSystem->AddLinkedLibs("-lfastjet");
 
   gROOT->LoadMacro("HYDJET_pfCandAnalyzer.C+");
   gROOT->ProcessLine(Form("HYDJET_pfCandAnalyzer(%d)", group));
