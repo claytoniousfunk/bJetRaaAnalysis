@@ -122,6 +122,13 @@ TH1D *h_hiBin_inclRecoMuonTag;
 // ---------- events w/ incl. reco jet + incl. reco muon tag + trigger on --
 TH1D *h_vz_inclRecoMuonTag_triggerOn;
 TH1D *h_hiBin_inclRecoMuonTag_triggerOn;
+// ~~~~~~~~~ leading jet pT per event, per trigger bit (for efficiency turn-on) ~
+TH1D *h_leadJetPt_jet15;
+TH1D *h_leadJetPt_jet30;
+TH1D *h_leadJetPt_jet40;
+TH1D *h_leadJetPt_jet60;
+TH1D *h_leadJetPt_jet80;
+TH1D *h_leadJetPt_jet100;
 // ~~~~~~~~~ jet variables ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // ----------------------------------------- incl. reco jets --------------
 TH1D *h_inclRecoJetPt;
@@ -308,6 +315,19 @@ void pp_scan(TString inputFile, TString outputFile){
     h_vz_jet = new TH1D("h_vz_jet","vz, events with inclRecoJet",NVzBins,vzMin,vzMax);
     h_vz_inclRecoMuonTag = new TH1D("h_vz_inclRecoMuonTag","vz, events with inclRecoJet-inclRecoMuonTag",NVzBins,vzMin,vzMax);
     h_vz_inclRecoMuonTag_triggerOn = new TH1D("h_vz_inclRecoMuonTag_triggerOn","vz, events with inclRecoJet-inclRecoMuonTag-triggerOn",NVzBins,vzMin,vzMax);
+    // --- leading jet pT per event, per trigger bit (efficiency turn-on) ---
+    h_leadJetPt_jet15  = new TH1D("h_leadJetPt_jet15", "leading jet p_{T}, Jet15 fired", NPtBins,ptMin,ptMax);
+    h_leadJetPt_jet30  = new TH1D("h_leadJetPt_jet30", "leading jet p_{T}, Jet30 fired", NPtBins,ptMin,ptMax);
+    h_leadJetPt_jet40  = new TH1D("h_leadJetPt_jet40", "leading jet p_{T}, Jet40 fired", NPtBins,ptMin,ptMax);
+    h_leadJetPt_jet60  = new TH1D("h_leadJetPt_jet60", "leading jet p_{T}, Jet60 fired", NPtBins,ptMin,ptMax);
+    h_leadJetPt_jet80  = new TH1D("h_leadJetPt_jet80", "leading jet p_{T}, Jet80 fired", NPtBins,ptMin,ptMax);
+    h_leadJetPt_jet100 = new TH1D("h_leadJetPt_jet100","leading jet p_{T}, Jet100 fired",NPtBins,ptMin,ptMax);
+    h_leadJetPt_jet15 ->Sumw2();
+    h_leadJetPt_jet30 ->Sumw2();
+    h_leadJetPt_jet40 ->Sumw2();
+    h_leadJetPt_jet60 ->Sumw2();
+    h_leadJetPt_jet80 ->Sumw2();
+    h_leadJetPt_jet100->Sumw2();
     // ----------------------------------------- incl. reco jets --------------
     h_inclRecoJetPt = new TH1D("h_inclRecoJetPt","incl. reco p_{T}^{jet}",NPtBins,ptMin,ptMax);
     h_muTaggedRecoJetPt = new TH1D("h_muTaggedRecoJetPt","#mu-tagged reco p_{T}^{jet}",NPtBins,ptMin,ptMax);
@@ -726,6 +746,16 @@ void pp_scan(TString inputFile, TString outputFile){
       }
       // END recoJet LOOP
     
+      // fill leading jet pT once per event for each trigger bit that fired
+      if(eventHasGoodJet){
+	if(em->HLT_HIAK4PFJet15_v1  == 1) h_leadJetPt_jet15 ->Fill(leadingRecoJetPt,w);
+	if(em->HLT_HIAK4PFJet30_v1  == 1) h_leadJetPt_jet30 ->Fill(leadingRecoJetPt,w);
+	if(em->HLT_HIAK4PFJet40_v1  == 1) h_leadJetPt_jet40 ->Fill(leadingRecoJetPt,w);
+	if(em->HLT_HIAK4PFJet60_v1  == 1) h_leadJetPt_jet60 ->Fill(leadingRecoJetPt,w);
+	if(em->HLT_HIAK4PFJet80_v1  == 1) h_leadJetPt_jet80 ->Fill(leadingRecoJetPt,w);
+	if(em->HLT_HIAK4PFJet100_v1 == 1) h_leadJetPt_jet100->Fill(leadingRecoJetPt,w);
+      }
+
       if(eventHasGoodJet && leadingRecoJetPt > 80){
 
 	h_vz_jet->Fill(em->vz,w);
@@ -942,6 +972,13 @@ void pp_scan(TString inputFile, TString outputFile){
     h_dimuonMass_sameSign->Write();
     h_inclMuPt->Write();
   
+
+    h_leadJetPt_jet15 ->Write();
+    h_leadJetPt_jet30 ->Write();
+    h_leadJetPt_jet40 ->Write();
+    h_leadJetPt_jet60 ->Write();
+    h_leadJetPt_jet80 ->Write();
+    h_leadJetPt_jet100->Write();
 
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn->Write();
     h_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Write();
