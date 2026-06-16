@@ -1318,10 +1318,8 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       ///// PF Candidate Analyzer
       ///// Psuedo Jet Calculator  
 
-      int N_generatedPseudoJets = 10; // define how many psuedo jets to create
-
       std::mt19937 rng(std::random_device{}());
-      
+
       for(int k = 0; k < N_generatedPseudoJets; k++){
 
 	// sample a random point in eta/phi space
@@ -1343,14 +1341,11 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 
 	  
 	  if(doEventMixing){
-	    if(j>0){
-	      mixedEventIndex = (evi + j) % NEvents;
-	      if(mixedEventIndex == evi){ j++; continue;} // skip this event if it's not a unique event
-	      em->getEvent(mixedEventIndex);
-	      mixedEventCentralityIndex = getCentBin(em->hiBin - hiBinShift);
-	      if(mixedEventCentralityIndex != CentralityIndex){ j++; continue;} // skip this event if the centrality doesn't match
-	    
-	    }
+	    mixedEventIndex = (evi + j + 1) % NEvents;
+	    if(mixedEventIndex == evi){ j++; continue;} // skip this event if it's not a unique event
+	    em->getEvent(mixedEventIndex);
+	    mixedEventCentralityIndex = getCentBin(em->hiBin - hiBinShift);
+	    if(mixedEventCentralityIndex != CentralityIndex){ j++; continue;} // skip this event if the centrality doesn't match
 	  }
 	  else{
 

@@ -292,8 +292,6 @@ void plotJetPt_pseudoJets(bool doC16 = false,
 			  bool doC2 = true,
 			  bool doC1 = false){
 
-  bool doPerEventNormalization = false;
-  bool doPerJetNormalization = true;
 
   // TFile *f_HYDJET = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/HYDJET/canonical/HYDJET_pThat-unweighted_mu12_pTmu-15to999_tight_hiBinShift-10_jetTrkMaxFilter_WDecayFilter_2026-5-28_ultraFineCentBins.root");
   TFile *f_HYDJET = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/HYDJET/canonical/pfCandAnalyzer/HYDJET_pThat-unweighted_mu12_pTmu-15to999_tight_hiBinShift-0_jetTrkMaxFilter_WDecayFilter_2026-6-4_ultraFineCentBins_pfCandAnalyzer_PFPT-15.root");
@@ -382,9 +380,19 @@ void plotJetPt_pseudoJets(bool doC16 = false,
   cout << "N1 = " << N1 << "\n";
   cout << "N2 = " << N2 << "\n";
   
-  stylizeHistograms(h1,h2,doC16,doC15,doC14,doC13,doC12,doC11,doC10,doC9,doC8,doC7,doC6,doC5,doC4,doC3,doC2,doC1);
-  stylizeHistograms(h1,h3,doC16,doC15,doC14,doC13,doC12,doC11,doC10,doC9,doC8,doC7,doC6,doC5,doC4,doC3,doC2,doC1);
+  // colors: h1=pseudo-jets (black), h3=HYDJET reco (red), h2=PbPb MinBias (blue)
+  double lineWidth = 2.0;
+  h1->SetLineColor(kBlack);    h1->SetLineWidth(lineWidth); h1->SetStats(0); h1->SetTitle("");
+  h3->SetLineColor(kRed+1);    h3->SetLineWidth(lineWidth); h3->SetStats(0); h3->SetTitle("");
+  h2->SetLineColor(kAzure+1);  h2->SetLineWidth(lineWidth); h2->SetStats(0); h2->SetTitle("");
 
+  TString xTitle = "Jet #it{p}_{T} [GeV]";
+  for(TH1* h : {(TH1*)h1,(TH1*)h2,(TH1*)h3}){
+    h->GetXaxis()->SetTitle(xTitle);
+    h->GetXaxis()->SetTitleSize(0.046); h->GetXaxis()->SetLabelSize(0.04);
+    h->GetYaxis()->SetTitleSize(0.046); h->GetYaxis()->SetLabelSize(0.04);
+    h->SetTitle(getTitle(doC16,doC15,doC14,doC13,doC12,doC11,doC10,doC9,doC8,doC7,doC6,doC5,doC4,doC3,doC2,doC1));
+  }
 
   const int N_edge = 11;
   double newAxis[N_edge] = {20,30,40,50,60,70,80,100,120,150,200};
@@ -398,80 +406,126 @@ void plotJetPt_pseudoJets(bool doC16 = false,
     divideByBinwidth(h3);
   }
 
+  // Canvas 2 (per-event): clone before shape normalization
+  TH1D *h3b = (TH1D*) h3->Clone("h3b");
+  TH1D *h2b = (TH1D*) h2->Clone("h2b");
+  h3b->Scale(1./N1);
+  h2b->Scale(1./N2);
 
+  // Canvas 1: per-jet shape comparison
+  h1->Scale(1./h1->Integral());
+  h2->Scale(1./h2->Integral());
+  h3->Scale(1./h3->Integral());
+  TString yTitle_perJet = "#frac{1}{#it{N}^{jet}} #frac{d#it{N}^{jet}}{d#it{p}_{T}} [GeV^{-1}]";
+  h1->GetYaxis()->SetTitle(yTitle_perJet);
+  h2->GetYaxis()->SetTitle(yTitle_perJet);
+  h3->GetYaxis()->SetTitle(yTitle_perJet);
 
-  
-
-  if(doPerEventNormalization){
-    h1->Scale(1./N1);
-    h3->Scale(1./N1);
-    h2->Scale(1./N2);
-    h1->GetYaxis()->SetTitle("#frac{1}{#it{N}^{evt}} #frac{d#it{N}^{jet}}{d#it{p}_{T}} [GeV^{-1}]");
-    h2->GetYaxis()->SetTitle("#frac{1}{#it{N}^{evt}} #frac{d#it{N}^{jet}}{d#it{p}_{T}} [GeV^{-1}]");
-  }
-  else if(doPerJetNormalization){
-    h1->Scale(1./h1->Integral());
-    h2->Scale(1./h2->Integral());
-    h3->Scale(1./h3->Integral());
-    h1->GetYaxis()->SetTitle("#frac{1}{#it{N}^{jet}} #frac{d#it{N}^{jet}}{d#it{p}_{T}} [GeV^{-1}]");
-    h2->GetYaxis()->SetTitle("#frac{1}{#it{N}^{jet}} #frac{d#it{N}^{jet}}{d#it{p}_{T}} [GeV^{-1}]");
-    h3->GetYaxis()->SetTitle("#frac{1}{#it{N}^{jet}} #frac{d#it{N}^{jet}}{d#it{p}_{T}} [GeV^{-1}]");
-  }
-
-  TH1D *r = (TH1D*) h2->Clone("r");
-  r->Divide(h2,h1,1,1,"");
+  // ratios relative to pseudo-jets (h1)
+  TH1D *r_data = (TH1D*) h2->Clone("r_data");
+  r_data->Divide(h2,h1,1,1,"B");
+  r_data->SetLineColor(kAzure+1); r_data->SetLineWidth(lineWidth);
 
   TH1D *r_mc = (TH1D*) h3->Clone("r_mc");
   r_mc->Divide(h3,h1,1,1,"B");
+  r_mc->SetLineColor(kRed+1); r_mc->SetLineWidth(lineWidth);
 
-
-  
   TCanvas *canv = new TCanvas("canv","canv",700,700);
   canv->cd();
   TPad *pad_u = new TPad("pad_u","pad_u",0,0.4,1,1);
   TPad *pad_l = new TPad("pad_l","pad_l",0,0,1,0.4);
-  pad_u->SetLeftMargin(0.15);
-  pad_l->SetLeftMargin(0.15);
-  pad_u->SetBottomMargin(0.);
-  pad_l->SetBottomMargin(0.15);
-  pad_u->SetTopMargin(0.15);
-  pad_l->SetTopMargin(0.);
+  pad_u->SetLeftMargin(0.15); pad_l->SetLeftMargin(0.15);
+  pad_u->SetBottomMargin(0.); pad_l->SetBottomMargin(0.15);
+  pad_u->SetTopMargin(0.15);  pad_l->SetTopMargin(0.);
   pad_u->SetLogy();
-  pad_u->Draw();
-  pad_l->Draw();
+  pad_u->Draw(); pad_l->Draw();
   pad_u->cd();
 
-  
-  
-  //h2->Draw();
-  h1->Draw();
-  h3->Draw("same");
+  h1->Draw("hist");
+  h3->Draw("hist same");
+  h2->Draw("hist same");
 
-  TLegend *leg = new TLegend(0.6,0.6,0.84,0.74);
+  TLegend *leg = new TLegend(0.52,0.65,0.86,0.81);
   leg->SetBorderSize(0);
-  leg->SetTextSize(0.044);
-  leg->AddEntry(h1,"HYDJET PseudoJets");
-  //leg->AddEntry(h2,"PbPb MinBias");
-  leg->AddEntry(h2,"HYDJET RecoJets");
-
+  leg->SetTextSize(0.036);
+  leg->AddEntry(h1,"HYDJET pseudo-jets","l");
+  leg->AddEntry(h3,"HYDJET reco jets","l");
+  leg->AddEntry(h2,"PbPb MinBias reco jets","l");
   leg->Draw();
 
   pad_l->cd();
+
+  r_mc->GetYaxis()->SetRangeUser(0, 3.5);
+
   r_mc->SetTitle("");
-  r_mc->GetYaxis()->SetTitleSize(0.06);
-  r_mc->GetXaxis()->SetTitleSize(0.06);
-  r_mc->GetYaxis()->SetLabelSize(0.05);
-  r_mc->GetXaxis()->SetLabelSize(0.05);
-  r_mc->GetYaxis()->SetTitle("Data / MC  ");
-  r_mc->GetYaxis()->SetRangeUser(0,3.6);
-  //r->Draw();
-  r_mc->Draw();
+  r_mc->GetYaxis()->SetTitleSize(0.07);
+  r_mc->GetXaxis()->SetTitleSize(0.07);
+  r_mc->GetYaxis()->SetLabelSize(0.06);
+  r_mc->GetXaxis()->SetLabelSize(0.06);
+  r_mc->GetYaxis()->SetTitle("X / pseudo-jets");
+  r_mc->Draw("hist");
+  r_data->Draw("hist same");
   li->DrawLine(20,1,200,1);
-  li->DrawLine(80,0,80,3.6);
+
+  TLegend *leg_r = new TLegend(0.17,0.72,0.75,0.92);
+  leg_r->SetBorderSize(0);
+  leg_r->SetTextSize(0.06);
+  leg_r->AddEntry(r_mc,  "HYDJET reco / pseudo-jets","l");
+  leg_r->AddEntry(r_data,"PbPb MinBias / pseudo-jets","l");
+  leg_r->Draw();
 
   canv->SaveAs(Form("../../../figures/jetPt/pseudoJets/jetPt_HYDJETVsMinBias_%s.pdf",centString.Data()));
 
-  
+  // --- Second canvas: direct HYDJET reco vs PbPb MinBias (no pseudo-jets) ---
+  h3b->SetLineColor(kRed+1);   h3b->SetLineWidth(lineWidth);
+  h2b->SetLineColor(kAzure+1); h2b->SetLineWidth(lineWidth);
+
+  TH1D *r_dataMC = (TH1D*) h2b->Clone("r_dataMC");
+  r_dataMC->Divide(h2b,h3b,1,1,"B");
+  r_dataMC->SetLineColor(kBlack); r_dataMC->SetLineWidth(lineWidth);
+
+  TCanvas *canv2 = new TCanvas("canv2","canv2",700,700);
+  canv2->cd();
+  TPad *pad2_u = new TPad("pad2_u","pad2_u",0,0.4,1,1);
+  TPad *pad2_l = new TPad("pad2_l","pad2_l",0,0,1,0.4);
+  pad2_u->SetLeftMargin(0.15); pad2_l->SetLeftMargin(0.15);
+  pad2_u->SetBottomMargin(0.); pad2_l->SetBottomMargin(0.15);
+  pad2_u->SetTopMargin(0.15);  pad2_l->SetTopMargin(0.);
+  pad2_u->SetLogy();
+  pad2_u->Draw(); pad2_l->Draw();
+  pad2_u->cd();
+
+  h3b->GetYaxis()->SetTitleSize(0.046); h3b->GetYaxis()->SetLabelSize(0.04);
+  h3b->GetYaxis()->SetTitle("#frac{1}{#it{N}^{evt}} #frac{d#it{N}^{jet}}{d#it{p}_{T}} [GeV^{-1}]");
+  h3b->GetXaxis()->SetTitleSize(0.046); h3b->GetXaxis()->SetLabelSize(0.04);
+  h3b->GetXaxis()->SetTitle(xTitle);
+  h3b->SetTitle(getTitle(doC16,doC15,doC14,doC13,doC12,doC11,doC10,doC9,doC8,doC7,doC6,doC5,doC4,doC3,doC2,doC1));
+  h3b->SetStats(0);
+  h3b->Draw("hist");
+  h2b->Draw("hist same");
+
+  TLegend *leg2 = new TLegend(0.52,0.65,0.86,0.81);
+  leg2->SetBorderSize(0);
+  leg2->SetTextSize(0.036);
+  leg2->AddEntry(h3b,"HYDJET reco jets","l");
+  leg2->AddEntry(h2b,"PbPb MinBias reco jets","l");
+  leg2->Draw();
+
+  pad2_l->cd();
+  r_dataMC->GetYaxis()->SetRangeUser(0, 3.5);
+  r_dataMC->SetTitle("");
+  r_dataMC->GetYaxis()->SetTitleSize(0.07);
+  r_dataMC->GetXaxis()->SetTitleSize(0.07);
+  r_dataMC->GetYaxis()->SetLabelSize(0.06);
+  r_dataMC->GetXaxis()->SetLabelSize(0.06);
+  r_dataMC->GetYaxis()->SetTitle("MinBias / HYDJET reco (per evt)");
+  r_dataMC->GetXaxis()->SetTitle(xTitle);
+  r_dataMC->SetStats(0);
+  r_dataMC->Draw("hist");
+  li->DrawLine(20,1,200,1);
+
+  canv2->SaveAs(Form("../../../figures/jetPt/pseudoJets/jetPt_HYDJETrecoVsMinBias_%s.pdf",centString.Data()));
+
 
 
 

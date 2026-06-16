@@ -1,5 +1,5 @@
 // pfCandidateAnalysis variables
-bool doEventMixing = false;
+bool doEventMixing = true;
 bool doConstituentSubtraction = true; // true = pfcandAnalyzerCS (CS applied at particle level), false = pfcandAnalyzer + manual rho subtraction
 
 int N_generatedPseudoJets = 100;
