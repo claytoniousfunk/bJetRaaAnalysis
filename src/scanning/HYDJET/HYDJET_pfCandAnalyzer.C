@@ -1318,73 +1318,76 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       ///// PF Candidate Analyzer
       ///// Psuedo Jet Calculator  
 
+      // number of candidates to sample per cone = multiplicity of current event
+      int NCandidatesToSample = em->nPFpart;
+
+      // pre-load N_generatedPseudoJets same-centrality events into an in-memory pool
+      // before the cone loop: O(N_cones) getEvent() calls instead of O(N_cones * nPFpart)
+      std::vector<double> pool_pfPt, pool_pfEta, pool_pfPhi;
+      if(doEventMixing){
+	int eventsInPool = 0;
+	int jPool = 0;
+	while(eventsInPool < N_generatedPseudoJets && jPool < NEvents){
+	  int mixedEventIndex = (evi + jPool + 1) % NEvents;
+	  em->getEvent(mixedEventIndex);
+	  if(getCentBin(em->hiBin - hiBinShift) != CentralityIndex){ jPool++; continue; }
+	  for(int l = 0; l < em->nPFpart; l++){
+	    pool_pfPt.push_back(em->pfPt->at(l));
+	    pool_pfEta.push_back(em->pfEta->at(l));
+	    pool_pfPhi.push_back(em->pfPhi->at(l));
+	  }
+	  eventsInPool++;
+	  jPool++;
+	}
+	em->getEvent(evi); // restore current event
+      }
+
+      int poolSize = (int)pool_pfPt.size();
       std::mt19937 rng(std::random_device{}());
 
       for(int k = 0; k < N_generatedPseudoJets; k++){
 
-	// sample a random point in eta/phi space
 	double randEta_k = 3.2*randomGenerator->Rndm() - 1.6;
 	double randPhi_k = 2*pi*randomGenerator->Rndm() - pi;
-
-	// define pT of our pseudoJet
 	double pseudoJetPt_k = 0.;
 
-	// how many canidates we wish to sample for this event
-	int NCandidatesToSample = em->nPFpart;
-	int sampledCandidates = 0;
-
-	int mixedEventIndex = 0;
-	int mixedEventCentralityIndex = 0;
-
-	int j = 0;
-	while(sampledCandidates < NCandidatesToSample){ // loop through until I have built up enough PF candidates
-
-	  
-	  if(doEventMixing){
-	    mixedEventIndex = (evi + j + 1) % NEvents;
-	    if(mixedEventIndex == evi){ j++; continue;} // skip this event if it's not a unique event
-	    em->getEvent(mixedEventIndex);
-	    mixedEventCentralityIndex = getCentBin(em->hiBin - hiBinShift);
-	    if(mixedEventCentralityIndex != CentralityIndex){ j++; continue;} // skip this event if the centrality doesn't match
+	if(doEventMixing){
+	  // sample NCandidatesToSample candidates at random from the pool,
+	  // drawing one at a time from random positions to destroy jet correlations
+	  if(poolSize > 0){
+	    std::uniform_int_distribution<int> poolDist(0, poolSize - 1);
+	    for(int s = 0; s < NCandidatesToSample; s++){
+	      int idx = poolDist(rng);
+	      double pfPt_l  = pool_pfPt[idx];
+	      double pfEta_l = pool_pfEta[idx];
+	      double pfPhi_l = pool_pfPhi[idx];
+	      double dR_kl = getDr(randEta_k, randPhi_k, pfEta_l, pfPhi_l);
+	      if(pfPt_l > pseudoJetCandPt_min && dR_kl < dR_max){
+		h_pfPt[0]->Fill(pfPt_l, w);
+		h_pfPt[CentralityIndex]->Fill(pfPt_l, w);
+		pseudoJetPt_k += pfPt_l;
+	      }
+	    }
 	  }
-	  else{
-
-
+	}
+	else{
+	  for(int l = 0; l < em->nPFpart; l++){
+	    double pfPt_l  = em->pfPt->at(l);
+	    double pfEta_l = em->pfEta->at(l);
+	    double pfPhi_l = em->pfPhi->at(l);
+	    double dR_kl = getDr(randEta_k, randPhi_k, pfEta_l, pfPhi_l);
+	    if(pfPt_l > pseudoJetCandPt_min && dR_kl < dR_max){
+	      h_pfPt[0]->Fill(pfPt_l, w);
+	      h_pfPt[CentralityIndex]->Fill(pfPt_l, w);
+	      pseudoJetPt_k += pfPt_l;
+	    }
 	  }
-
-	  if(em->nPFpart == 0) { j++; continue;}
-
-	  // grab a random PF candidate from this event
-	  std::uniform_int_distribution<int> dist(0, em->nPFpart - 1);
-	  int randPFCandIndex = dist(rng);
-	  int candidateIndex = j;
-	  if(doEventMixing) candidateIndex = randPFCandIndex;
-
-	  double pfPt_j = em->pfPt->at(candidateIndex);
-	  double pfEta_j = em->pfEta->at(candidateIndex);
-	  double pfPhi_j = em->pfPhi->at(candidateIndex);
-	  double dR_kj = getDr(randEta_k,randPhi_k,pfEta_j,pfPhi_j);
-
-	  sampledCandidates++;
-	  j++;
-
-	  // check if random PF candidate falls within pseudoJet cone, add to pseudoJetPt if so
-	  if(pfPt_j > pseudoJetCandPt_min && dR_kj < dR_max){
-
-	    h_pfPt[0]->Fill(pfPt_j,w);
-	    h_pfPt[CentralityIndex]->Fill(pfPt_j,w);
-
-	    pseudoJetPt_k += pfPt_j;
-	    
-	  }	  
-	
 	}
 
-	h_pseudoJetPt[0]->Fill(pseudoJetPt_k,w);
-	h_pseudoJetPt[CentralityIndex]->Fill(pseudoJetPt_k,w);
+	h_pseudoJetPt[0]->Fill(pseudoJetPt_k, w);
+	h_pseudoJetPt[CentralityIndex]->Fill(pseudoJetPt_k, w);
 
       }
-
 
       em->getEvent(evi);
 
