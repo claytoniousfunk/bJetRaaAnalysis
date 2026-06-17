@@ -1,7 +1,7 @@
 import os
 import math
 
-jobname = 'HYDJET_pfCandAnalyzer_mixedEventPseudoJets_CS_fastJet'
+jobname = 'HYDJET_pfCandAnalyzer_sameEventPseudoJets_CS_fastJet'
 
 dblist = '../../../fileNames/fileNames_MinBias_Hydjet_Drum5F_2018_5p02TeV_withTracksAndPFCandidates.txt'
 
