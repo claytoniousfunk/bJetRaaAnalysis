@@ -309,6 +309,7 @@ TH1D *h_inclMuPt;
 TH1D *h_pfPt[NCentralityIndices];
 TH1D *h_pseudoJetPt[NCentralityIndices];
 TH1D *h_fastJetPt[NCentralityIndices];
+TH1D *h_fastJetPt_JEC[NCentralityIndices];
 
 void HYDJET_pfCandAnalyzer(int group = 1){
 
@@ -538,6 +539,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	h_pfPt[i] = new TH1D(Form("h_pfPt_C%i",i),Form("pfCand pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),100,0,100);
 	h_pseudoJetPt[i] = new TH1D(Form("h_pseudoJetPt_C%i",i),Form("PseudoJet pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt[i] = new TH1D(Form("h_fastJetPt_C%i",i),Form("FastJet anti-kT pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_JEC[i] = new TH1D(Form("h_fastJetPt_JEC_C%i",i),Form("FastJet anti-kT pT (JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 
 	// fill templates
 
@@ -679,6 +681,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	h_pfPt[i] = new TH1D(Form("h_pfPt_C%i",i),Form("pfCand pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),100,0,100);
 	h_pseudoJetPt[i] = new TH1D(Form("h_pseudoJetPt_C%i",i),Form("PseudoJet pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt[i] = new TH1D(Form("h_fastJetPt_C%i",i),Form("FastJet anti-kT pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_JEC[i] = new TH1D(Form("h_fastJetPt_JEC_C%i",i),Form("FastJet anti-kT pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 
 	// fill templates
 	for(int t = 0; t < NTemplateIndices; t++){
@@ -820,6 +823,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       h_pfPt[i]->Sumw2();
       h_pseudoJetPt[i]->Sumw2();
       h_fastJetPt[i]->Sumw2();
+      h_fastJetPt_JEC[i]->Sumw2();
 
       for(int t = 0; t < NTemplateIndices; t++){
 	// allJets
@@ -1441,6 +1445,12 @@ void HYDJET_pfCandAnalyzer(int group = 1){
           if(TMath::Abs(jet.eta()) > 1.6) continue;
           h_fastJetPt[0]->Fill(jet.pt(), w);
           h_fastJetPt[CentralityIndex]->Fill(jet.pt(), w);
+          JEC.SetJetPT(jet.pt());
+          JEC.SetJetEta(jet.eta());
+          JEC.SetJetPhi(jet.phi());
+          double fastJetPt_JEC = JEC.GetCorrectedPT();
+          h_fastJetPt_JEC[0]->Fill(fastJetPt_JEC, w);
+          h_fastJetPt_JEC[CentralityIndex]->Fill(fastJetPt_JEC, w);
         }
       }
 #endif
@@ -2978,6 +2988,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       h_pfPt[i]->Write();
       h_pseudoJetPt[i]->Write();
       h_fastJetPt[i]->Write();
+      h_fastJetPt_JEC[i]->Write();
 
       for(int t = 0; t < NTemplateIndices; t++){
 	// allJets
