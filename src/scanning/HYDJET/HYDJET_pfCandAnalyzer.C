@@ -1335,6 +1335,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       // pre-load N_generatedPseudoJets same-centrality events into an in-memory pool
       // before the cone loop: O(N_cones) getEvent() calls instead of O(N_cones * nPFpart)
       std::vector<double> pool_pfPt, pool_pfEta, pool_pfPhi;
+      std::vector<double> mixedEvent_pfPt, mixedEvent_pfEta, mixedEvent_pfPhi;
       if(doEventMixing){
 	int eventsInPool = 0;
 	int jPool = 0;
@@ -1346,6 +1347,11 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	    pool_pfPt.push_back(em->pfPt->at(l));
 	    pool_pfEta.push_back(em->pfEta->at(l));
 	    pool_pfPhi.push_back(em->pfPhi->at(l));
+	    if(eventsInPool == 0){
+	      mixedEvent_pfPt.push_back(em->pfPt->at(l));
+	      mixedEvent_pfEta.push_back(em->pfEta->at(l));
+	      mixedEvent_pfPhi.push_back(em->pfPhi->at(l));
+	    }
 	  }
 	  eventsInPool++;
 	  jPool++;
@@ -1404,16 +1410,31 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 #ifdef DO_FASTJET
       if(doFastJetClustering){
         std::vector<fastjet::PseudoJet> fjInputs;
-        for(int l = 0; l < em->nPFpart; l++){
-          double pt  = em->pfPt->at(l);
-          double eta = em->pfEta->at(l);
-          double phi = em->pfPhi->at(l);
-          if(pt < pseudoJetCandPt_min) continue;
-          double px = pt * TMath::Cos(phi);
-          double py = pt * TMath::Sin(phi);
-          double pz = pt * TMath::SinH(eta);
-          double E  = pt * TMath::CosH(eta);
-          fjInputs.push_back(fastjet::PseudoJet(px, py, pz, E));
+        if(doEventMixing){
+          for(int l = 0; l < (int)mixedEvent_pfPt.size(); l++){
+            double pt  = mixedEvent_pfPt[l];
+            double eta = mixedEvent_pfEta[l];
+            double phi = mixedEvent_pfPhi[l];
+            if(pt < pseudoJetCandPt_min) continue;
+            double px = pt * TMath::Cos(phi);
+            double py = pt * TMath::Sin(phi);
+            double pz = pt * TMath::SinH(eta);
+            double E  = pt * TMath::CosH(eta);
+            fjInputs.push_back(fastjet::PseudoJet(px, py, pz, E));
+          }
+        }
+        else{
+          for(int l = 0; l < em->nPFpart; l++){
+            double pt  = em->pfPt->at(l);
+            double eta = em->pfEta->at(l);
+            double phi = em->pfPhi->at(l);
+            if(pt < pseudoJetCandPt_min) continue;
+            double px = pt * TMath::Cos(phi);
+            double py = pt * TMath::Sin(phi);
+            double pz = pt * TMath::SinH(eta);
+            double E  = pt * TMath::CosH(eta);
+            fjInputs.push_back(fastjet::PseudoJet(px, py, pz, E));
+          }
         }
         fastjet::JetDefinition jetDef(fastjet::antikt_algorithm, dR_max);
         fastjet::ClusterSequence cs(fjInputs, jetDef);
