@@ -9,7 +9,7 @@ const char *inFileSame =
 
 const char *inFileMixed =
   "../../../rootFiles/scanningOuput/HYDJET/"
-  "HYDJET_pThat-unweighted_mu12_pTmu-15to999_tight_hiBinShift-0_jetTrkMaxFilter_WDecayFilter_mixedEventPseudoJets_pfCandCS_pseudoJetCandPtMin-0.0_subleadingPFCandPtMin-15_2026-6-17_ultraFineCentBins_partial.root";
+  "HYDJET_pThat-unweighted_mu12_pTmu-15to999_tight_hiBinShift-0_jetTrkMaxFilter_WDecayFilter_mixedEventPseudoJets_pfCandCS_pseudoJetCandPtMin-0.0_subleadingPFCandPtMin-15_2026-6-18_ultraFineCentBins_singleFile.root";
 
 const char *outDir = "../../../figures/jetPt/";
 
