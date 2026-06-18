@@ -55,6 +55,11 @@ void plotOneBin(TFile *f, int ci, const char *centLbl, double lm, double rm){
   TH1D *hRatioFJ_JEC = (TH1D*) hFJ_JEC->Clone(Form("hRatioFJ_JEC_C%d", ci));
   hRatioFJ_JEC->Divide(hReco);
 
+  // Okabe-Ito colorblind-safe palette
+  Int_t col_blue   = TColor::GetColor("#0072B2");
+  Int_t col_orange = TColor::GetColor("#E69F00");
+  Int_t col_green  = TColor::GetColor("#009E73");
+
   TCanvas *c = new TCanvas(Form("c_C%d", ci), "", 900, 800);
   c->Divide(1, 2);
 
@@ -63,7 +68,7 @@ void plotOneBin(TFile *f, int ci, const char *centLbl, double lm, double rm){
   p1->SetLeftMargin(lm); p1->SetRightMargin(rm);
   p1->SetBottomMargin(0.02); p1->SetTopMargin(0.08);
 
-  hReco->SetLineColor(kBlue+1); hReco->SetLineWidth(2); hReco->SetLineStyle(1);
+  hReco->SetLineColor(col_blue); hReco->SetLineWidth(2); hReco->SetLineStyle(1);
   hReco->GetXaxis()->SetRangeUser(pTlo, pThi);
   hReco->GetXaxis()->SetLabelSize(0);
   hReco->GetYaxis()->SetTitle("(1/N) dN/dp_{T} [GeV^{-1}]");
@@ -72,10 +77,10 @@ void plotOneBin(TFile *f, int ci, const char *centLbl, double lm, double rm){
   hReco->SetStats(0); hReco->SetTitle("");
   hReco->Draw();
 
-  hFJ->SetLineColor(kRed+1); hFJ->SetLineWidth(2); hFJ->SetLineStyle(2);
+  hFJ->SetLineColor(col_orange); hFJ->SetLineWidth(2); hFJ->SetLineStyle(2);
   hFJ->Draw("same");
 
-  hFJ_JEC->SetLineColor(kGreen+2); hFJ_JEC->SetLineWidth(2); hFJ_JEC->SetLineStyle(3);
+  hFJ_JEC->SetLineColor(col_green); hFJ_JEC->SetLineWidth(2); hFJ_JEC->SetLineStyle(3);
   hFJ_JEC->Draw("same");
 
   TLegend *leg = new TLegend(0.45, 0.60, 0.92, 0.88);
@@ -92,7 +97,7 @@ void plotOneBin(TFile *f, int ci, const char *centLbl, double lm, double rm){
   p2->SetLeftMargin(lm); p2->SetRightMargin(rm);
   p2->SetTopMargin(0.02); p2->SetBottomMargin(0.18);
 
-  hRatioFJ->SetLineColor(kRed+1); hRatioFJ->SetLineWidth(2); hRatioFJ->SetLineStyle(2);
+  hRatioFJ->SetLineColor(col_orange); hRatioFJ->SetLineWidth(2); hRatioFJ->SetLineStyle(2);
   hRatioFJ->GetXaxis()->SetRangeUser(pTlo, pThi);
   hRatioFJ->GetXaxis()->SetTitle("p_{T}^{jet} [GeV]");
   hRatioFJ->GetYaxis()->SetTitle("FastJet / Reco");
@@ -104,7 +109,7 @@ void plotOneBin(TFile *f, int ci, const char *centLbl, double lm, double rm){
   hRatioFJ->SetStats(0); hRatioFJ->SetTitle("");
   hRatioFJ->Draw();
 
-  hRatioFJ_JEC->SetLineColor(kGreen+2); hRatioFJ_JEC->SetLineWidth(2); hRatioFJ_JEC->SetLineStyle(3);
+  hRatioFJ_JEC->SetLineColor(col_green); hRatioFJ_JEC->SetLineWidth(2); hRatioFJ_JEC->SetLineStyle(3);
   hRatioFJ_JEC->Draw("same");
 
   TLine *l = new TLine(pTlo, 1., pThi, 1.);

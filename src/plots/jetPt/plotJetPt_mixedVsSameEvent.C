@@ -47,6 +47,10 @@ void plotOneBin(TFile *fSame, TFile *fMixed, int ci, const char *centLbl, double
   TH1D *hRatio = (TH1D*) hMixed->Clone(Form("hRatio_C%d", ci));
   hRatio->Divide(hSame);
 
+  // Okabe-Ito colorblind-safe palette
+  Int_t col_blue   = TColor::GetColor("#0072B2");
+  Int_t col_orange = TColor::GetColor("#E69F00");
+
   TCanvas *c = new TCanvas(Form("c_C%d", ci), "", 900, 800);
   c->Divide(1, 2);
 
@@ -55,7 +59,7 @@ void plotOneBin(TFile *fSame, TFile *fMixed, int ci, const char *centLbl, double
   p1->SetLeftMargin(lm); p1->SetRightMargin(rm);
   p1->SetBottomMargin(0.02); p1->SetTopMargin(0.08);
 
-  hSame->SetLineColor(kBlue+1); hSame->SetLineWidth(2);
+  hSame->SetLineColor(col_blue); hSame->SetLineWidth(2); hSame->SetLineStyle(1);
   hSame->GetXaxis()->SetRangeUser(pTlo, pThi);
   hSame->GetXaxis()->SetLabelSize(0);
   hSame->GetYaxis()->SetTitle("(1/N) dN/dp_{T} [GeV^{-1}]");
@@ -64,7 +68,7 @@ void plotOneBin(TFile *fSame, TFile *fMixed, int ci, const char *centLbl, double
   hSame->SetStats(0); hSame->SetTitle("");
   hSame->Draw();
 
-  hMixed->SetLineColor(kRed+1); hMixed->SetLineWidth(2); hMixed->SetLineStyle(2);
+  hMixed->SetLineColor(col_orange); hMixed->SetLineWidth(2); hMixed->SetLineStyle(2);
   hMixed->Draw("same");
 
   TLegend *leg = new TLegend(0.48, 0.65, 0.92, 0.88);
@@ -80,7 +84,7 @@ void plotOneBin(TFile *fSame, TFile *fMixed, int ci, const char *centLbl, double
   p2->SetLeftMargin(lm); p2->SetRightMargin(rm);
   p2->SetTopMargin(0.02); p2->SetBottomMargin(0.18);
 
-  hRatio->SetLineColor(kBlack); hRatio->SetLineWidth(2);
+  hRatio->SetLineColor(col_orange); hRatio->SetLineWidth(2);
   hRatio->GetXaxis()->SetRangeUser(pTlo, pThi);
   hRatio->GetXaxis()->SetTitle("p_{T}^{jet} [GeV]");
   hRatio->GetYaxis()->SetTitle("mixed / same");
