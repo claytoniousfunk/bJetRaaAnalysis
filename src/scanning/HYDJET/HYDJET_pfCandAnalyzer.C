@@ -1335,7 +1335,6 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       // pre-load N_generatedPseudoJets same-centrality events into an in-memory pool
       // before the cone loop: O(N_cones) getEvent() calls instead of O(N_cones * nPFpart)
       std::vector<double> pool_pfPt, pool_pfEta, pool_pfPhi;
-      std::vector<double> mixedEvent_pfPt, mixedEvent_pfEta, mixedEvent_pfPhi;
       if(doEventMixing){
 	int eventsInPool = 0;
 	int jPool = 0;
@@ -1347,11 +1346,6 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	    pool_pfPt.push_back(em->pfPt->at(l));
 	    pool_pfEta.push_back(em->pfEta->at(l));
 	    pool_pfPhi.push_back(em->pfPhi->at(l));
-	    if(eventsInPool == 0){
-	      mixedEvent_pfPt.push_back(em->pfPt->at(l));
-	      mixedEvent_pfEta.push_back(em->pfEta->at(l));
-	      mixedEvent_pfPhi.push_back(em->pfPhi->at(l));
-	    }
 	  }
 	  eventsInPool++;
 	  jPool++;
@@ -1410,11 +1404,15 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 #ifdef DO_FASTJET
       if(doFastJetClustering){
         std::vector<fastjet::PseudoJet> fjInputs;
-        if(doEventMixing){
-          for(int l = 0; l < (int)mixedEvent_pfPt.size(); l++){
-            double pt  = mixedEvent_pfPt[l];
-            double eta = mixedEvent_pfEta[l];
-            double phi = mixedEvent_pfPhi[l];
+        if(doEventMixing && poolSize > 0){
+          // randomly sample NCandidatesToSample particles from the mixed pool
+          // (same logic as pseudo-jet cones) to estimate the fake-jet background
+          std::uniform_int_distribution<int> poolDist(0, poolSize - 1);
+          for(int s = 0; s < NCandidatesToSample; s++){
+            int idx = poolDist(rng);
+            double pt  = pool_pfPt[idx];
+            double eta = pool_pfEta[idx];
+            double phi = pool_pfPhi[idx];
             if(pt < pseudoJetCandPt_min) continue;
             double px = pt * TMath::Cos(phi);
             double py = pt * TMath::Sin(phi);
