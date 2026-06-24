@@ -91,7 +91,7 @@ TF1 *fitFxn_PbPb_HLT_C4, *fitFxn_PbPb_HLT_C3, *fitFxn_PbPb_HLT_C2, *fitFxn_PbPb_
 // dataset naming functions
 #include "../../../headers/functions/getDatasetName/getDatasetName_PbPb.h"
 #include "../../../headers/functions/getInputFileName/getInputFileName_PbPb.h"
-#include "../../../headers/functions/configureOutputDatasetName/configureOutputDatasetName_PbPb.h"
+#include "../../../headers/functions/configureOutputDatasetName/configureOutputDatasetName_PbPb_pfCandAnalyzer.h"
 // dimuon mass calculation
 #include "../../../headers/functions/calculateDimuonMass.h"
 // shared scanning helpers
@@ -266,7 +266,11 @@ void PbPb_pfCandAnalyzer(int group = 1){
 						   muPtMaxCut,
 						   fillMu5,
 						   fillMu7,
-						   fillMu12);
+						   fillMu12,
+						   pseudoJetCandPt_min,
+						   doEventMixing,
+						   doConstituentSubtraction,
+						   subleadingPFCandPt_min);
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
