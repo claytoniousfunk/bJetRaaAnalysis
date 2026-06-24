@@ -1,34 +1,30 @@
-// Build rootFiles/fakeJets/fakeJets.root from the CS mixed-event pseudo-jet
-// distribution for use as a fake-jet subtraction in calculateRAA.C.
+// Build rootFiles/fakeJets/fakeJets.root from the mixed-event FastJet anti-kT
+// R=0.4 fake-jet spectrum for use as a fake-jet subtraction in calculateRAA.C.
 //
-// Normalization: N_fake per bin per event (same units as h_CX_jetMB after
+// Normalization: fake jets per bin per event (same units as h_CX_jetMB after
 // Scale(1/N_MinBias_events)), so direct subtraction is valid.
 //
-// Formula per bin:
-//   content[b] = hRaw[b] * N_indep / (N_events * N_cones)
-// where N_events = total_raw_entries / N_cones  (unit-weight HYDJET sample).
+// The sum of event weights per fine centrality bin is recovered as
+//   sumW = h_pseudoJetPt_C{i}->Integral() / N_genPJ
+// which equals the number of events (w=1 for pThat-unweighted HYDJET).
 //
 // Coarse-bin mapping (matches calculateRAA.C):
-//   C1 = 0-10%  : fine C1+C2
-//   C2 = 10-30% : fine C3-C6
-//   C3 = 30-50% : fine C7-C10
-//   C4 = 50-80% : fine C11-C16
+//   C1 = 0-10%  : fine C1+C2   (hiBin 0-20)
+//   C2 = 10-30% : fine C3-C6   (hiBin 20-60)
+//   C3 = 30-50% : fine C7-C10  (hiBin 60-100)
+//   C4 = 50-80% : fine C11-C16 (hiBin 100-160)
 
 const char *fmixed_path =
   "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/HYDJET/"
   "HYDJET_pThat-unweighted_mu12_pTmu-15to999_tight_hiBinShift-0_jetTrkMaxFilter_WDecayFilter_"
   "mixedEventPseudoJets_pfCandCS_pseudoJetCandPtMin-0.0_subleadingPFCandPtMin-15_"
-  "2026-6-16_ultraFineCentBins.root";
+  "2026-6-23_ultraFineCentBins.root";
 
 const char *outPath =
   "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/fakeJets/fakeJets.root";
 
-const double pT_min  = 20.;  // only count fake jets above this threshold
-
-const int    N_cones = 100;
-const double R       = 0.4;
-const double eta_range = 3.2;
-const double N_indep = (eta_range * 2. * TMath::Pi()) / (TMath::Pi() * R * R); // 40
+const double pT_min = 20.;  // zero out fake jets below this threshold
+const int    N_genPJ = 100; // N_generatedPseudoJets (used to recover sumW)
 
 struct CoarseBin { int first, last; int raaIdx; };
 const CoarseBin cb[] = {
@@ -39,30 +35,29 @@ const CoarseBin cb[] = {
 };
 const int NCB = 4;
 
-// Sum fine-bin raw histograms and normalise to fake-jets per bin per event.
+// Sum fine-bin FastJet histograms and normalise to fake-jets per bin per event.
 TH1D* makeCoarse(TFile *f, int firstFine, int lastFine, const char *name){
-  TH1D *hSum = nullptr;
-  double totalEntries = 0.;
+  TH1D *hFJsum = nullptr;
+  double sumW   = 0.;
   for(int iC = firstFine; iC <= lastFine; iC++){
-    TH1D *hRaw; f->GetObject(Form("h_pseudoJetPt_C%d", iC), hRaw);
-    if(!hRaw){ printf("WARNING: missing C%d\n", iC); continue; }
-    totalEntries += hRaw->GetEntries();
-    if(!hSum) hSum = (TH1D*) hRaw->Clone(name);
-    else      hSum->Add(hRaw);
+    TH1D *hFJ = nullptr, *hPJ = nullptr;
+    f->GetObject(Form("h_fastJetPt_C%d", iC), hFJ);
+    f->GetObject(Form("h_pseudoJetPt_C%d", iC), hPJ);
+    if(!hFJ || !hPJ){ printf("WARNING: missing histograms for C%d\n", iC); continue; }
+    sumW += hPJ->Integral() / double(N_genPJ);
+    if(!hFJsum) hFJsum = (TH1D*) hFJ->Clone(name);
+    else        hFJsum->Add(hFJ);
   }
-  if(!hSum || totalEntries == 0) return nullptr;
-  double N_events = totalEntries / double(N_cones);
-  double norm = N_indep / (N_events * double(N_cones));
-  hSum->Scale(norm);
-  // zero out bins below pT_min
-  for(int b = 1; b <= hSum->GetNbinsX(); b++){
-    if(hSum->GetXaxis()->GetBinUpEdge(b) <= pT_min){
-      hSum->SetBinContent(b, 0.);
-      hSum->SetBinError(b, 0.);
+  if(!hFJsum || sumW == 0.) return nullptr;
+  hFJsum->Scale(1. / sumW);
+  for(int b = 1; b <= hFJsum->GetNbinsX(); b++){
+    if(hFJsum->GetXaxis()->GetBinUpEdge(b) <= pT_min){
+      hFJsum->SetBinContent(b, 0.);
+      hFJsum->SetBinError(b, 0.);
     }
   }
-  hSum->SetDirectory(nullptr);
-  return hSum;
+  hFJsum->SetDirectory(nullptr);
+  return hFJsum;
 }
 
 void makeFakeJetFile(){
@@ -70,8 +65,6 @@ void makeFakeJetFile(){
 
   TFile *fM = TFile::Open(fmixed_path);
   if(!fM || fM->IsZombie()){ printf("ERROR: cannot open mixed-event file\n"); return; }
-
-  printf("N_indep = %.0f\n", N_indep);
 
   TFile *fOut = TFile::Open(outPath, "RECREATE");
 

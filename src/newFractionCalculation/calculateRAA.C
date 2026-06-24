@@ -231,8 +231,8 @@ TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_fakeJets, TH1D *h_jet60, TH1D *h_jet8
   TH1D *h_fakeJets_scaled = (TH1D*) h_fakeJets->Clone("h_fakeJets_scaled");
   h_fakeJets_scaled->Scale(N_jet60_scaled / N_jetMB);
     
-  // subtract fake jets
-  //if(isPbPb) h_jetMB_scaled->Add(h_fakeJets_scaled,-1);
+  // subtract mixed-event FastJet fake jets from MinBias spectrum
+  if(isPbPb) h_jetMB_scaled->Add(h_fakeJets_scaled,-1);
   
   for(int i = 0; i < h_jet60->GetSize(); i++){
     double pT = h_jet60->GetBinCenter(i);
