@@ -1,3 +1,4 @@
+#pragma once
 // pfCandidateAnalysis variables
 bool doEventMixing = true;
 bool doConstituentSubtraction = true; // true = pfcandAnalyzerCS (CS applied at particle level), false = pfcandAnalyzer + manual rho subtraction

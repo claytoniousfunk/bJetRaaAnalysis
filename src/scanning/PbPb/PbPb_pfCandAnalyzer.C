@@ -97,12 +97,8 @@ TF1 *fitFxn_PbPb_HLT_C4, *fitFxn_PbPb_HLT_C3, *fitFxn_PbPb_HLT_C2, *fitFxn_PbPb_
 // shared scanning helpers
 #include "../scan_jet_corrections.h"
 #include "../scan_muon_tag.h"
-// pfCand analysis variables (pseudoJetCandPt_min already defined in AnalysisSetupV2p3/V2p4)
-bool doEventMixing = true;
-bool doConstituentSubtraction = true;
-bool doFastJetClustering = true;
-int N_generatedPseudoJets = 100;
-double subleadingPFCandPt_min = 15.0;
+// pfCand analysis variables
+#include "../../../headers/AnalysisSetup/pseudoJets.h"
 
 
 
