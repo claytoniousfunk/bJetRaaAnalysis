@@ -767,6 +767,129 @@ void calculateRAA(){
   canv_fakeJets_C3->SaveAs("../../figures/JetsPerZ/fakeJets_C3.pdf");
   canv_fakeJets_C4->SaveAs("../../figures/JetsPerZ/fakeJets_C4.pdf");
 
+  ///////////////////////////////////////////////////////////////////////////////////////
+  // Summary: fake-jet fraction and subtraction effect across all centrality bins
+  ///////////////////////////////////////////////////////////////////////////////////////
+
+  // Okabe-Ito colorblind-safe palette
+  Int_t col_C1 = TColor::GetColor("#D55E00");  // vermilion  (most central)
+  Int_t col_C2 = TColor::GetColor("#0072B2");  // blue
+  Int_t col_C3 = TColor::GetColor("#009E73");  // green
+  Int_t col_C4 = TColor::GetColor("#E69F00");  // orange     (most peripheral)
+
+  // --- fake fraction: h_fakeJets / h_jetMB per centrality ---
+  TH1D *hFrac_C1 = (TH1D*) h_fakeJets_C1->Clone("hFrac_C1");
+  hFrac_C1->Divide(h_C1_jetMB);
+  TH1D *hFrac_C2 = (TH1D*) h_fakeJets_C2->Clone("hFrac_C2");
+  hFrac_C2->Divide(h_C2_jetMB);
+  TH1D *hFrac_C3 = (TH1D*) h_fakeJets_C3->Clone("hFrac_C3");
+  hFrac_C3->Divide(h_C3_jetMB);
+  TH1D *hFrac_C4 = (TH1D*) h_fakeJets_C4->Clone("hFrac_C4");
+  hFrac_C4->Divide(h_C4_jetMB);
+
+  for(TH1D *h : {hFrac_C1, hFrac_C2, hFrac_C3, hFrac_C4}){
+    h->SetStats(0); h->SetTitle("");
+    h->SetLineWidth(2); h->SetLineStyle(1);
+    for(int b = 1; b <= h->GetNbinsX(); b++){
+      if(h->GetXaxis()->GetBinUpEdge(b) <= 20.) h->SetBinContent(b,0.);
+    }
+  }
+  hFrac_C1->SetLineColor(col_C1);
+  hFrac_C2->SetLineColor(col_C2);
+  hFrac_C3->SetLineColor(col_C3);
+  hFrac_C4->SetLineColor(col_C4);
+
+  TCanvas *canv_fakeFrac = new TCanvas("canv_fakeFrac","canv_fakeFrac",900,700);
+  canv_fakeFrac->SetLeftMargin(0.16);
+  canv_fakeFrac->SetRightMargin(0.05);
+  canv_fakeFrac->SetBottomMargin(0.14);
+  canv_fakeFrac->SetTopMargin(0.08);
+
+  hFrac_C1->GetXaxis()->SetRangeUser(20., 200.);
+  hFrac_C1->GetXaxis()->SetTitle("Jet p_{T} [GeV]");
+  hFrac_C1->GetYaxis()->SetTitle("fake-jet / MinBias");
+  hFrac_C1->GetYaxis()->SetRangeUser(0., 1.1);
+  hFrac_C1->GetXaxis()->SetTitleSize(0.05); hFrac_C1->GetXaxis()->SetLabelSize(0.045);
+  hFrac_C1->GetYaxis()->SetTitleSize(0.05); hFrac_C1->GetYaxis()->SetLabelSize(0.045);
+  hFrac_C1->GetYaxis()->SetTitleOffset(1.5);
+  hFrac_C1->Draw("hist");
+  hFrac_C2->Draw("hist same");
+  hFrac_C3->Draw("hist same");
+  hFrac_C4->Draw("hist same");
+
+  TLine *lOne = new TLine(20., 1., 200., 1.);
+  lOne->SetLineStyle(2); lOne->SetLineColor(kGray+1); lOne->SetLineWidth(2); lOne->Draw();
+
+  TLegend *leg_fakeFrac = new TLegend(0.45, 0.55, 0.92, 0.88);
+  leg_fakeFrac->SetBorderSize(0); leg_fakeFrac->SetTextSize(0.042);
+  leg_fakeFrac->AddEntry(hFrac_C1, "PbPb 0-10%",  "l");
+  leg_fakeFrac->AddEntry(hFrac_C2, "PbPb 10-30%", "l");
+  leg_fakeFrac->AddEntry(hFrac_C3, "PbPb 30-50%", "l");
+  leg_fakeFrac->AddEntry(hFrac_C4, "PbPb 50-80%", "l");
+  leg_fakeFrac->Draw();
+
+  TLatex *latFrac = new TLatex(); latFrac->SetNDC(); latFrac->SetTextSize(0.040);
+  latFrac->DrawLatex(0.18, 0.88, "PbPb MinBias (5.02 TeV)  fake jets: mixed-event FastJet anti-k_{T} R = 0.4");
+
+  canv_fakeFrac->SaveAs("../../figures/JetsPerZ/fakeJet_fraction_summary.pdf");
+
+  // --- corrected/nominal ratio: (jetMB - fakeJets) / jetMB ---
+  TH1D *hCorr_C1 = (TH1D*) h_C1_sub->Clone("hCorr_C1");
+  hCorr_C1->Divide(h_C1_clone);
+  TH1D *hCorr_C2 = (TH1D*) h_C2_sub->Clone("hCorr_C2");
+  hCorr_C2->Divide(h_C2_clone);
+  TH1D *hCorr_C3 = (TH1D*) h_C3_sub->Clone("hCorr_C3");
+  hCorr_C3->Divide(h_C3_clone);
+  TH1D *hCorr_C4 = (TH1D*) h_C4_sub->Clone("hCorr_C4");
+  hCorr_C4->Divide(h_C4_clone);
+
+  for(TH1D *h : {hCorr_C1, hCorr_C2, hCorr_C3, hCorr_C4}){
+    h->SetStats(0); h->SetTitle("");
+    h->SetLineWidth(2); h->SetLineStyle(1);
+    for(int b = 1; b <= h->GetNbinsX(); b++){
+      if(h->GetXaxis()->GetBinUpEdge(b) <= 20.) h->SetBinContent(b,0.);
+    }
+  }
+  hCorr_C1->SetLineColor(col_C1);
+  hCorr_C2->SetLineColor(col_C2);
+  hCorr_C3->SetLineColor(col_C3);
+  hCorr_C4->SetLineColor(col_C4);
+
+  TCanvas *canv_fakeCorr = new TCanvas("canv_fakeCorr","canv_fakeCorr",900,700);
+  canv_fakeCorr->SetLeftMargin(0.16);
+  canv_fakeCorr->SetRightMargin(0.05);
+  canv_fakeCorr->SetBottomMargin(0.14);
+  canv_fakeCorr->SetTopMargin(0.08);
+
+  hCorr_C1->GetXaxis()->SetRangeUser(20., 200.);
+  hCorr_C1->GetXaxis()->SetTitle("Jet p_{T} [GeV]");
+  hCorr_C1->GetYaxis()->SetTitle("(MinBias #minus fake) / MinBias");
+  hCorr_C1->GetYaxis()->SetRangeUser(0., 1.3);
+  hCorr_C1->GetXaxis()->SetTitleSize(0.05); hCorr_C1->GetXaxis()->SetLabelSize(0.045);
+  hCorr_C1->GetYaxis()->SetTitleSize(0.05); hCorr_C1->GetYaxis()->SetLabelSize(0.045);
+  hCorr_C1->GetYaxis()->SetTitleOffset(1.5);
+  hCorr_C1->Draw("hist");
+  hCorr_C2->Draw("hist same");
+  hCorr_C3->Draw("hist same");
+  hCorr_C4->Draw("hist same");
+
+  TLine *lOne2 = new TLine(20., 1., 200., 1.);
+  lOne2->SetLineStyle(2); lOne2->SetLineColor(kGray+1); lOne2->SetLineWidth(2); lOne2->Draw();
+
+  TLegend *leg_fakeCorr = new TLegend(0.45, 0.20, 0.92, 0.53);
+  leg_fakeCorr->SetBorderSize(0); leg_fakeCorr->SetTextSize(0.042);
+  leg_fakeCorr->AddEntry(hCorr_C1, "PbPb 0-10%",  "l");
+  leg_fakeCorr->AddEntry(hCorr_C2, "PbPb 10-30%", "l");
+  leg_fakeCorr->AddEntry(hCorr_C3, "PbPb 30-50%", "l");
+  leg_fakeCorr->AddEntry(hCorr_C4, "PbPb 50-80%", "l");
+  leg_fakeCorr->Draw();
+
+  TLatex *latCorr = new TLatex(); latCorr->SetNDC(); latCorr->SetTextSize(0.040);
+  latCorr->DrawLatex(0.18, 0.88, "PbPb MinBias (5.02 TeV)  fake jets: mixed-event FastJet anti-k_{T} R = 0.4");
+
+  canv_fakeCorr->SaveAs("../../figures/JetsPerZ/fakeJet_corrected_ratio_summary.pdf");
+
+  ///////////////////////////////////////////////////////////////////////////////////////
 
   // h_C4_jetMB->Add(h_fakeJets_C4,-1);
   // h_C3_jetMB->Add(h_fakeJets_C3,-1);
