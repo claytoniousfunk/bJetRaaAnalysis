@@ -262,7 +262,6 @@ TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_fakeJets, TH1D *h_jet60, TH1D *h_jet8
       h_return->SetBinError(i,h_jet100->GetBinError(i));
     }
     else{};
-    
   }
 
   return h_return;
@@ -278,7 +277,7 @@ void calculateRAA(){
   //TFile *file_pp_SingleMuon = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_SingleMuon_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-3-16.root");
   TFile *file_pp_SingleMuon = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_SingleMuon_mu12_pTmu-15to999_tight_deltaR-40_mu12TriggerEfficiencyCorrection_jetTrkMaxFilter_WDecayFilter_2026-5-4.root");
   TFile *file_pp_MinBias = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_MinBias_mu12_pTmu-14_tight_jetTrkMaxFilter_2025-10-15.root");
-  
+
 
 
   TFile *file_PbPb_HardProbes_jet60 = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PbPb/latest/PbPb_HardProbes_Jet60HLT_mu12_pTmu-15to999_tight_WDecayFilter_2026-3-11.root");
@@ -517,18 +516,19 @@ void calculateRAA(){
   file_PbPb_HardProbes_jet100->GetObject("h_inclRecoJetPt_C1",h_C1_jet100);
 
 
+  // Data-driven fake jets from mixed-event FastJet clustering on CS PF candidates.
+  // Built by makeFakeJetFile.C from the MinBias mixed-event scan; already normalised
+  // to fake jets per bin per event with pT < 20 GeV zeroed.
   TFile *file_fakeJets = TFile::Open("../../rootFiles/fakeJets/fakeJets.root");
   TH1D *h_fakeJets_C4, *h_fakeJets_C3, *h_fakeJets_C2, *h_fakeJets_C1;
-
-  file_fakeJets->GetObject("h_fakeJets_C4",h_fakeJets_C4);
-  file_fakeJets->GetObject("h_fakeJets_C3",h_fakeJets_C3);
-  file_fakeJets->GetObject("h_fakeJets_C2",h_fakeJets_C2);
-  file_fakeJets->GetObject("h_fakeJets_C1",h_fakeJets_C1);
-  
-  // h_fakeJets_C4->Scale(h_vz_MinBias_C4->Integral());
-  // h_fakeJets_C3->Scale(h_vz_MinBias_C3->Integral());
-  // h_fakeJets_C2->Scale(h_vz_MinBias_C2->Integral());
-  // h_fakeJets_C1->Scale(h_vz_MinBias_C1->Integral());
+  file_fakeJets->GetObject("h_fakeJets_C4", h_fakeJets_C4);
+  file_fakeJets->GetObject("h_fakeJets_C3", h_fakeJets_C3);
+  file_fakeJets->GetObject("h_fakeJets_C2", h_fakeJets_C2);
+  file_fakeJets->GetObject("h_fakeJets_C1", h_fakeJets_C1);
+  h_fakeJets_C4->SetDirectory(nullptr);
+  h_fakeJets_C3->SetDirectory(nullptr);
+  h_fakeJets_C2->SetDirectory(nullptr);
+  h_fakeJets_C1->SetDirectory(nullptr);
 
   h_C4_jetMB->Scale(1./h_vz_MinBias_C4->Integral());
   h_C3_jetMB->Scale(1./h_vz_MinBias_C3->Integral());
@@ -579,7 +579,7 @@ void calculateRAA(){
   leg_fakeJets_C1->SetBorderSize(0);
   leg_fakeJets_C1->SetTextSize(0.045);
   leg_fakeJets_C1->AddEntry(h_C1_clone,"PbPb MinBias 0-10%");
-  leg_fakeJets_C1->AddEntry(h_fakeJets_C1_clone,"fake-jets, PYTHIA+HYDJET 0-10%");
+  leg_fakeJets_C1->AddEntry(h_fakeJets_C1_clone,"fake-jets, data (mixed-event) 0-10%");
   leg_fakeJets_C1->AddEntry(h_C1_sub,"Corrected PbPb MinBias 0-10%");
   leg_fakeJets_C1->Draw();
 
@@ -638,7 +638,7 @@ void calculateRAA(){
   leg_fakeJets_C2->SetBorderSize(0);
   leg_fakeJets_C2->SetTextSize(0.045);
   leg_fakeJets_C2->AddEntry(h_C2_clone,"PbPb MinBias 10-30%");
-  leg_fakeJets_C2->AddEntry(h_fakeJets_C2_clone,"fake-jets, PYTHIA+HYDJET 10-30%");
+  leg_fakeJets_C2->AddEntry(h_fakeJets_C2_clone,"fake-jets, data (mixed-event) 10-30%");
   leg_fakeJets_C2->AddEntry(h_C2_sub,"Corrected PbPb MinBias 10-30%");
   leg_fakeJets_C2->Draw();
 
@@ -697,7 +697,7 @@ void calculateRAA(){
   leg_fakeJets_C3->SetBorderSize(0);
   leg_fakeJets_C3->SetTextSize(0.045);
   leg_fakeJets_C3->AddEntry(h_C3_clone,"PbPb MinBias 30-50%");
-  leg_fakeJets_C3->AddEntry(h_fakeJets_C3_clone,"fake-jets, PYTHIA+HYDJET 30-50%");
+  leg_fakeJets_C3->AddEntry(h_fakeJets_C3_clone,"fake-jets, data (mixed-event) 30-50%");
   leg_fakeJets_C3->AddEntry(h_C3_sub,"Corrected PbPb MinBias 30-50%");
   leg_fakeJets_C3->Draw();
 
@@ -755,7 +755,7 @@ void calculateRAA(){
   leg_fakeJets_C4->SetBorderSize(0);
   leg_fakeJets_C4->SetTextSize(0.045);
   leg_fakeJets_C4->AddEntry(h_C4_clone,"PbPb MinBias 50-80%");
-  leg_fakeJets_C4->AddEntry(h_fakeJets_C4_clone,"fake-jets, PYTHIA+HYDJET 50-80%");
+  leg_fakeJets_C4->AddEntry(h_fakeJets_C4_clone,"fake-jets, data (mixed-event) 50-80%");
   leg_fakeJets_C4->AddEntry(h_C4_sub,"Corrected PbPb MinBias 50-80%");
   leg_fakeJets_C4->Draw();
 
@@ -967,8 +967,8 @@ void calculateRAA(){
   // normalizeToMatchHistogram(h_C2,h_fakeJets_C2);
   // normalizeToMatchHistogram(h_C1,h_fakeJets_C1);
 
-  cout << "h_C1->Integral() = " << h_C4->Integral() << "\n";
-  cout << "h_fakeJets_C1->Integral() = " << h_fakeJets_C4->Integral() << "\n";
+  cout << "h_C1->Integral() = " << h_C1->Integral() << "\n";
+  cout << "h_fakeJets_C1->Integral() = " << h_fakeJets_C1->Integral() << "\n";
   
   
 
@@ -990,6 +990,125 @@ void calculateRAA(){
 
 
   
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Pre-unfolding diagnostic: stitched spectra and PbPb/pp ratio
+  /////////////////////////////////////////////////////////////////////////////
+  {
+    Int_t col_C1 = TColor::GetColor("#D55E00");
+    Int_t col_C2 = TColor::GetColor("#0072B2");
+    Int_t col_C3 = TColor::GetColor("#009E73");
+    Int_t col_C4 = TColor::GetColor("#E69F00");
+
+    auto normClone = [](TH1D* h, const char* name) -> TH1D* {
+      TH1D* hc = (TH1D*) h->Clone(name);
+      hc->SetDirectory(nullptr);
+      double norm = hc->Integral(hc->FindBin(150.01), hc->FindBin(299.99));
+      if(norm > 0) hc->Scale(1./norm);
+      return hc;
+    };
+
+    TH1D *hpre_pp = normClone(h_pp, "hpre_pp");
+    TH1D *hpre_C4 = normClone(h_C4, "hpre_C4");
+    TH1D *hpre_C3 = normClone(h_C3, "hpre_C3");
+    TH1D *hpre_C2 = normClone(h_C2, "hpre_C2");
+    TH1D *hpre_C1 = normClone(h_C1, "hpre_C1");
+
+    // hpre_pp (pp, 96 bins 20-500) and hpre_CX (PbPb, 100 bins 0-500) have
+    // different axes — project pp onto the PbPb axis before dividing.
+    auto projectOntoAxis = [](TH1D* hSrc, TH1D* hRef, const char* name) -> TH1D* {
+      TH1D* hOut = (TH1D*) hRef->Clone(name);
+      hOut->SetDirectory(nullptr);
+      hOut->Reset();
+      for(int b = 1; b <= hOut->GetNbinsX(); b++){
+        double pT = hOut->GetBinCenter(b);
+        int bS = hSrc->FindBin(pT);
+        hOut->SetBinContent(b, hSrc->GetBinContent(bS));
+        hOut->SetBinError  (b, hSrc->GetBinError(bS));
+      }
+      return hOut;
+    };
+    TH1D *hpre_pp_rb = projectOntoAxis(hpre_pp, hpre_C4, "hpre_pp_rb");
+
+    TH1D *rpr_C4 = (TH1D*) hpre_C4->Clone("rpr_C4"); rpr_C4->Divide(hpre_pp_rb);
+    TH1D *rpr_C3 = (TH1D*) hpre_C3->Clone("rpr_C3"); rpr_C3->Divide(hpre_pp_rb);
+    TH1D *rpr_C2 = (TH1D*) hpre_C2->Clone("rpr_C2"); rpr_C2->Divide(hpre_pp_rb);
+    TH1D *rpr_C1 = (TH1D*) hpre_C1->Clone("rpr_C1"); rpr_C1->Divide(hpre_pp_rb);
+
+    auto styleH = [](TH1D* h, Color_t col, int ms) {
+      h->SetLineColor(col); h->SetMarkerColor(col);
+      h->SetLineWidth(2);   h->SetMarkerStyle(ms); h->SetMarkerSize(0.8);
+      h->SetStats(0);       h->SetTitle("");
+    };
+    styleH(hpre_pp, kBlack, 20);
+    styleH(hpre_C4, col_C4, 33); styleH(rpr_C4, col_C4, 33);
+    styleH(hpre_C3, col_C3, 21); styleH(rpr_C3, col_C3, 21);
+    styleH(hpre_C2, col_C2, 34); styleH(rpr_C2, col_C2, 34);
+    styleH(hpre_C1, col_C1, 47); styleH(rpr_C1, col_C1, 47);
+
+    const double xLo = 60., xHi = 500.;
+    const double fUp = 0.60, fDn = 1.-fUp;
+    const double mL = 0.18, mR = 0.05;
+
+    TCanvas *canv_pre = new TCanvas("canv_pre","canv_pre",700,800);
+
+    TPad *pad_pre_up = new TPad("pad_pre_up","",0.,fDn,1.,1.);
+    pad_pre_up->SetLeftMargin(mL); pad_pre_up->SetRightMargin(mR);
+    pad_pre_up->SetTopMargin(0.08); pad_pre_up->SetBottomMargin(0.02);
+    pad_pre_up->SetLogy(); pad_pre_up->SetLogx();
+    pad_pre_up->Draw(); pad_pre_up->cd();
+
+    hpre_pp->GetXaxis()->SetRangeUser(xLo, xHi);
+    hpre_pp->GetXaxis()->SetLabelSize(0); hpre_pp->GetXaxis()->SetTitleSize(0);
+    hpre_pp->GetYaxis()->SetTitle("Counts (norm. 150-300 GeV)");
+    hpre_pp->GetYaxis()->SetTitleSize(0.055/fUp);
+    hpre_pp->GetYaxis()->SetTitleOffset(1.2);
+    hpre_pp->GetYaxis()->SetLabelSize(0.04/fUp);
+    hpre_pp->SetMinimum(1e-6);
+    hpre_pp->Draw("hist");
+    hpre_C4->Draw("hist same"); hpre_C3->Draw("hist same");
+    hpre_C2->Draw("hist same"); hpre_C1->Draw("hist same");
+
+    TLegend *leg_pre = new TLegend(0.55,0.55,0.92,0.88);
+    leg_pre->SetBorderSize(0); leg_pre->SetTextSize(0.042/fUp);
+    leg_pre->AddEntry(hpre_pp,"pp","l");
+    leg_pre->AddEntry(hpre_C4,"PbPb 50-80%","l");
+    leg_pre->AddEntry(hpre_C3,"PbPb 30-50%","l");
+    leg_pre->AddEntry(hpre_C2,"PbPb 10-30%","l");
+    leg_pre->AddEntry(hpre_C1,"PbPb 0-10%","l");
+    leg_pre->Draw();
+
+    TLatex lat_pre; lat_pre.SetNDC(); lat_pre.SetTextSize(0.038/fUp);
+    lat_pre.DrawLatex(0.20, 0.88, "Pre-unfolding stitched spectra");
+
+    canv_pre->cd();
+    TPad *pad_pre_dn = new TPad("pad_pre_dn","",0.,0.,1.,fDn);
+    pad_pre_dn->SetLeftMargin(mL); pad_pre_dn->SetRightMargin(mR);
+    pad_pre_dn->SetTopMargin(0.02); pad_pre_dn->SetBottomMargin(0.22);
+    pad_pre_dn->SetLogx();
+    pad_pre_dn->Draw(); pad_pre_dn->cd();
+
+    rpr_C4->GetXaxis()->SetRangeUser(xLo, xHi);
+    rpr_C4->GetXaxis()->SetTitle("Jet #it{p}_{T} [GeV]");
+    rpr_C4->GetXaxis()->SetTitleSize(0.055/fDn);
+    rpr_C4->GetXaxis()->SetTitleOffset(1.0);
+    rpr_C4->GetXaxis()->SetLabelSize(0.04/fDn);
+    rpr_C4->GetYaxis()->SetTitle("PbPb / pp");
+    rpr_C4->GetYaxis()->SetTitleSize(0.050/fDn);
+    rpr_C4->GetYaxis()->SetTitleOffset(0.7);
+    rpr_C4->GetYaxis()->SetLabelSize(0.04/fDn);
+    rpr_C4->GetYaxis()->SetNdivisions(505);
+    rpr_C4->SetMaximum(2.0); rpr_C4->SetMinimum(0.);
+    rpr_C4->Draw("ep");
+    rpr_C3->Draw("ep same"); rpr_C2->Draw("ep same"); rpr_C1->Draw("ep same");
+
+    TLine *line_pre = new TLine(xLo,1.,xHi,1.);
+    line_pre->SetLineStyle(2); line_pre->SetLineColor(kGray+1); line_pre->Draw();
+
+    canv_pre->SaveAs("../../figures/JetsPerZ/preUnfold_ratio.pdf");
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
 
   TH2D *h_response_pp, *h_response_C4, *h_response_C3, *h_response_C2, *h_response_C1;
   file_PYTHIA_response->GetObject("h_matchedRecoJetPt_genJetPt_allJets",h_response_pp);
@@ -1020,7 +1139,7 @@ void calculateRAA(){
   RooUnfoldResponse response_C1(h_meas_C1,h_truth_C1,h_response_C1,"response_C1","C1 response",0);
 
 
-  int N_iter_pp = 2;  // chi2 minimum from unfoldTest closure (iter 2 = 24.5, iter 1 = 31.0)
+  int N_iter_pp = 4;
   int N_iter_C4 = 1;  // chi2 rises monotonically; optimal at iter 1
   int N_iter_C3 = 1;  // chi2 rises monotonically; optimal at iter 1
   int N_iter_C2 = 1;  // chi2 rises monotonically; optimal at iter 1

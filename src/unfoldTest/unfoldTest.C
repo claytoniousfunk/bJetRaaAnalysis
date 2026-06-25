@@ -26,30 +26,27 @@ void ZeroColumnsUpTo(TH2D* h, double x_cutoff) {
 }
 
 
-double calculateChi2(TH1D *h_reco, TH1D *h_truth){
+double calculateChi2(TH1D *h_reco, TH1D *h_truth, double ptLow=80., double ptHigh=300.){
 
   double result = 0;
 
-  TH1D *ratio = (TH1D*) h_reco->Clone("ratio");
-  ratio->Divide(h_reco,h_truth,1,1,"");
-
   for(int i = 1; i <= h_reco->GetNbinsX(); i++){
 
-    if(ratio->GetBinCenter(i) < 80) continue;
-    if(ratio->GetBinCenter(i) > 300) continue;
-    
-    double ratio_i = ratio->GetBinContent(i);
-    double err_ratio_i = ratio->GetBinError(i);
-    //double err_ratio_i = 1.;
-    
-    if(h_truth->GetBinContent(i) == 0 || err_ratio_i == 0) continue;
+    if(h_reco->GetBinCenter(i) < ptLow)  continue;
+    if(h_reco->GetBinCenter(i) > ptHigh) continue;
 
-    result += (ratio_i - 1.)*(ratio_i - 1.) / (err_ratio_i * err_ratio_i);
-    
+    double u_i   = h_reco ->GetBinContent(i);
+    double t_i   = h_truth->GetBinContent(i);
+    double sig_i = h_reco ->GetBinError(i);
+
+    if(t_i == 0 || sig_i == 0) continue;
+
+    result += (u_i - t_i) * (u_i - t_i) / (sig_i * sig_i);
+
   }
 
   return result;
-  
+
 }
 
 void scaleHistogram(TH1D *h, double low, double high){
@@ -617,6 +614,19 @@ void unfoldTest(){
   double chi2_C3_unfold_iterTest[N_iter_tot] = {};
   double chi2_C2_unfold_iterTest[N_iter_tot] = {};
   double chi2_C1_unfold_iterTest[N_iter_tot] = {};
+
+  double chi2_lo_pp_unfold_iterTest[N_iter_tot] = {};
+  double chi2_lo_C4_unfold_iterTest[N_iter_tot] = {};
+  double chi2_lo_C3_unfold_iterTest[N_iter_tot] = {};
+  double chi2_lo_C2_unfold_iterTest[N_iter_tot] = {};
+  double chi2_lo_C1_unfold_iterTest[N_iter_tot] = {};
+
+  double chi2_hi_pp_unfold_iterTest[N_iter_tot] = {};
+  double chi2_hi_C4_unfold_iterTest[N_iter_tot] = {};
+  double chi2_hi_C3_unfold_iterTest[N_iter_tot] = {};
+  double chi2_hi_C2_unfold_iterTest[N_iter_tot] = {};
+  double chi2_hi_C1_unfold_iterTest[N_iter_tot] = {};
+
   double chi2_x[N_iter_tot] = {0};
 
   h_pp_unfold = (TH1D*) unfold_pp.Hunfold();
@@ -806,7 +816,9 @@ void unfoldTest(){
   for(int i = 0; i < N_iter_tot; i++){
     r_ppMC_iterTest_unfold[i] = (TH1D*) h_ppMC_unfold_iterTest[i]->Clone(Form("r_ppMC_iterTest_unfold_%i",i));
     r_ppMC_iterTest_unfold[i]->Divide(h_ppMC_unfold_iterTest[i],h_truth_pp,1,1,"B");
-    chi2_pp_unfold_iterTest[i] = calculateChi2(h_ppMC_unfold_iterTest[i],h_truth_pp);
+    chi2_pp_unfold_iterTest[i]    = calculateChi2(h_ppMC_unfold_iterTest[i],h_truth_pp);
+    chi2_lo_pp_unfold_iterTest[i] = calculateChi2(h_ppMC_unfold_iterTest[i],h_truth_pp, 80.,120.);
+    chi2_hi_pp_unfold_iterTest[i] = calculateChi2(h_ppMC_unfold_iterTest[i],h_truth_pp,120.,300.);
     chi2_x[i] = i+1;
     if(i == 0){
       r_ppMC_iterTest_unfold[i]->Draw();
@@ -916,7 +928,9 @@ void unfoldTest(){
   for(int i = 0; i < N_iter_tot; i++){
     r_C4MC_iterTest_unfold[i] = (TH1D*) h_C4MC_unfold_iterTest[i]->Clone(Form("r_C4MC_iterTest_unfold_%i",i));
     r_C4MC_iterTest_unfold[i]->Divide(h_C4MC_unfold_iterTest[i],h_truth_C4,1,1,"B");
-    chi2_C4_unfold_iterTest[i] = calculateChi2(h_C4MC_unfold_iterTest[i],h_truth_C4);
+    chi2_C4_unfold_iterTest[i]    = calculateChi2(h_C4MC_unfold_iterTest[i],h_truth_C4);
+    chi2_lo_C4_unfold_iterTest[i] = calculateChi2(h_C4MC_unfold_iterTest[i],h_truth_C4, 80.,120.);
+    chi2_hi_C4_unfold_iterTest[i] = calculateChi2(h_C4MC_unfold_iterTest[i],h_truth_C4,120.,300.);
     if(i == 0){
       r_C4MC_iterTest_unfold[i]->Draw();
       r_C4MC_iterTest_unfold[0]->GetYaxis()->SetRangeUser(0.,2.);
@@ -1024,7 +1038,9 @@ void unfoldTest(){
   for(int i = 0; i < N_iter_tot; i++){
     r_C3MC_iterTest_unfold[i] = (TH1D*) h_C3MC_unfold_iterTest[i]->Clone(Form("r_C3MC_iterTest_unfold_%i",i));
     r_C3MC_iterTest_unfold[i]->Divide(h_C3MC_unfold_iterTest[i],h_truth_C3,1,1,"B");
-    chi2_C3_unfold_iterTest[i] = calculateChi2(h_C3MC_unfold_iterTest[i],h_truth_C3);
+    chi2_C3_unfold_iterTest[i]    = calculateChi2(h_C3MC_unfold_iterTest[i],h_truth_C3);
+    chi2_lo_C3_unfold_iterTest[i] = calculateChi2(h_C3MC_unfold_iterTest[i],h_truth_C3, 80.,120.);
+    chi2_hi_C3_unfold_iterTest[i] = calculateChi2(h_C3MC_unfold_iterTest[i],h_truth_C3,120.,300.);
     if(i == 0){
       r_C3MC_iterTest_unfold[i]->Draw();
       r_C3MC_iterTest_unfold[0]->GetYaxis()->SetRangeUser(0.,2.);
@@ -1131,7 +1147,9 @@ void unfoldTest(){
   for(int i = 0; i < N_iter_tot; i++){
     r_C2MC_iterTest_unfold[i] = (TH1D*) h_C2MC_unfold_iterTest[i]->Clone(Form("r_C2MC_iterTest_unfold_%i",i));
     r_C2MC_iterTest_unfold[i]->Divide(h_C2MC_unfold_iterTest[i],h_truth_C2,1,1,"B");
-    chi2_C2_unfold_iterTest[i] = calculateChi2(h_C2MC_unfold_iterTest[i],h_truth_C2);
+    chi2_C2_unfold_iterTest[i]    = calculateChi2(h_C2MC_unfold_iterTest[i],h_truth_C2);
+    chi2_lo_C2_unfold_iterTest[i] = calculateChi2(h_C2MC_unfold_iterTest[i],h_truth_C2, 80.,120.);
+    chi2_hi_C2_unfold_iterTest[i] = calculateChi2(h_C2MC_unfold_iterTest[i],h_truth_C2,120.,300.);
     if(i == 0){
       r_C2MC_iterTest_unfold[i]->Draw();
       r_C2MC_iterTest_unfold[0]->GetYaxis()->SetRangeUser(0.,2.);
@@ -1240,7 +1258,9 @@ void unfoldTest(){
   for(int i = 0; i < N_iter_tot; i++){
     r_C1MC_iterTest_unfold[i] = (TH1D*) h_C1MC_unfold_iterTest[i]->Clone(Form("r_C1MC_iterTest_unfold_%i",i));
     r_C1MC_iterTest_unfold[i]->Divide(h_C1MC_unfold_iterTest[i],h_truth_C1,1,1,"B");
-    chi2_C1_unfold_iterTest[i] = calculateChi2(h_C1MC_unfold_iterTest[i],h_truth_C1);
+    chi2_C1_unfold_iterTest[i]    = calculateChi2(h_C1MC_unfold_iterTest[i],h_truth_C1);
+    chi2_lo_C1_unfold_iterTest[i] = calculateChi2(h_C1MC_unfold_iterTest[i],h_truth_C1, 80.,120.);
+    chi2_hi_C1_unfold_iterTest[i] = calculateChi2(h_C1MC_unfold_iterTest[i],h_truth_C1,120.,300.);
     if(i == 0){
       r_C1MC_iterTest_unfold[i]->Draw();
       r_C1MC_iterTest_unfold[0]->GetYaxis()->SetRangeUser(0.,2.);
@@ -1315,6 +1335,30 @@ void unfoldTest(){
            chi2_C3_unfold_iterTest[i],
            chi2_C2_unfold_iterTest[i],
            chi2_C1_unfold_iterTest[i]);
+  }
+
+  printf("\n--- chi2 low pT (80-120 GeV) ---\n");
+  printf("%-6s  %8s  %8s  %8s  %8s  %8s\n","iter","pp","C4 50-80","C3 30-50","C2 10-30","C1 0-10");
+  for(int i = 0; i < N_iter_tot; i++){
+    printf("%-6d  %8.3f  %8.3f  %8.3f  %8.3f  %8.3f\n",
+           i+1,
+           chi2_lo_pp_unfold_iterTest[i],
+           chi2_lo_C4_unfold_iterTest[i],
+           chi2_lo_C3_unfold_iterTest[i],
+           chi2_lo_C2_unfold_iterTest[i],
+           chi2_lo_C1_unfold_iterTest[i]);
+  }
+
+  printf("\n--- chi2 high pT (120-300 GeV) ---\n");
+  printf("%-6s  %8s  %8s  %8s  %8s  %8s\n","iter","pp","C4 50-80","C3 30-50","C2 10-30","C1 0-10");
+  for(int i = 0; i < N_iter_tot; i++){
+    printf("%-6d  %8.3f  %8.3f  %8.3f  %8.3f  %8.3f\n",
+           i+1,
+           chi2_hi_pp_unfold_iterTest[i],
+           chi2_hi_C4_unfold_iterTest[i],
+           chi2_hi_C3_unfold_iterTest[i],
+           chi2_hi_C2_unfold_iterTest[i],
+           chi2_hi_C1_unfold_iterTest[i]);
   }
   printf("\n");
 
