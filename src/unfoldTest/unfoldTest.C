@@ -31,12 +31,12 @@ double calculateChi2(TH1D *h_reco, TH1D *h_truth){
   double result = 0;
 
   TH1D *ratio = (TH1D*) h_reco->Clone("ratio");
-  ratio->Divide(h_reco,h_truth,1,1,"B");
+  ratio->Divide(h_reco,h_truth,1,1,"");
 
-  for(int i = 0; i < h_reco->GetSize(); i++){
+  for(int i = 1; i <= h_reco->GetNbinsX(); i++){
 
-    if(ratio->GetBinLowEdge(i) < 80) continue;
-    if(ratio->GetBinLowEdge(i) > 300) continue;
+    if(ratio->GetBinCenter(i) < 80) continue;
+    if(ratio->GetBinCenter(i) > 300) continue;
     
     double ratio_i = ratio->GetBinContent(i);
     double err_ratio_i = ratio->GetBinError(i);
