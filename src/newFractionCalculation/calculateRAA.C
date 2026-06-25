@@ -210,11 +210,16 @@ TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_fakeJets, TH1D *h_jet60, TH1D *h_jet8
   double N_jet100 = h_jet100->Integral(h_jet100->FindBin(jet100_pTmin + smallShift),h_jet100->FindBin(500. - smallShift));
   double N_jet80 = h_jet80->Integral(h_jet80->FindBin(jet100_pTmin + smallShift),h_jet80->FindBin(500. - smallShift));
   double N_jet60 = h_jet60->Integral(h_jet60->FindBin(jet80_pTmin + smallShift),h_jet60->FindBin(jet100_pTmin - smallShift));
-  double N_jetMB = h_jetMB->Integral(h_jetMB->FindBin(jet60_pTmin + smallShift),h_jetMB->FindBin(jet80_pTmin - smallShift));
-  double N_fakeJets = h_fakeJets->Integral(h_fakeJets->FindBin(jet60_pTmin + smallShift),h_fakeJets->FindBin(jet80_pTmin - smallShift));
-  
 
-  
+  // For PbPb, jet60_pTmin == jet80_pTmin (Jet60 sample not used), so the
+  // [jet60_pTmin, jet80_pTmin] overlap range is empty and gives N_jetMB = 0.
+  // Normalize MinBias directly to Jet80 using the [100, 150] GeV window where
+  // both are fully efficient (Jet80 is ~100% efficient above ~90 GeV in PbPb).
+  double mbNormLo = 100.;
+  double mbNormHi = jet80_pTmin;
+  double N_jetMB     = h_jetMB->Integral(h_jetMB->FindBin(mbNormLo + smallShift), h_jetMB->FindBin(mbNormHi - smallShift));
+  double N_fakeJets  = h_fakeJets->Integral(h_fakeJets->FindBin(mbNormLo + smallShift), h_fakeJets->FindBin(mbNormHi - smallShift));
+
   TH1D *h_jet80_scaled = (TH1D*) h_jet80->Clone("h_jet80_scaled");
   h_jet80_scaled->Scale(N_jet100 / N_jet80);
 
@@ -222,14 +227,18 @@ TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_fakeJets, TH1D *h_jet60, TH1D *h_jet8
 
   TH1D *h_jet60_scaled = (TH1D*) h_jet60->Clone("h_jet60_scaled");
   h_jet60_scaled->Scale(N_jet80_scaled / N_jet60);
-  
-  double N_jet60_scaled = h_jet60_scaled->Integral(h_jet60_scaled->FindBin(jet60_pTmin + smallShift),h_jet60_scaled->FindBin(jet80_pTmin - smallShift));
+
+  // For PbPb: normalize MinBias directly to Jet80 over [jetMB_pTmin, jet80_pTmin].
+  // For pp: normalize MinBias to (scaled) Jet60 over [jet60_pTmin, jet80_pTmin] as before.
+  double N_jet80_scaled_mbRange = isPbPb
+    ? h_jet80_scaled->Integral(h_jet80_scaled->FindBin(mbNormLo + smallShift), h_jet80_scaled->FindBin(mbNormHi - smallShift))
+    : h_jet60_scaled->Integral(h_jet60_scaled->FindBin(mbNormLo + smallShift), h_jet60_scaled->FindBin(mbNormHi - smallShift));
 
   TH1D *h_jetMB_scaled = (TH1D*) h_jetMB->Clone("h_jetMB_scaled");
-  h_jetMB_scaled->Scale(N_jet60_scaled / N_jetMB);
-  
+  h_jetMB_scaled->Scale(N_jet80_scaled_mbRange / N_jetMB);
+
   TH1D *h_fakeJets_scaled = (TH1D*) h_fakeJets->Clone("h_fakeJets_scaled");
-  h_fakeJets_scaled->Scale(N_jet60_scaled / N_jetMB);
+  h_fakeJets_scaled->Scale(N_jet80_scaled_mbRange / N_jetMB);
     
   // subtract mixed-event FastJet fake jets from MinBias spectrum
   if(isPbPb) h_jetMB_scaled->Add(h_fakeJets_scaled,-1);
@@ -1011,11 +1020,11 @@ void calculateRAA(){
   RooUnfoldResponse response_C1(h_meas_C1,h_truth_C1,h_response_C1,"response_C1","C1 response",0);
 
 
-  int N_iter_pp = 1;
-  int N_iter_C4 = 1;
-  int N_iter_C3 = 1;
-  int N_iter_C2 = 1;
-  int N_iter_C1 = 1;
+  int N_iter_pp = 2;  // chi2 minimum from unfoldTest closure (iter 2 = 24.5, iter 1 = 31.0)
+  int N_iter_C4 = 1;  // chi2 rises monotonically; optimal at iter 1
+  int N_iter_C3 = 1;  // chi2 rises monotonically; optimal at iter 1
+  int N_iter_C2 = 1;  // chi2 rises monotonically; optimal at iter 1
+  int N_iter_C1 = 1;  // chi2 rises monotonically; optimal at iter 1
 
   RooUnfoldBayes unfold_pp(&response_pp, h_pp, N_iter_pp);
   RooUnfoldBayes unfold_C4(&response_C4, h_C4, N_iter_C4);

@@ -45,7 +45,6 @@ double calculateChi2(TH1D *h_reco, TH1D *h_truth){
     if(h_truth->GetBinContent(i) == 0 || err_ratio_i == 0) continue;
 
     result += (ratio_i - 1.)*(ratio_i - 1.) / (err_ratio_i * err_ratio_i);
-    cout << "entry_i = " << (ratio_i - 1.)*(ratio_i - 1.) / (err_ratio_i * err_ratio_i) << "\n";
     
   }
 
@@ -192,7 +191,7 @@ void unfoldTest(){
   //TFile *file_PYTHIA_response_even = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIA/latest/response/PYTHIA_DiJet_response_pThat-15_mu12_pTmu-15_tight_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-4-1_evenEvents_matchedRecoJetPtCut60.root"); // with unmatched data
   
   //TFile *file_PYTHIA_response_odd = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIA/latest/response/PYTHIA_DiJet_response_pThat-20_mu12_pTmu-15_tight_jetTrkMaxFilter_removeHYDJETjet0p35CutOnGen_weightCut_2026-3-17_oddEvents.root");
-  TFile *file_PYTHIA_response_odd = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIA/latest/response/PYTHIA_DiJet_response_pThat-15_mu12_pTmu-15_tight_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-3-31_evenEvents.root");
+  TFile *file_PYTHIA_response_odd = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIA/latest/response/PYTHIA_DiJet_response_pThat-15_mu12_pTmu-15_tight_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-3-31_oddEvents.root");
   //TFile *file_PYTHIA_response_odd = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIA/latest/response/PYTHIA_DiJet_response_pThat-15_mu12_pTmu-15_tight_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-4-1_oddEvents_matchedRecoJetPtCut60.root");
 
   //TFile *file_PH_response_even = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIAHYDJET/latest/response/PYTHIAHYDJET_response_DiJet_pThat-15_mu12_pTmu-15_tight_vzReweight_hiBinReweight_hiBinShift-10_leadingXjetDumpFilter_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-3-24_evenEvents.root");
@@ -1302,6 +1301,22 @@ void unfoldTest(){
   r_ppMC->GetYaxis()->SetRangeUser(0.,2.);
   r_ppMC->Draw();
   r_ppMC_unfold->Draw("same");
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Chi-squared summary table
+
+  printf("\n--- chi2 (unfolded MC vs truth, pT 80-300 GeV) ---\n");
+  printf("%-6s  %8s  %8s  %8s  %8s  %8s\n","iter","pp","C4 50-80","C3 30-50","C2 10-30","C1 0-10");
+  for(int i = 0; i < N_iter_tot; i++){
+    printf("%-6d  %8.3f  %8.3f  %8.3f  %8.3f  %8.3f\n",
+           i+1,
+           chi2_pp_unfold_iterTest[i],
+           chi2_C4_unfold_iterTest[i],
+           chi2_C3_unfold_iterTest[i],
+           chi2_C2_unfold_iterTest[i],
+           chi2_C1_unfold_iterTest[i]);
+  }
+  printf("\n");
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
