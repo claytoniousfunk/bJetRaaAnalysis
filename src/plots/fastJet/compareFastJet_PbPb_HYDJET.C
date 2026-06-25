@@ -65,7 +65,7 @@ void drawComparison(TH1D* hPbPb, double nEventsPbPb,
     // Pad split fractions
     const double fUp   = 0.68;
     const double fDown = 1. - fUp;
-    const double mL = 0.15, mR = 0.05;
+    const double mL = 0.20, mR = 0.05;
     const double mTop = 0.08, mBotUp = 0.02;
     const double mTopDn = 0.02, mBotDn = 0.32;
     const double sfUp   = 1. / fUp;
@@ -98,7 +98,7 @@ void drawComparison(TH1D* hPbPb, double nEventsPbPb,
     hP->GetXaxis()->SetTitleSize(0);
     hP->GetYaxis()->SetTitle("Fake jets / event / bin");
     hP->GetYaxis()->SetTitleSize(0.05 * sfUp);
-    hP->GetYaxis()->SetTitleOffset(1.15);
+    hP->GetYaxis()->SetTitleOffset(1.4);
     hP->GetYaxis()->SetLabelSize(0.04 * sfUp);
     double ymax = TMath::Max(hP->GetMaximum(), hH->GetMaximum());
     hP->SetMaximum(ymax * 5.);
@@ -112,7 +112,7 @@ void drawComparison(TH1D* hPbPb, double nEventsPbPb,
     hR->GetXaxis()->SetLabelSize(0.04 * sfDown);
     hR->GetYaxis()->SetTitle("PbPb / HYDJET");
     hR->GetYaxis()->SetTitleSize(0.045 * sfDown);
-    hR->GetYaxis()->SetTitleOffset(0.6);
+    hR->GetYaxis()->SetTitleOffset(0.75);
     hR->GetYaxis()->SetLabelSize(0.04 * sfDown);
     hR->GetYaxis()->SetNdivisions(504);
     hR->SetMaximum(3.0);
