@@ -16,15 +16,16 @@
 #include "TFile.h"
 #include "TH1D.h"
 #include "TCanvas.h"
+#include "TPad.h"
 #include "TLegend.h"
 #include "TLatex.h"
+#include "TLine.h"
 #include "TStyle.h"
 #include "TROOT.h"
 
 static const int N_genPJ = 100;
 
-// Sum HYDJET fine-bin fastJet histograms and return a clone normalised per event.
-// sumPJ accumulates the pseudoJet integral (= N_events * N_genPJ).
+// Sum HYDJET fine-bin histograms across centrality bins; return clone (caller owns it).
 TH1D* sumHYDJET(TFile* fHY, const char* hname_base, int cFirst, int cLast,
                 double& sumEvents)
 {
@@ -44,9 +45,23 @@ TH1D* sumHYDJET(TFile* fHY, const char* hname_base, int cFirst, int cLast,
 }
 
 void drawComparison(TH1D* hPbPb, TH1D* hHY,
-                    const char* title, const char* outPath)
+                    const char* centLabel, const char* outPath)
 {
-    // Normalise per event
+    // Pad split fractions
+    const double fUp   = 0.68;
+    const double fDown = 1. - fUp;
+    // Shared margins
+    const double mL = 0.14, mR = 0.05;
+    // Upper pad margins
+    const double mTop = 0.08, mBotUp = 0.02;
+    // Lower pad margins
+    const double mTopDn = 0.02, mBotDn = 0.32;
+
+    // Scale factors so text appears the same physical size in both pads
+    const double sfUp   = 1. / fUp;
+    const double sfDown = 1. / fDown;
+
+    // Normalise by shape
     TH1D* hP = (TH1D*)hPbPb->Clone("hP_tmp");
     TH1D* hH = (TH1D*)hHY  ->Clone("hH_tmp");
     hP->SetDirectory(nullptr);
@@ -54,38 +69,90 @@ void drawComparison(TH1D* hPbPb, TH1D* hHY,
     if(hP->Integral() > 0) hP->Scale(1. / hP->Integral());
     if(hH->Integral() > 0) hH->Scale(1. / hH->Integral());
 
-    hP->SetLineColor(kBlack);    hP->SetLineWidth(2);
-    hH->SetLineColor(kAzure-4);  hH->SetLineWidth(2); hH->SetLineStyle(2);
+    // Ratio: PbPb / HYDJET
+    TH1D* hR = (TH1D*)hP->Clone("hR_tmp");
+    hR->SetDirectory(nullptr);
+    hR->Divide(hH);
 
+    // Colours / styles
+    hP->SetLineColor(kBlack);   hP->SetLineWidth(2);
+    hH->SetLineColor(kAzure-4); hH->SetLineWidth(2); hH->SetLineStyle(2);
+    hR->SetLineColor(kBlack);   hR->SetLineWidth(2); hR->SetMarkerStyle(20); hR->SetMarkerSize(0.7);
+
+    const double xLo = 20., xHi = 200.;
+    hP->GetXaxis()->SetRangeUser(xLo, xHi);
+    hH->GetXaxis()->SetRangeUser(xLo, xHi);
+    hR->GetXaxis()->SetRangeUser(xLo, xHi);
+
+    // ---- Upper pad style ----
     hP->SetTitle("");
-    hP->GetXaxis()->SetTitle("Fake jet p_{T} [GeV]");
+    hP->GetXaxis()->SetLabelSize(0);
+    hP->GetXaxis()->SetTitleSize(0);
     hP->GetYaxis()->SetTitle("Normalised entries / bin");
-    hP->GetXaxis()->SetTitleSize(0.05); hP->GetYaxis()->SetTitleSize(0.05);
-    hP->GetXaxis()->SetLabelSize(0.04); hP->GetYaxis()->SetLabelSize(0.04);
-    hP->GetXaxis()->SetRangeUser(20, 200);
-
+    hP->GetYaxis()->SetTitleSize(0.05 * sfUp);
+    hP->GetYaxis()->SetTitleOffset(1.1);
+    hP->GetYaxis()->SetLabelSize(0.04 * sfUp);
     double ymax = TMath::Max(hP->GetMaximum(), hH->GetMaximum());
     hP->SetMaximum(ymax * 5.);
     hP->SetMinimum(1e-7);
 
-    TCanvas* c = new TCanvas("c","",600,600);
-    c->SetLogy();
-    hP->Draw("hist"); hH->Draw("hist same");
+    // ---- Lower pad style ----
+    hR->SetTitle("");
+    hR->GetXaxis()->SetTitle("Fake jet p_{T} [GeV]");
+    hR->GetXaxis()->SetTitleSize(0.05 * sfDown);
+    hR->GetXaxis()->SetTitleOffset(1.0);
+    hR->GetXaxis()->SetLabelSize(0.04 * sfDown);
+    hR->GetYaxis()->SetTitle("PbPb / HYDJET");
+    hR->GetYaxis()->SetTitleSize(0.045 * sfDown);
+    hR->GetYaxis()->SetTitleOffset(0.55);
+    hR->GetYaxis()->SetLabelSize(0.04 * sfDown);
+    hR->GetYaxis()->SetNdivisions(504);
+    hR->SetMaximum(2.5);
+    hR->SetMinimum(0.);
 
-    TLegend* lg = new TLegend(0.55, 0.68, 0.88, 0.88);
-    lg->SetBorderSize(0); lg->SetFillStyle(0); lg->SetTextSize(0.04);
+    // ---- Canvas ----
+    TCanvas* c = new TCanvas("c", "", 600, 700);
+    c->SetFillColor(0);
+
+    TPad* pUp = new TPad("pUp", "", 0., fDown, 1., 1.);
+    pUp->SetLeftMargin(mL);  pUp->SetRightMargin(mR);
+    pUp->SetTopMargin(mTop); pUp->SetBottomMargin(mBotUp);
+    pUp->SetLogy();
+    pUp->SetTickx(1); pUp->SetTicky(1);
+    pUp->Draw(); pUp->cd();
+
+    hP->Draw("hist");
+    hH->Draw("hist same");
+
+    TLegend* lg = new TLegend(0.54, 0.62, 0.93, 0.84);
+    lg->SetBorderSize(0); lg->SetFillStyle(0); lg->SetTextSize(0.04 * sfUp);
     lg->AddEntry(hP, "PbPb data (MinBias)", "l");
     lg->AddEntry(hH, "HYDJET MC",           "l");
     lg->Draw();
 
     TLatex lat;
-    lat.SetNDC(); lat.SetTextSize(0.04);
-    lat.DrawLatex(0.13, 0.92, title);
-    lat.SetTextSize(0.035);
-    lat.DrawLatex(0.13, 0.87, "Mixed-event anti-k_{T} R=0.4, CS PF cands");
+    lat.SetNDC(); lat.SetTextSize(0.042 * sfUp);
+    lat.DrawLatex(0.17, 0.88, centLabel);
+    lat.SetTextSize(0.036 * sfUp);
+    lat.DrawLatex(0.17, 0.79, "Mixed-event anti-k_{T} R=0.4, CS PF cands");
+
+    c->cd();
+    TPad* pDn = new TPad("pDn", "", 0., 0., 1., fDown);
+    pDn->SetLeftMargin(mL);     pDn->SetRightMargin(mR);
+    pDn->SetTopMargin(mTopDn);  pDn->SetBottomMargin(mBotDn);
+    pDn->SetTickx(1); pDn->SetTicky(1);
+    pDn->Draw(); pDn->cd();
+
+    hR->Draw("ep");
+
+    // Reference line at 1
+    TLine* line = new TLine(xLo, 1., xHi, 1.);
+    line->SetLineStyle(2); line->SetLineColor(kGray+1); line->SetLineWidth(1);
+    line->Draw();
 
     c->SaveAs(outPath);
-    delete c; delete hP; delete hH;
+    delete c;
+    delete hP; delete hH; delete hR;
 }
 
 void compareFastJet_PbPb_HYDJET()
