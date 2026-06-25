@@ -1139,7 +1139,7 @@ void calculateRAA(){
   RooUnfoldResponse response_C1(h_meas_C1,h_truth_C1,h_response_C1,"response_C1","C1 response",0);
 
 
-  int N_iter_pp = 4;
+  int N_iter_pp = 1;
   int N_iter_C4 = 1;  // chi2 rises monotonically; optimal at iter 1
   int N_iter_C3 = 1;  // chi2 rises monotonically; optimal at iter 1
   int N_iter_C2 = 1;  // chi2 rises monotonically; optimal at iter 1

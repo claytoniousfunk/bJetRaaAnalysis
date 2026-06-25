@@ -49,6 +49,76 @@ double calculateChi2(TH1D *h_reco, TH1D *h_truth, double ptLow=80., double ptHig
 
 }
 
+double calculateBias2(TH1D *h_reco, TH1D *h_truth, double ptLow=80., double ptHigh=300.){
+  double result = 0;
+  for(int i = 1; i <= h_reco->GetNbinsX(); i++){
+    if(h_reco->GetBinCenter(i) < ptLow)  continue;
+    if(h_reco->GetBinCenter(i) > ptHigh) continue;
+    double u_i = h_reco ->GetBinContent(i);
+    double t_i = h_truth->GetBinContent(i);
+    if(t_i == 0) continue;
+    result += (u_i - t_i) * (u_i - t_i);
+  }
+  return result;
+}
+
+double calculateVariance(TH1D *h_reco, double ptLow=80., double ptHigh=300.){
+  double result = 0;
+  for(int i = 1; i <= h_reco->GetNbinsX(); i++){
+    if(h_reco->GetBinCenter(i) < ptLow)  continue;
+    if(h_reco->GetBinCenter(i) > ptHigh) continue;
+    double sig_i = h_reco->GetBinError(i);
+    result += sig_i * sig_i;
+  }
+  return result;
+}
+
+void drawBiasVariance(int N, double *x, double *bias2, double *var, double *mse,
+                      const char *label, const char *titleStr, const char *outPath){
+  TCanvas *c = new TCanvas(Form("canv_bv_%s",label), "", 700, 600);
+  c->cd();
+  TPad *p = new TPad(Form("pad_bv_%s",label), "", 0, 0, 1, 1);
+  p->SetLeftMargin(0.16); p->SetBottomMargin(0.14);
+  p->SetRightMargin(0.05); p->SetTopMargin(0.08);
+  p->SetLogy(); p->SetTickx(1); p->SetTicky(1);
+  p->Draw(); p->cd();
+
+  TGraph *gB = new TGraph(N, x, bias2);
+  TGraph *gV = new TGraph(N, x, var);
+  TGraph *gM = new TGraph(N, x, mse);
+
+  gB->SetLineColor(kAzure+1);  gB->SetMarkerColor(kAzure+1);
+  gV->SetLineColor(kRed);      gV->SetMarkerColor(kRed);
+  gM->SetLineColor(kBlack);    gM->SetMarkerColor(kBlack);
+  for(auto *g : {gB, gV, gM}){
+    g->SetLineWidth(2); g->SetMarkerStyle(20); g->SetMarkerSize(0.9);
+  }
+
+  TMultiGraph *mg = new TMultiGraph(Form("mg_bv_%s",label), "");
+  mg->Add(gB, "LP");
+  mg->Add(gV, "LP");
+  mg->Add(gM, "LP");
+  mg->Draw("A");
+  mg->GetXaxis()->SetTitle("#it{N}_{iterations}");
+  mg->GetXaxis()->SetTitleSize(0.048); mg->GetXaxis()->SetTitleOffset(1.1);
+  mg->GetXaxis()->SetLabelSize(0.040);
+  mg->GetYaxis()->SetTitle("Metric [counts^{2}]");
+  mg->GetYaxis()->SetTitleSize(0.048); mg->GetYaxis()->SetTitleOffset(1.5);
+  mg->GetYaxis()->SetLabelSize(0.040);
+
+  TLegend *leg = new TLegend(0.40, 0.65, 0.93, 0.88);
+  leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.038);
+  leg->AddEntry(gB, "Bias^{2} = #Sigma(unfolded - truth)^{2}", "lp");
+  leg->AddEntry(gV, "Variance = #Sigma#sigma^{2}_{unfolded}",  "lp");
+  leg->AddEntry(gM, "MSE = Bias^{2} + Variance",               "lp");
+  leg->Draw();
+
+  TLatex lat; lat.SetNDC(); lat.SetTextSize(0.042);
+  lat.DrawLatex(0.18, 0.90, titleStr);
+
+  c->SaveAs(outPath);
+}
+
 void scaleHistogram(TH1D *h, double low, double high){
 
   h->Scale(1./h->Integral(h->FindBin(low),h->FindBin(high)));
@@ -629,6 +699,22 @@ void unfoldTest(){
 
   double chi2_x[N_iter_tot] = {0};
 
+  double bias2_pp_iterTest[N_iter_tot] = {};
+  double bias2_C4_iterTest[N_iter_tot] = {};
+  double bias2_C3_iterTest[N_iter_tot] = {};
+  double bias2_C2_iterTest[N_iter_tot] = {};
+  double bias2_C1_iterTest[N_iter_tot] = {};
+  double var_pp_iterTest[N_iter_tot]   = {};
+  double var_C4_iterTest[N_iter_tot]   = {};
+  double var_C3_iterTest[N_iter_tot]   = {};
+  double var_C2_iterTest[N_iter_tot]   = {};
+  double var_C1_iterTest[N_iter_tot]   = {};
+  double mse_pp_iterTest[N_iter_tot]   = {};
+  double mse_C4_iterTest[N_iter_tot]   = {};
+  double mse_C3_iterTest[N_iter_tot]   = {};
+  double mse_C2_iterTest[N_iter_tot]   = {};
+  double mse_C1_iterTest[N_iter_tot]   = {};
+
   h_pp_unfold = (TH1D*) unfold_pp.Hunfold();
   h_C4_unfold = (TH1D*) unfold_C4.Hunfold();
   h_C3_unfold = (TH1D*) unfold_C3.Hunfold();
@@ -819,6 +905,9 @@ void unfoldTest(){
     chi2_pp_unfold_iterTest[i]    = calculateChi2(h_ppMC_unfold_iterTest[i],h_truth_pp);
     chi2_lo_pp_unfold_iterTest[i] = calculateChi2(h_ppMC_unfold_iterTest[i],h_truth_pp, 80.,120.);
     chi2_hi_pp_unfold_iterTest[i] = calculateChi2(h_ppMC_unfold_iterTest[i],h_truth_pp,120.,300.);
+    bias2_pp_iterTest[i] = calculateBias2(h_ppMC_unfold_iterTest[i], h_truth_pp);
+    var_pp_iterTest[i]   = calculateVariance(h_ppMC_unfold_iterTest[i]);
+    mse_pp_iterTest[i]   = bias2_pp_iterTest[i] + var_pp_iterTest[i];
     chi2_x[i] = i+1;
     if(i == 0){
       r_ppMC_iterTest_unfold[i]->Draw();
@@ -852,10 +941,13 @@ void unfoldTest(){
   gr_chi2_pp->SetMarkerStyle(20);
   gr_chi2_pp->Draw("AP");
   canv_chi2_pp->SaveAs("../../figures/unfoldTest/chi2_pp_iterTest.pdf");
-  
+
+  drawBiasVariance(N_iter_tot, chi2_x,
+                   bias2_pp_iterTest, var_pp_iterTest, mse_pp_iterTest,
+                   "pp", "pp", "../../figures/unfoldTest/bias_variance_pp.pdf");
 
   //////////////////////////////////////////////////////////////////////////////////////////////
-  
+
   TCanvas *canv_C4_iterTest = new TCanvas("canv_C4_iterTest","canv_C4_iterTest",700,700);
   canv_C4_iterTest->cd();
   TPad *pad_C4_iterTest_upper = new TPad("pad_C4_iterTest_upper","pad_C4_iterTest_upper",0,0.4,1,1);
@@ -931,6 +1023,9 @@ void unfoldTest(){
     chi2_C4_unfold_iterTest[i]    = calculateChi2(h_C4MC_unfold_iterTest[i],h_truth_C4);
     chi2_lo_C4_unfold_iterTest[i] = calculateChi2(h_C4MC_unfold_iterTest[i],h_truth_C4, 80.,120.);
     chi2_hi_C4_unfold_iterTest[i] = calculateChi2(h_C4MC_unfold_iterTest[i],h_truth_C4,120.,300.);
+    bias2_C4_iterTest[i] = calculateBias2(h_C4MC_unfold_iterTest[i], h_truth_C4);
+    var_C4_iterTest[i]   = calculateVariance(h_C4MC_unfold_iterTest[i]);
+    mse_C4_iterTest[i]   = bias2_C4_iterTest[i] + var_C4_iterTest[i];
     if(i == 0){
       r_C4MC_iterTest_unfold[i]->Draw();
       r_C4MC_iterTest_unfold[0]->GetYaxis()->SetRangeUser(0.,2.);
@@ -962,9 +1057,13 @@ void unfoldTest(){
   gr_chi2_C4->SetMarkerStyle(20);
   gr_chi2_C4->Draw("AP");
   canv_chi2_C4->SaveAs("../../figures/unfoldTest/chi2_C4_iterTest.pdf");
-  
+
+  drawBiasVariance(N_iter_tot, chi2_x,
+                   bias2_C4_iterTest, var_C4_iterTest, mse_C4_iterTest,
+                   "C4", "PbPb 50-80%", "../../figures/unfoldTest/bias_variance_C4.pdf");
+
   //////////////////////////////////////////////////////////////////////////////////////////////
-  
+
   TCanvas *canv_C3_iterTest = new TCanvas("canv_C3_iterTest","canv_C3_iterTest",700,700);
   canv_C3_iterTest->cd();
   TPad *pad_C3_iterTest_upper = new TPad("pad_C3_iterTest_upper","pad_C3_iterTest_upper",0,0.4,1,1);
@@ -1041,6 +1140,9 @@ void unfoldTest(){
     chi2_C3_unfold_iterTest[i]    = calculateChi2(h_C3MC_unfold_iterTest[i],h_truth_C3);
     chi2_lo_C3_unfold_iterTest[i] = calculateChi2(h_C3MC_unfold_iterTest[i],h_truth_C3, 80.,120.);
     chi2_hi_C3_unfold_iterTest[i] = calculateChi2(h_C3MC_unfold_iterTest[i],h_truth_C3,120.,300.);
+    bias2_C3_iterTest[i] = calculateBias2(h_C3MC_unfold_iterTest[i], h_truth_C3);
+    var_C3_iterTest[i]   = calculateVariance(h_C3MC_unfold_iterTest[i]);
+    mse_C3_iterTest[i]   = bias2_C3_iterTest[i] + var_C3_iterTest[i];
     if(i == 0){
       r_C3MC_iterTest_unfold[i]->Draw();
       r_C3MC_iterTest_unfold[0]->GetYaxis()->SetRangeUser(0.,2.);
@@ -1073,8 +1175,12 @@ void unfoldTest(){
   gr_chi2_C3->Draw("AP");
   canv_chi2_C3->SaveAs("../../figures/unfoldTest/chi2_C3_iterTest.pdf");
 
+  drawBiasVariance(N_iter_tot, chi2_x,
+                   bias2_C3_iterTest, var_C3_iterTest, mse_C3_iterTest,
+                   "C3", "PbPb 30-50%", "../../figures/unfoldTest/bias_variance_C3.pdf");
+
   //////////////////////////////////////////////////////////////////////////////////////////////
-  
+
   TCanvas *canv_C2_iterTest = new TCanvas("canv_C2_iterTest","canv_C2_iterTest",700,700);
   canv_C2_iterTest->cd();
   TPad *pad_C2_iterTest_upper = new TPad("pad_C2_iterTest_upper","pad_C2_iterTest_upper",0,0.4,1,1);
@@ -1150,6 +1256,9 @@ void unfoldTest(){
     chi2_C2_unfold_iterTest[i]    = calculateChi2(h_C2MC_unfold_iterTest[i],h_truth_C2);
     chi2_lo_C2_unfold_iterTest[i] = calculateChi2(h_C2MC_unfold_iterTest[i],h_truth_C2, 80.,120.);
     chi2_hi_C2_unfold_iterTest[i] = calculateChi2(h_C2MC_unfold_iterTest[i],h_truth_C2,120.,300.);
+    bias2_C2_iterTest[i] = calculateBias2(h_C2MC_unfold_iterTest[i], h_truth_C2);
+    var_C2_iterTest[i]   = calculateVariance(h_C2MC_unfold_iterTest[i]);
+    mse_C2_iterTest[i]   = bias2_C2_iterTest[i] + var_C2_iterTest[i];
     if(i == 0){
       r_C2MC_iterTest_unfold[i]->Draw();
       r_C2MC_iterTest_unfold[0]->GetYaxis()->SetRangeUser(0.,2.);
@@ -1182,8 +1291,12 @@ void unfoldTest(){
   gr_chi2_C2->Draw("AP");
   canv_chi2_C2->SaveAs("../../figures/unfoldTest/chi2_C2_iterTest.pdf");
 
+  drawBiasVariance(N_iter_tot, chi2_x,
+                   bias2_C2_iterTest, var_C2_iterTest, mse_C2_iterTest,
+                   "C2", "PbPb 10-30%", "../../figures/unfoldTest/bias_variance_C2.pdf");
+
   //////////////////////////////////////////////////////////////////////////////////////////////
-  
+
   TCanvas *canv_C1_iterTest = new TCanvas("canv_C1_iterTest","canv_C1_iterTest",700,700);
   canv_C1_iterTest->cd();
   TPad *pad_C1_iterTest_upper = new TPad("pad_C1_iterTest_upper","pad_C1_iterTest_upper",0,0.4,1,1);
@@ -1261,6 +1374,9 @@ void unfoldTest(){
     chi2_C1_unfold_iterTest[i]    = calculateChi2(h_C1MC_unfold_iterTest[i],h_truth_C1);
     chi2_lo_C1_unfold_iterTest[i] = calculateChi2(h_C1MC_unfold_iterTest[i],h_truth_C1, 80.,120.);
     chi2_hi_C1_unfold_iterTest[i] = calculateChi2(h_C1MC_unfold_iterTest[i],h_truth_C1,120.,300.);
+    bias2_C1_iterTest[i] = calculateBias2(h_C1MC_unfold_iterTest[i], h_truth_C1);
+    var_C1_iterTest[i]   = calculateVariance(h_C1MC_unfold_iterTest[i]);
+    mse_C1_iterTest[i]   = bias2_C1_iterTest[i] + var_C1_iterTest[i];
     if(i == 0){
       r_C1MC_iterTest_unfold[i]->Draw();
       r_C1MC_iterTest_unfold[0]->GetYaxis()->SetRangeUser(0.,2.);
@@ -1292,9 +1408,13 @@ void unfoldTest(){
   gr_chi2_C1->SetMarkerStyle(20);
   gr_chi2_C1->Draw("AP");
   canv_chi2_C1->SaveAs("../../figures/unfoldTest/chi2_C1_iterTest.pdf");
-  
+
+  drawBiasVariance(N_iter_tot, chi2_x,
+                   bias2_C1_iterTest, var_C1_iterTest, mse_C1_iterTest,
+                   "C1", "PbPb 0-10%", "../../figures/unfoldTest/bias_variance_C1.pdf");
+
   ///////////////////////////////////////////////////////////////////////////////////////////////
-  
+
   TCanvas *canv_ppMC = new TCanvas("canv_ppMC","canv_ppMC",700,700);
   canv_ppMC->cd();
   TPad *pad_ppMC_upper = new TPad("pad_ppMC_upper","pad_ppMC_upper",0,0.4,1,1);
