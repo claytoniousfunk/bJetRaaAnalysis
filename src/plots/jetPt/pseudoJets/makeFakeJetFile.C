@@ -18,9 +18,9 @@
 
 const char *fmixed_path =
   "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/"
-  "PbPb_MinBias_test_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_"
+  "PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_"
   "mixedEventPseudoJets_pfCandCS_pseudoJetCandPtMin-0.0_subleadingPFCandPtMin-15_"
-  "2026-6-24_oneFile.root";
+  "2026-6-30.root";
 
 const char *outPath =
   "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/fakeJets/fakeJets.root";
@@ -35,7 +35,7 @@ void makeFakeJetFile(){
 
   TFile *fOut = TFile::Open(outPath, "RECREATE");
 
-  for(int ci = 1; ci <= 4; ci++){
+  for(int ci = 0; ci <= 4; ci++){
     TH1D *hFJ = nullptr, *hvz = nullptr;
     fM->GetObject(Form("h_fastJetPt_JEC_C%d", ci), hFJ);
     fM->GetObject(Form("h_vz_C%d", ci), hvz);

@@ -168,9 +168,9 @@ void compareFastJet_PbPb_HYDJET()
 
     const char* fPbPbPath =
         "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/"
-        "PbPb_MinBias_test_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_"
+        "PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_"
         "mixedEventPseudoJets_pfCandCS_pseudoJetCandPtMin-0.0_subleadingPFCandPtMin-15_"
-        "2026-6-24_oneFile.root";
+        "2026-6-30.root";
 
     const char* fHYPath =
         "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/HYDJET/"
