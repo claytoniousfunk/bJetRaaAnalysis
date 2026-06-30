@@ -454,8 +454,8 @@ void pp_scan(TString inputFile, TString outputFile){
     }
 
     else if(doMinBiasSample){
-      //em->regEventFilter(NeventFilters_MinBias, eventFilters_MinBias);
-      em->regEventFilter(NeventFilters_SingleMuon, eventFilters_SingleMuon);
+      em->regEventFilter(NeventFilters_MinBias, eventFilters_MinBias);
+      //em->regEventFilter(NeventFilters_SingleMuon, eventFilters_SingleMuon);
     }
 
     loadFitFxn_PYTHIA_JERCorrection();
