@@ -1,0 +1,9 @@
+/eos/cms/store/group/phys_heavyions/cbennett/forest_pp_ZeroBias1_test_3/HIZeroBias1/crab_forest_pp_ZeroBias1_test_3/260630_132655/0000/HiForestMiniAOD_10.root
+/eos/cms/store/group/phys_heavyions/cbennett/forest_pp_ZeroBias1_test_3/HIZeroBias1/crab_forest_pp_ZeroBias1_test_3/260630_132655/0000/HiForestMiniAOD_1.root
+/eos/cms/store/group/phys_heavyions/cbennett/forest_pp_ZeroBias1_test_3/HIZeroBias1/crab_forest_pp_ZeroBias1_test_3/260630_132655/0000/HiForestMiniAOD_2.root
+/eos/cms/store/group/phys_heavyions/cbennett/forest_pp_ZeroBias1_test_3/HIZeroBias1/crab_forest_pp_ZeroBias1_test_3/260630_132655/0000/HiForestMiniAOD_3.root
+/eos/cms/store/group/phys_heavyions/cbennett/forest_pp_ZeroBias1_test_3/HIZeroBias1/crab_forest_pp_ZeroBias1_test_3/260630_132655/0000/HiForestMiniAOD_4.root
+/eos/cms/store/group/phys_heavyions/cbennett/forest_pp_ZeroBias1_test_3/HIZeroBias1/crab_forest_pp_ZeroBias1_test_3/260630_132655/0000/HiForestMiniAOD_5.root
+/eos/cms/store/group/phys_heavyions/cbennett/forest_pp_ZeroBias1_test_3/HIZeroBias1/crab_forest_pp_ZeroBias1_test_3/260630_132655/0000/HiForestMiniAOD_6.root
+/eos/cms/store/group/phys_heavyions/cbennett/forest_pp_ZeroBias1_test_3/HIZeroBias1/crab_forest_pp_ZeroBias1_test_3/260630_132655/0000/HiForestMiniAOD_7.root
+/eos/cms/store/group/phys_heavyions/cbennett/forest_pp_ZeroBias1_test_3/HIZeroBias1/crab_forest_pp_ZeroBias1_test_3/260630_132655/0000/HiForestMiniAOD_8.root
