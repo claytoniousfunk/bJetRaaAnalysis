@@ -841,12 +841,14 @@ void PbPb_pfCandAnalyzer_rollingPool(int group = 1){
       // rolling-window pool: slide past current event if needed, then restore
       if(doEventMixing){
         auto& ps = pools[CentralityIndex];
-        while(!ps.evtQueue.empty() && ps.evtQueue.front() <= evi){
+        int centSize = (int)centIdx[CentralityIndex].size();
+        while(!ps.evtQueue.empty() && ps.evtQueue.front() == evi){
           ps.offset += ps.candCounts.front();
           ps.candCounts.pop_front();
           ps.evtQueue.pop_front();
-          if(ps.nextPtr < (int)centIdx[CentralityIndex].size()){
-            int mixIdx = centIdx[CentralityIndex][ps.nextPtr++];
+          if(centSize > 0){
+            int mixIdx = centIdx[CentralityIndex][ps.nextPtr % centSize];
+            ps.nextPtr++;
             em->getEvent(mixIdx);
             int n = em->nPFpart;
             ps.evtQueue.push_back(mixIdx);
