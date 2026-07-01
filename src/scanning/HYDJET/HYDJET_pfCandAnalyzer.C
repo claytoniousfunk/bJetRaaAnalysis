@@ -1356,13 +1356,13 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       // number of candidates to sample per cone = multiplicity of current event
       int NCandidatesToSample = em->nPFpart;
 
-      // pre-load N_generatedPseudoJets same-centrality events into an in-memory pool
+      // pre-load N_mixedEventsInPool same-centrality events into an in-memory pool
       // before the cone loop: O(N_cones) getEvent() calls instead of O(N_cones * nPFpart)
       std::vector<double> pool_pfPt, pool_pfEta, pool_pfPhi;
       if(doEventMixing){
 	int eventsInPool = 0;
 	int jPool = 0;
-	while(eventsInPool < N_generatedPseudoJets && jPool < NEvents){
+	while(eventsInPool < N_mixedEventsInPool && jPool < NEvents){
 	  int mixedEventIndex = (evi + jPool + 1) % NEvents;
 	  em->getEvent(mixedEventIndex);
 	  if(getCentBin(em->hiBin - hiBinShift) != CentralityIndex){ jPool++; continue; }
@@ -1380,7 +1380,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       int poolSize = (int)pool_pfPt.size();
       std::mt19937 rng(std::random_device{}());
 
-      for(int k = 0; k < N_generatedPseudoJets; k++){
+      for(int k = 0; k < N_mixedEventsInPool; k++){
 
 	double randEta_k = 3.2*randomGenerator->Rndm() - 1.6;
 	double randPhi_k = 2*pi*randomGenerator->Rndm() - pi;

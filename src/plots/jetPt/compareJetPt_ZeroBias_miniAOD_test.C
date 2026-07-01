@@ -18,7 +18,8 @@ void compareJetPt_ZeroBias_miniAOD_test()
     gStyle->SetPadTickX(1); gStyle->SetPadTickY(1);
 
     const char* fTestPath =
-        "/home/clayton/Downloads/pp_scan_output_1.root";
+        "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/pp/"
+        "pp_MinBias_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-7-1.root";
     const char* fRefPath =
         "/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/"
         "scanningOutput/pp/latest/"

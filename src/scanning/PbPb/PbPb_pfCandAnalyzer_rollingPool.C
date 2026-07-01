@@ -188,7 +188,7 @@ TH1D *h_nPFcand[NCentralityIndices];
 TH1D *h_nPFcandCS[NCentralityIndices];
 
 ///////////////////////  start the program
-void PbPb_pfCandAnalyzer(int group = 1){
+void PbPb_pfCandAnalyzer_rollingPool(int group = 1){
 
   if(fillMu5){
     muPtCut = 7.0;
@@ -572,6 +572,57 @@ void PbPb_pfCandAnalyzer(int group = 1){
     int NJets = em->recoJetTree->GetEntries();
     cout << "     Number of jets = " << NJets << endl;
 
+    // --- centrality pre-index ---
+    // Open a second handle to the same file so we read hiEvtAnalyzer/HiTree
+    // without any friend trees attached (avoids loading PF candidates).
+    TFile* f_preindex = TFile::Open(input.c_str());
+    TTree* hiTree_preindex = (TTree*) f_preindex->Get("hiEvtAnalyzer/HiTree");
+    hiTree_preindex->SetBranchStatus("*", 0);
+    hiTree_preindex->SetBranchStatus("hiBin", 1);
+    Int_t hiBin_preindex = 0;
+    hiTree_preindex->SetBranchAddress("hiBin", &hiBin_preindex);
+    std::vector<std::vector<int>> centIdx(NCentralityIndices);
+    cout << "     Building centrality index..." << endl;
+    for(int k = 0; k < NEvents; k++){
+      hiTree_preindex->GetEntry(k);
+      int ci = getCentBin(hiBin_preindex);
+      if(ci >= 0) centIdx[ci].push_back(k);
+    }
+    f_preindex->Close();
+    cout << "     Centrality index built." << endl;
+
+    // --- per-centrality rolling pool state ---
+    struct PoolState {
+      std::deque<int>    evtQueue;   // event indices currently in pool
+      std::deque<int>    candCounts; // nPFpart for each event in pool
+      std::vector<float> pfPt, pfEta, pfPhi;
+      int offset  = 0; // start of valid data in flat vectors
+      int nextPtr = 0; // next position in centIdx[ci] to load
+    };
+    std::vector<PoolState> pools(NCentralityIndices);
+
+    // --- pre-fill each per-centrality pool ---
+    if(doEventMixing){
+      cout << "     Pre-filling mixed-event pools..." << endl;
+      for(int ci = 0; ci < NCentralityIndices; ci++){
+        auto& ps = pools[ci];
+        while((int)ps.evtQueue.size() < N_mixedEventsInPool &&
+              ps.nextPtr < (int)centIdx[ci].size()){
+          int mixIdx = centIdx[ci][ps.nextPtr++];
+          em->getEvent(mixIdx);
+          int n = em->nPFpart;
+          ps.evtQueue.push_back(mixIdx);
+          ps.candCounts.push_back(n);
+          for(int l = 0; l < n; l++){
+            ps.pfPt.push_back(em->pfPt->at(l));
+            ps.pfEta.push_back(em->pfEta->at(l));
+            ps.pfPhi.push_back(em->pfPhi->at(l));
+          }
+        }
+      }
+      cout << "     Pools pre-filled." << endl;
+    }
+
     // define event filters
     if(doSingleMuonSample){
       em->regEventFilter(NeventFilters_SingleMuon, eventFilters_SingleMuon);
@@ -786,27 +837,38 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
       int NCandidatesToSample = em->nPFpart;
 
-      // pre-load mixed-event PF candidates from same-centrality events into a pool
-      std::vector<double> pool_pfPt, pool_pfEta, pool_pfPhi;
+      // rolling-window pool: slide past current event if needed, then restore
       if(doEventMixing){
-	int eventsInPool = 0;
-	int jPool = 0;
-	while(eventsInPool < N_mixedEventsInPool && jPool < NEvents){
-	  int mixedEventIndex = (evi + jPool + 1) % NEvents;
-	  em->getEvent(mixedEventIndex);
-	  if(getCentBin(em->hiBin) != CentralityIndex){ jPool++; continue; }
-	  for(int l = 0; l < em->nPFpart; l++){
-	    pool_pfPt.push_back(em->pfPt->at(l));
-	    pool_pfEta.push_back(em->pfEta->at(l));
-	    pool_pfPhi.push_back(em->pfPhi->at(l));
-	  }
-	  eventsInPool++;
-	  jPool++;
-	}
-	em->getEvent(evi); // restore current event
+        auto& ps = pools[CentralityIndex];
+        while(!ps.evtQueue.empty() && ps.evtQueue.front() <= evi){
+          ps.offset += ps.candCounts.front();
+          ps.candCounts.pop_front();
+          ps.evtQueue.pop_front();
+          if(ps.nextPtr < (int)centIdx[CentralityIndex].size()){
+            int mixIdx = centIdx[CentralityIndex][ps.nextPtr++];
+            em->getEvent(mixIdx);
+            int n = em->nPFpart;
+            ps.evtQueue.push_back(mixIdx);
+            ps.candCounts.push_back(n);
+            for(int l = 0; l < n; l++){
+              ps.pfPt.push_back(em->pfPt->at(l));
+              ps.pfEta.push_back(em->pfEta->at(l));
+              ps.pfPhi.push_back(em->pfPhi->at(l));
+            }
+          }
+          em->getEvent(evi); // restore current event
+        }
+        // periodic compaction to prevent unbounded vector growth
+        if(ps.offset > 2000000){
+          ps.pfPt.erase(ps.pfPt.begin(), ps.pfPt.begin() + ps.offset);
+          ps.pfEta.erase(ps.pfEta.begin(), ps.pfEta.begin() + ps.offset);
+          ps.pfPhi.erase(ps.pfPhi.begin(), ps.pfPhi.begin() + ps.offset);
+          ps.offset = 0;
+        }
       }
 
-      int poolSize = (int)pool_pfPt.size();
+      auto& ps_ref = pools[CentralityIndex];
+      int poolSize = (int)ps_ref.pfPt.size() - ps_ref.offset;
       std::mt19937 rng(std::random_device{}());
       double pi_pfcand = TMath::Pi();
       double dR_max_pfcand = 0.4;
@@ -819,12 +881,12 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 	if(doEventMixing){
 	  if(poolSize > 0){
-	    std::uniform_int_distribution<int> poolDist(0, poolSize - 1);
+	    std::uniform_int_distribution<int> poolDist(ps_ref.offset, ps_ref.offset + poolSize - 1);
 	    for(int s = 0; s < NCandidatesToSample; s++){
 	      int idx = poolDist(rng);
-	      double pfPt_l  = pool_pfPt[idx];
-	      double pfEta_l = pool_pfEta[idx];
-	      double pfPhi_l = pool_pfPhi[idx];
+	      double pfPt_l  = ps_ref.pfPt[idx];
+	      double pfEta_l = ps_ref.pfEta[idx];
+	      double pfPhi_l = ps_ref.pfPhi[idx];
 	      double dR_kl = getDr(randEta_k, randPhi_k, pfEta_l, pfPhi_l);
 	      if(pfPt_l > pseudoJetCandPt_min && dR_kl < dR_max_pfcand){
 		h_pfPt[0]->Fill(pfPt_l, w);
@@ -858,12 +920,12 @@ void PbPb_pfCandAnalyzer(int group = 1){
       if(doFastJetClustering){
         std::vector<fastjet::PseudoJet> fjInputs;
         if(doEventMixing && poolSize > 0){
-          std::uniform_int_distribution<int> poolDist(0, poolSize - 1);
+          std::uniform_int_distribution<int> poolDist(ps_ref.offset, ps_ref.offset + poolSize - 1);
           for(int s = 0; s < NCandidatesToSample; s++){
             int idx = poolDist(rng);
-            double pt  = pool_pfPt[idx];
-            double eta = pool_pfEta[idx];
-            double phi = pool_pfPhi[idx];
+            double pt  = ps_ref.pfPt[idx];
+            double eta = ps_ref.pfEta[idx];
+            double phi = ps_ref.pfPhi[idx];
             if(pt < pseudoJetCandPt_min) continue;
             double px = pt * TMath::Cos(phi);
             double py = pt * TMath::Sin(phi);

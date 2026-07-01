@@ -1,5 +1,5 @@
 // Fake-jet subtraction: h_signal = h_same - h_mixed, both normalized by the
-// sum of event weights (proxy: h_pseudoJetPt integral / N_generatedPseudoJets).
+// sum of event weights (proxy: h_pseudoJetPt integral / N_mixedEventsInPool).
 // Produces per-centrality plots of same-event, mixed-event, and signal spectra,
 // plus the signal fraction (signal / same-event).
 // Usage: root -l -q 'plotJetPt_fakeJetSubtraction.C'
@@ -16,7 +16,7 @@ const char *outDir = "../../../figures/jetPt/";
 
 const double pTlo = 0.;
 const double pThi = 200.;
-const int N_genPJ = 100;  // N_generatedPseudoJets
+const int N_genPJ = 100;  // N_mixedEventsInPool
 
 const int NCentBins = 17;
 const char *centLabel[NCentBins] = {

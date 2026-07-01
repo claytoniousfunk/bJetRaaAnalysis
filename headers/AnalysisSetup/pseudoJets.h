@@ -4,7 +4,7 @@ bool doEventMixing = true;
 bool doConstituentSubtraction = false; // true = pfcandAnalyzerCS (CS applied at particle level), false = pfcandAnalyzer + manual rho subtraction
 bool doFastJetClustering = true;      // true = run anti-kT R=0.4 on PF candidates via FastJet (requires -DDO_FASTJET at compile time)
 
-int N_generatedPseudoJets = 100;
+int N_mixedEventsInPool = 100;
 
 double pseudoJetCandPt_min = 0.0;
 

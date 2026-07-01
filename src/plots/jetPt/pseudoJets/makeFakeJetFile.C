@@ -6,7 +6,7 @@
 //
 // Source: data-driven MinBias mixed-event scan (PbPb data, not HYDJET MC).
 // The FastJet clustering runs once per real event on a sample of NCandidatesToSample
-// PF candidates drawn from a pool of N_generatedPseudoJets=100 mixed events.
+// PF candidates drawn from a pool of N_mixedEventsInPool=100 mixed events.
 // Each event therefore contributes one clustering result to h_fastJetPt_JEC_C{i},
 // so N_events = h_vz_C{i}->Integral() is the correct denominator.
 //
