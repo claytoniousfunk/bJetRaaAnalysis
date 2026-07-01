@@ -178,7 +178,7 @@ void pp_scan(int group = 1){
 
   std::string inputFileList = "";
   if(doSingleMuonSample) inputFileList = "../../../fileNames/fileNames_pp_SingleMuon.txt";
-  else if(doMinBiasSample) inputFileList = "../../../fileNames/fileNames_pp_ZeroBias_miniAOD_test.txt";
+  else if(doMinBiasSample) inputFileList = "../../../fileNames/fileNames_pp_ZeroBias1_test.txt";
   else if(doHighEGJetSample) inputFileList = "../../../fileNames/fileNames_pp_HighEGJet.txt";
 
   std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
