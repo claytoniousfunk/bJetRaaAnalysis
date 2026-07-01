@@ -24,6 +24,7 @@
 #include <TCut.h>
 #include "TDatime.h"
 #include <vector>
+#include <deque>
 #include "TCanvas.h"
 #include <dirent.h>
 #include <stdio.h>
