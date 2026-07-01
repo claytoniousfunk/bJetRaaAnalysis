@@ -184,6 +184,8 @@ TH1D *h_pfPt[NCentralityIndices];
 TH1D *h_pseudoJetPt[NCentralityIndices];
 TH1D *h_fastJetPt[NCentralityIndices];
 TH1D *h_fastJetPt_JEC[NCentralityIndices];
+TH1D *h_nPFcand[NCentralityIndices];
+TH1D *h_nPFcandCS[NCentralityIndices];
 
 ///////////////////////  start the program
 void PbPb_pfCandAnalyzer(int group = 1){
@@ -393,6 +395,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_pseudoJetPt[i] = new TH1D(Form("h_pseudoJetPt_C%i",i),Form("PseudoJet pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt[i] = new TH1D(Form("h_fastJetPt_C%i",i),Form("FastJet anti-kT pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_JEC[i] = new TH1D(Form("h_fastJetPt_JEC_C%i",i),Form("FastJet anti-kT pT (JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_nPFcand[i]   = new TH1D(Form("h_nPFcand_C%i",i),  Form("N PF cands per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
+	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
       }
       else{
 	// ---------------------- event histograms --------------------------------
@@ -447,6 +451,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_pseudoJetPt[i] = new TH1D(Form("h_pseudoJetPt_C%i",i),Form("PseudoJet pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt[i] = new TH1D(Form("h_fastJetPt_C%i",i),Form("FastJet anti-kT pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_JEC[i] = new TH1D(Form("h_fastJetPt_JEC_C%i",i),Form("FastJet anti-kT pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_nPFcand[i]   = new TH1D(Form("h_nPFcand_C%i",i),  Form("N PF cands per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
+	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
       }
       // sumw2 commands
       h_NJetPerEvent[i]->Sumw2();
@@ -494,6 +500,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_pseudoJetPt[i]->Sumw2();
       h_fastJetPt[i]->Sumw2();
       h_fastJetPt_JEC[i]->Sumw2();
+      h_nPFcand[i]->Sumw2();
+      h_nPFcandCS[i]->Sumw2();
 
       // loop through jet pt indices
       for(int j = 0; j < NJetPtIndices; j++){
@@ -553,6 +561,11 @@ void PbPb_pfCandAnalyzer(int group = 1){
     if(doConstituentSubtraction) em->loadParticleFlowAnalyzer("pfcandAnalyzerCS");
     else                         em->loadParticleFlowAnalyzer("pfcandAnalyzer");
     cout << "	Variables initilized!" << endl << endl ;
+    TTree* pfTreeStd_raw = (TTree*) f->Get("pfcandAnalyzer/pfTree");
+    TTree* pfTreeCS_raw  = (TTree*) f->Get("pfcandAnalyzerCS/pfTree");
+    int nPFcand_std = 0, nPFcand_cs = 0;
+    if(pfTreeStd_raw) pfTreeStd_raw->SetBranchAddress("nPFpart", &nPFcand_std);
+    if(pfTreeCS_raw)  pfTreeCS_raw ->SetBranchAddress("nPFpart", &nPFcand_cs);
     int NEvents = em->evtTree->GetEntries();
     cout << "	Number of events = " << NEvents << endl;
     //int NJets = em->recoJetTree->GetEntries();
@@ -607,7 +620,9 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 
       em->getEvent(evi); // load event info from eventMap
-    
+      if(pfTreeStd_raw) pfTreeStd_raw->GetEntry(evi);
+      if(pfTreeCS_raw)  pfTreeCS_raw ->GetEntry(evi);
+
       if(evi == 0) {
 	std::cout << "Processing events...\n";
       }
@@ -668,6 +683,11 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_vz[0]->Fill(em->vz,w);
       h_vz[CentralityIndex]->Fill(em->vz,w);
       h_hiBin->Fill(em->hiBin,w);
+
+      h_nPFcand[0]->Fill(nPFcand_std, w);
+      h_nPFcand[CentralityIndex]->Fill(nPFcand_std, w);
+      h_nPFcandCS[0]->Fill(nPFcand_cs, w);
+      h_nPFcandCS[CentralityIndex]->Fill(nPFcand_cs, w);
 
       if(em->HLT_HIL3Mu12_v1 == 1){
 	h_vz_triggerOn[0]->Fill(em->vz,w);
@@ -1364,6 +1384,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_pseudoJetPt[i]->Write();
       h_fastJetPt[i]->Write();
       h_fastJetPt_JEC[i]->Write();
+      h_nPFcand[i]->Write();
+      h_nPFcandCS[i]->Write();
 
       for(int j = 0; j < NJetPtIndices; j++){
 

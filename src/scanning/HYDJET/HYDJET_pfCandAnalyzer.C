@@ -310,6 +310,8 @@ TH1D *h_pfPt[NCentralityIndices];
 TH1D *h_pseudoJetPt[NCentralityIndices];
 TH1D *h_fastJetPt[NCentralityIndices];
 TH1D *h_fastJetPt_JEC[NCentralityIndices];
+TH1D *h_nPFcand[NCentralityIndices];
+TH1D *h_nPFcandCS[NCentralityIndices];
 
 void HYDJET_pfCandAnalyzer(int group = 1){
 
@@ -540,6 +542,8 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	h_pseudoJetPt[i] = new TH1D(Form("h_pseudoJetPt_C%i",i),Form("PseudoJet pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt[i] = new TH1D(Form("h_fastJetPt_C%i",i),Form("FastJet anti-kT pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_JEC[i] = new TH1D(Form("h_fastJetPt_JEC_C%i",i),Form("FastJet anti-kT pT (JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_nPFcand[i]   = new TH1D(Form("h_nPFcand_C%i",i),  Form("N PF cands per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
+	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
 
 	// fill templates
 
@@ -682,6 +686,8 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	h_pseudoJetPt[i] = new TH1D(Form("h_pseudoJetPt_C%i",i),Form("PseudoJet pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt[i] = new TH1D(Form("h_fastJetPt_C%i",i),Form("FastJet anti-kT pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_JEC[i] = new TH1D(Form("h_fastJetPt_JEC_C%i",i),Form("FastJet anti-kT pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_nPFcand[i]   = new TH1D(Form("h_nPFcand_C%i",i),  Form("N PF cands per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
+	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
 
 	// fill templates
 	for(int t = 0; t < NTemplateIndices; t++){
@@ -824,6 +830,8 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       h_pseudoJetPt[i]->Sumw2();
       h_fastJetPt[i]->Sumw2();
       h_fastJetPt_JEC[i]->Sumw2();
+      h_nPFcand[i]->Sumw2();
+      h_nPFcandCS[i]->Sumw2();
 
       for(int t = 0; t < NTemplateIndices; t++){
 	// allJets
@@ -1127,6 +1135,11 @@ void HYDJET_pfCandAnalyzer(int group = 1){
     cout << "     Number of jets = " << NJets << endl;
     if(doConstituentSubtraction) em->loadParticleFlowAnalyzer("pfcandAnalyzerCS");
     else                         em->loadParticleFlowAnalyzer("pfcandAnalyzer");
+    TTree* pfTreeStd_raw = (TTree*) f->Get("pfcandAnalyzer/pfTree");
+    TTree* pfTreeCS_raw  = (TTree*) f->Get("pfcandAnalyzerCS/pfTree");
+    int nPFcand_std = 0, nPFcand_cs = 0;
+    if(pfTreeStd_raw) pfTreeStd_raw->SetBranchAddress("nPFpart", &nPFcand_std);
+    if(pfTreeCS_raw)  pfTreeCS_raw ->SetBranchAddress("nPFpart", &nPFcand_cs);
 
     // define event filters
     em->regEventFilter(NeventFilters, eventFilters);
@@ -1207,6 +1220,8 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       if(evi == 0) cout << "Processing events..." << endl;
 
       em->getEvent(evi); // load event info from eventMap
+      if(pfTreeStd_raw) pfTreeStd_raw->GetEntry(evi);
+      if(pfTreeCS_raw)  pfTreeCS_raw ->GetEntry(evi);
 
       if((100*evi / NEvents) % 5 == 0 && (100*evi / NEvents) > evi_frac){
 
@@ -1289,7 +1304,12 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       }
 
       h_hiBin->Fill(hiBin_shifted,w);
-    
+
+      h_nPFcand[0]->Fill(nPFcand_std, w);
+      h_nPFcand[CentralityIndex]->Fill(nPFcand_std, w);
+      h_nPFcandCS[0]->Fill(nPFcand_cs, w);
+      h_nPFcandCS[CentralityIndex]->Fill(nPFcand_cs, w);
+
       int matchFlag[10] = {0,0,0,0,0,0,0,0,0,0};
       int matchFlagR[10] = {0,0,0,0,0,0,0,0,0,0};
 
@@ -2989,6 +3009,8 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       h_pseudoJetPt[i]->Write();
       h_fastJetPt[i]->Write();
       h_fastJetPt_JEC[i]->Write();
+      h_nPFcand[i]->Write();
+      h_nPFcandCS[i]->Write();
 
       for(int t = 0; t < NTemplateIndices; t++){
 	// allJets

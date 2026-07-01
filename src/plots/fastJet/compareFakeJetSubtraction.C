@@ -54,24 +54,30 @@ void drawCentComparison(TH1D* hMB, TH1D* hDataSub, TH1D* hHYSub,
     hMB->GetYaxis()->SetTitleOffset(1.3);
     hMB->GetYaxis()->SetLabelSize(0.04 * sfUp);
 
-    TH1D* hRatio = (TH1D*) hDataSub->Clone("hRatio_tmp");
-    hRatio->SetDirectory(nullptr);
-    hRatio->Divide(hHYSub);
-    hRatio->SetLineColor(kBlack); hRatio->SetLineWidth(2); hRatio->SetLineStyle(1);
-    hRatio->SetMarkerStyle(20);   hRatio->SetMarkerSize(0.7);
-    hRatio->GetXaxis()->SetRangeUser(xLo, xHi);
-    hRatio->SetTitle("");
-    hRatio->GetXaxis()->SetTitle("Jet p_{T} [GeV]");
-    hRatio->GetXaxis()->SetTitleSize(0.05 * sfDn);
-    hRatio->GetXaxis()->SetTitleOffset(1.0);
-    hRatio->GetXaxis()->SetLabelSize(0.04 * sfDn);
-    hRatio->GetYaxis()->SetTitle("Data / HYDJET");
-    hRatio->GetYaxis()->SetTitleSize(0.045 * sfDn);
-    hRatio->GetYaxis()->SetTitleOffset(0.9);
-    hRatio->GetYaxis()->SetLabelSize(0.04 * sfDn);
-    hRatio->GetYaxis()->SetNdivisions(504);
-    hRatio->SetMaximum(2.0);
-    hRatio->SetMinimum(0.);
+    TH1D* hRatioData = (TH1D*) hDataSub->Clone("hRatioData_tmp");
+    hRatioData->SetDirectory(nullptr);
+    hRatioData->Divide(hMB);
+    hRatioData->SetLineColor(kAzure+1); hRatioData->SetLineWidth(2); hRatioData->SetLineStyle(1);
+
+    TH1D* hRatioHY = (TH1D*) hHYSub->Clone("hRatioHY_tmp");
+    hRatioHY->SetDirectory(nullptr);
+    hRatioHY->Divide(hMB);
+    hRatioHY->SetLineColor(kRed); hRatioHY->SetLineWidth(2); hRatioHY->SetLineStyle(2);
+
+    for(TH1D* h : {hRatioData, hRatioHY}) h->GetXaxis()->SetRangeUser(xLo, xHi);
+
+    hRatioData->SetTitle("");
+    hRatioData->GetXaxis()->SetTitle("Jet p_{T} [GeV]");
+    hRatioData->GetXaxis()->SetTitleSize(0.05 * sfDn);
+    hRatioData->GetXaxis()->SetTitleOffset(1.0);
+    hRatioData->GetXaxis()->SetLabelSize(0.04 * sfDn);
+    hRatioData->GetYaxis()->SetTitle("sub. / raw");
+    hRatioData->GetYaxis()->SetTitleSize(0.045 * sfDn);
+    hRatioData->GetYaxis()->SetTitleOffset(1.0);
+    hRatioData->GetYaxis()->SetLabelSize(0.04 * sfDn);
+    hRatioData->GetYaxis()->SetNdivisions(504);
+    hRatioData->SetMaximum(1.1);
+    hRatioData->SetMinimum(0.);
 
     TCanvas* c = new TCanvas("c_cent", "", 600, 700);
 
@@ -105,14 +111,22 @@ void drawCentComparison(TH1D* hMB, TH1D* hDataSub, TH1D* hHYSub,
     pDn->SetTickx(1); pDn->SetTicky(1);
     pDn->Draw(); pDn->cd();
 
-    hRatio->Draw("ep");
+    hRatioData->Draw("hist");
+    hRatioHY->Draw("hist same");
     TLine* line = new TLine(xLo, 1., xHi, 1.);
     line->SetLineStyle(2); line->SetLineColor(kGray+1); line->SetLineWidth(1);
     line->Draw();
 
+    TLegend* lgRatio = new TLegend(0.26, 0.72, 0.90, 0.92);
+    lgRatio->SetBorderSize(0); lgRatio->SetFillStyle(0); lgRatio->SetTextSize(0.038 * sfDn);
+    lgRatio->SetNColumns(2);
+    lgRatio->AddEntry(hRatioData, "Data sub.", "l");
+    lgRatio->AddEntry(hRatioHY,  "HYDJET sub.", "l");
+    lgRatio->Draw();
+
     c->SaveAs(outPath);
     delete c;
-    delete hRatio;
+    delete hRatioData; delete hRatioHY;
 }
 
 void compareFakeJetSubtraction()
@@ -223,7 +237,7 @@ void compareFakeJetSubtraction()
     TLegend* lgSum = new TLegend(0.20, 0.68, 0.55, 0.90);
     lgSum->SetBorderSize(0); lgSum->SetTextSize(0.042);
     for(int ci = 0; ci < 4; ci++){
-        if(hRatios[ci]) lgSum->AddEntry(hRatios[ci], cents[ci].label, "l");
+        if(hRatios[ci]) lgSum->AddEntry(hRatios[ci], cents[ci+1].label, "l");
     }
     lgSum->Draw();
 
