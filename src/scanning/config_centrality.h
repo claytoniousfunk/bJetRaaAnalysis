@@ -7,16 +7,18 @@
 
 #define CENT_SCHEME CENT_NOMINAL
 
+#include "../../headers/AnalysisSetup/common.h"
+
 #if CENT_SCHEME == CENT_NOMINAL
-#include "../../headers/AnalysisSetupV2p3.h"
+#include "../../headers/AnalysisSetup/centrality_4CentBins.h"
 #include "../../headers/functions/getCentBin.h"
 #define CENT_SCHEME_SUFFIX ""
 #elif CENT_SCHEME == CENT_ULTRAFINE
-#include "../../headers/AnalysisSetupV2p4.h"
+#include "../../headers/AnalysisSetup/centrality_ultraFineCentBins.h"
 #include "../../headers/functions/getCentBin_V2p4.h"
 #define CENT_SCHEME_SUFFIX "_ultraFineCentBins"
 #elif CENT_SCHEME == CENT_PERIPH90
-#include "../../headers/AnalysisSetupV2p5.h"
+#include "../../headers/AnalysisSetup/centrality_periph90CentBins.h"
 #include "../../headers/functions/getCentBin.h"
 #define CENT_SCHEME_SUFFIX "_periph90CentBins"
 #endif
