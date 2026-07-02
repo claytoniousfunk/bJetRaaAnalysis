@@ -23,8 +23,7 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
 				   bool fillMu12,
 				   double pseudoJetCandPt_min,
 				   bool doEventMixing,
-				   bool doConstituentSubtraction,
-				   double subleadingPFCandPt_min)
+				   bool doConstituentSubtraction)
 {
 
   TString result = "output";
@@ -68,7 +67,6 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   if(doConstituentSubtraction) result.Append("_pfCandCS");
   else result.Append("_pfCand");
   result.Append(Form("_pseudoJetCandPtMin-%1.1f",pseudoJetCandPt_min));
-  result.Append(Form("_subleadingPFCandPtMin-%2.0f",subleadingPFCandPt_min));
 
   TDatime dt;
   result.Append(Form("_%i-%i-%i",dt.GetYear(),dt.GetMonth(),dt.GetDay()));

@@ -272,8 +272,7 @@ void PbPb_pfCandAnalyzer_rollingPool(int group = 1){
 						   fillMu12,
 						   pseudoJetCandPt_min,
 						   doEventMixing,
-						   doConstituentSubtraction,
-						   subleadingPFCandPt_min);
+						   doConstituentSubtraction);
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
