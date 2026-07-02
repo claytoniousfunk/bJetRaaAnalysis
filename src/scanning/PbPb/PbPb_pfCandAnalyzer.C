@@ -560,8 +560,11 @@ void PbPb_pfCandAnalyzer(int group = 1){
     if(doConstituentSubtraction) em->loadParticleFlowAnalyzer("pfcandAnalyzerCS");
     else                         em->loadParticleFlowAnalyzer("pfcandAnalyzer");
     cout << "	Variables initilized!" << endl << endl ;
-    TTree* pfTreeStd_raw = (TTree*) f->Get("pfcandAnalyzer/pfTree");
-    TTree* pfTreeCS_raw  = (TTree*) f->Get("pfcandAnalyzerCS/pfTree");
+    // Open a separate file handle so these branch addresses don't overwrite
+    // the ones em->loadParticleFlowAnalyzer() set for em->nPFpart/pfPt/etc.
+    TFile* f_pfRaw = TFile::Open(input.c_str());
+    TTree* pfTreeStd_raw = (TTree*) f_pfRaw->Get("pfcandAnalyzer/pfTree");
+    TTree* pfTreeCS_raw  = (TTree*) f_pfRaw->Get("pfcandAnalyzerCS/pfTree");
     int nPFcand_std = 0, nPFcand_cs = 0;
     if(pfTreeStd_raw) pfTreeStd_raw->SetBranchAddress("nPFpart", &nPFcand_std);
     if(pfTreeCS_raw)  pfTreeCS_raw ->SetBranchAddress("nPFpart", &nPFcand_cs);
@@ -1402,6 +1405,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
     }
 
     wf->Close();
+    f_pfRaw->Close();
     return;
     // END WRITE
 
