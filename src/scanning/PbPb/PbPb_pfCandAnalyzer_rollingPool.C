@@ -561,8 +561,12 @@ void PbPb_pfCandAnalyzer_rollingPool(int group = 1){
     if(doConstituentSubtraction) em->loadParticleFlowAnalyzer("pfcandAnalyzerCS");
     else                         em->loadParticleFlowAnalyzer("pfcandAnalyzer");
     cout << "	Variables initilized!" << endl << endl ;
-    TTree* pfTreeStd_raw = (TTree*) f->Get("pfcandAnalyzer/pfTree");
-    TTree* pfTreeCS_raw  = (TTree*) f->Get("pfcandAnalyzerCS/pfTree");
+    // Open a separate file handle for the raw PF candidate counts so the branch
+    // address set here does not overwrite the one em->loadParticleFlowAnalyzer()
+    // placed on em->nPFpart (both would otherwise share the same TTree object).
+    TFile* f_pfRaw = TFile::Open(input.c_str());
+    TTree* pfTreeStd_raw = (TTree*) f_pfRaw->Get("pfcandAnalyzer/pfTree");
+    TTree* pfTreeCS_raw  = (TTree*) f_pfRaw->Get("pfcandAnalyzerCS/pfTree");
     int nPFcand_std = 0, nPFcand_cs = 0;
     if(pfTreeStd_raw) pfTreeStd_raw->SetBranchAddress("nPFpart", &nPFcand_std);
     if(pfTreeCS_raw)  pfTreeCS_raw ->SetBranchAddress("nPFpart", &nPFcand_cs);
@@ -1467,6 +1471,7 @@ void PbPb_pfCandAnalyzer_rollingPool(int group = 1){
     }
 
     wf->Close();
+    f_pfRaw->Close();
     return;
     // END WRITE
 
