@@ -37,7 +37,7 @@
 // jet uncertainty
 #include "../../../JetEnergyCorrections/JetUncertainty.h"
 // general analysis variables
-#include "../config_centrality.h"
+#include "../../../headers/config/config_centrality.h"
 // JERCorrection params
 #include "../../../headers/fitParameters/JERCorrectionParams_PYTHIA_mu12.h"
 TF1 *fitFxn_PYTHIA_JERCorrection;

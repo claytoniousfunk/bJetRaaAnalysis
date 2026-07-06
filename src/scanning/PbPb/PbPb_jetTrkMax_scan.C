@@ -35,7 +35,7 @@
 // jet corrector
 #include "../../../JetEnergyCorrections/JetCorrector.h"
 // general analysis variables
-#include "../config_centrality.h"
+#include "../../../headers/config/config_centrality.h"
 // eta-phi mask function
 #include "../../../headers/functions/etaPhiMask.h"
 // getDr function
