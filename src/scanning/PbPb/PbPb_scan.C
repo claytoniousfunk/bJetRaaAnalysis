@@ -193,7 +193,7 @@ void PbPb_scan(int group = 1){
 
   std::string inputFileList = "";
   if(doSingleMuonSample) inputFileList = "../../../fileNames/fileNames_HISingleMuon_HIRun2018A-04Apr2019-v1.txt";
-  else if(doMinBiasSample) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_partial.txt";
+  else if(doMinBiasSample) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1.txt";
   else if(doHardProbesSample) inputFileList = "../../../fileNames/fileNames_HIHardProbes_HIRun2018A-04Apr2019-v1_103X_dataRun2_Prompt_fixEcalADCToGeV_v1.txt";
   else{};
 
