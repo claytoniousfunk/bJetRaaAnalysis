@@ -16,3 +16,6 @@
 *.pdf
 *.png
 
+# generated SQLite catalog (rebuild with catalog/build_catalog.py)
+catalog/scan_catalog.db
+

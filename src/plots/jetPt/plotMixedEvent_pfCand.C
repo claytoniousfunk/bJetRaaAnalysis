@@ -12,9 +12,7 @@
 // Run from: src/plots/jetPt/
 
 const char *inFile =
-  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/"
-  "PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_"
-  "mixedEventPseudoJets_pfCand_pseudoJetCandPtMin-0.0_subleadingPFCandPtMin-15_2026-7-2.root";
+  "/home/clayton/Downloads/PbPb_pfCandAnalyzer_output_1.root";
 
 const char *outDir = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/";
 
@@ -175,7 +173,7 @@ void plotMixedEvent_pfCand()
 
   // --- Canvas 2: RandomCone pT ---
   drawCanvas(hRC, NCentBins,
-             "Random cones / event / GeV",
+             "Random cones / cone / GeV",
              true, false,
              "random cone R=0.4",
              "mixedEvent_pfCand_randomConePt.pdf");

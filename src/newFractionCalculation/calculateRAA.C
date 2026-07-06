@@ -1471,6 +1471,57 @@ void calculateRAA(){
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  // Pin each centrality's curve to 1 at the last (highest-pT) point, and overlay all four on one canvas.
+  int lastBin_pin = r_C1->GetNbinsX();
+
+  TH1D *r_C1_pin = (TH1D*) r_C1->Clone("r_C1_pin");
+  r_C1_pin->Scale(1./r_C1->GetBinContent(lastBin_pin));
+  TH1D *r_C2_pin = (TH1D*) r_C2->Clone("r_C2_pin");
+  r_C2_pin->Scale(1./r_C2->GetBinContent(lastBin_pin));
+  TH1D *r_C3_pin = (TH1D*) r_C3->Clone("r_C3_pin");
+  r_C3_pin->Scale(1./r_C3->GetBinContent(lastBin_pin));
+  TH1D *r_C4_pin = (TH1D*) r_C4->Clone("r_C4_pin");
+  r_C4_pin->Scale(1./r_C4->GetBinContent(lastBin_pin));
+
+  TH1D *R_C1_pin = (TH1D*) R_C1->Clone("R_C1_pin");
+  R_C1_pin->Scale(1./r_C1->GetBinContent(lastBin_pin));
+  TH1D *R_C2_pin = (TH1D*) R_C2->Clone("R_C2_pin");
+  R_C2_pin->Scale(1./r_C2->GetBinContent(lastBin_pin));
+  TH1D *R_C3_pin = (TH1D*) R_C3->Clone("R_C3_pin");
+  R_C3_pin->Scale(1./r_C3->GetBinContent(lastBin_pin));
+  TH1D *R_C4_pin = (TH1D*) R_C4->Clone("R_C4_pin");
+  R_C4_pin->Scale(1./r_C4->GetBinContent(lastBin_pin));
+
+  TCanvas *canv_pinned = new TCanvas("canv_pinned","canv_pinned",700,700);
+  canv_pinned->cd();
+  TPad *pad_pinned = new TPad("pad_pinned","pad_pinned",0,0,1,1);
+  pad_pinned->SetLeftMargin(0.2);
+  pad_pinned->SetBottomMargin(0.15);
+  pad_pinned->Draw();
+  pad_pinned->cd();
+  R_C1_pin->SetTitle("");
+  R_C1_pin->SetStats(0);
+  R_C1_pin->GetYaxis()->SetTitleOffset(2.0);
+  R_C1_pin->GetYaxis()->SetTitle("#frac{1}{#it{N}_{Z}^{PbPb}} #frac{d#it{N}_{jet}^{PbPb}}{d#it{p}_{T}} #scale[3.0]{/} #frac{1}{#it{N}_{Z}^{pp}} #frac{d#it{N}_{jet}^{pp}}{d#it{p}_{T}} (pinned to 1 at last point)");
+  R_C1_pin->GetXaxis()->SetTitle("Jet #it{p}_{T} [GeV]");
+  R_C1_pin->GetYaxis()->SetRangeUser(0,2.);
+  R_C1_pin->GetXaxis()->SetRangeUser(newAxis[0],newAxis[N_edge-1]);
+  R_C1_pin->Draw("e2");
+  r_C1_pin->Draw("same");
+  R_C2_pin->Draw("e2 same");
+  r_C2_pin->Draw("same");
+  R_C3_pin->Draw("e2 same");
+  r_C3_pin->Draw("same");
+  R_C4_pin->Draw("e2 same");
+  r_C4_pin->Draw("same");
+  li->SetLineStyle(7);
+  li->DrawLine(newAxis[0],1,newAxis[N_edge-1],1);
+  leg->Draw();
+
+  canv_pinned->SaveAs("../../figures/JetsPerZ/JetsPerZ_lightJets_pinned.pdf");
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   TCanvas *canv_prime_r = new TCanvas("canv_prime_r","canv_prime_r",700,700);
   canv_prime_r->cd();
   TPad *pad_prime_r = new TPad("pad_prime_r","pad_prime_r",0,0,1,1);

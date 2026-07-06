@@ -23,10 +23,9 @@ void compareJetPt_ZeroBias_miniAOD_test()
     const char* fRefPath =
         "/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/"
         "scanningOutput/pp/latest/"
-        "pp_MinBias_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_"
-        "WDecayFilter_2026-4-7.root";
+        "pp_MinBias_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-4-7.root";
     const char* outPath =
-        "/home/clayton/Documents/nuclear/GroupMeeting/figures/2026-06-30/"
+        "/home/clayton/Documents/nuclear/GroupMeeting/figures/2026-07-02/"
         "compareJetPt_ZeroBias_miniAOD_test.pdf";
 
     TFile* fTest = TFile::Open(fTestPath);
@@ -48,10 +47,17 @@ void compareJetPt_ZeroBias_miniAOD_test()
     hJet_test->Scale(1. / N_test);
     hJet_ref ->Scale(1. / N_ref);
 
-    // Ratio
-    TH1D* hRatio = (TH1D*) hJet_test->Clone("hRatio");
+    // Ratio — built by bin-center lookup since the two histograms have
+    // different ranges (test: 0–500, ref: 20–500), same 5 GeV bin width.
+    TH1D* hRatio = (TH1D*) hJet_ref->Clone("hRatio");
     hRatio->SetDirectory(nullptr);
-    hRatio->Divide(hJet_ref);
+    hRatio->Reset();
+    for(int b = 1; b <= hJet_ref->GetNbinsX(); b++){
+        double pt  = hJet_ref->GetXaxis()->GetBinCenter(b);
+        double ref = hJet_ref->GetBinContent(b);
+        double tst = hJet_test->GetBinContent(hJet_test->FindBin(pt));
+        hRatio->SetBinContent(b, ref > 0 ? tst / ref : 0.);
+    }
 
     // Style
     hJet_test->SetLineColor(kAzure+1); hJet_test->SetLineWidth(2); hJet_test->SetLineStyle(1);
@@ -66,7 +72,7 @@ void compareJetPt_ZeroBias_miniAOD_test()
     // Upper pad axes
     const double fUp = 0.65, fDn = 1. - fUp;
     const double sfUp = 1./fUp, sfDn = 1./fDn;
-    const double mL = 0.20, mR = 0.05;
+    const double mL = 0.27, mR = 0.05;
 
     double ymax = TMath::Max(hJet_test->GetMaximum(), hJet_ref->GetMaximum());
     hJet_test->SetMaximum(ymax * 5.);
@@ -86,7 +92,7 @@ void compareJetPt_ZeroBias_miniAOD_test()
     hRatio->GetXaxis()->SetTitleOffset(1.0);
     hRatio->GetXaxis()->SetLabelSize(0.04 * sfDn);
     hRatio->GetYaxis()->SetTitle("miniAOD / AOD ref.");
-    hRatio->GetYaxis()->SetTitleSize(0.045 * sfDn);
+    hRatio->GetYaxis()->SetTitleSize(0.035 * sfDn);
     hRatio->GetYaxis()->SetTitleOffset(0.9);
     hRatio->GetYaxis()->SetLabelSize(0.04 * sfDn);
     hRatio->GetYaxis()->SetNdivisions(504);
@@ -107,7 +113,7 @@ void compareJetPt_ZeroBias_miniAOD_test()
     TLegend* lg = new TLegend(0.38, 0.62, 0.93, 0.84);
     lg->SetBorderSize(0); lg->SetFillStyle(0); lg->SetTextSize(0.038 * sfUp);
     lg->AddEntry(hJet_test, "pp ZeroBias miniAOD (test, 1 file)", "l");
-    lg->AddEntry(hJet_ref,  "pp MinBias AOD reference",           "l");
+    lg->AddEntry(hJet_ref,  "pp ZeroBias AOD reference",          "l");
     lg->Draw();
 
     TLatex lat; lat.SetNDC();
