@@ -19,13 +19,13 @@ void compareJetPt_ZeroBias_miniAOD_test()
 
     const char* fTestPath =
         "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/pp/"
-        "pp_MinBias_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-7-1.root";
+        "pp_MinBias_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-7-6.root";
     const char* fRefPath =
         "/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/"
         "scanningOutput/pp/latest/"
         "pp_MinBias_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-4-7.root";
     const char* outPath =
-        "/home/clayton/Documents/nuclear/GroupMeeting/figures/2026-07-02/"
+        "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/jetPt/compare_ZeroBias_miniAOD/"
         "compareJetPt_ZeroBias_miniAOD_test.pdf";
 
     TFile* fTest = TFile::Open(fTestPath);
@@ -55,8 +55,11 @@ void compareJetPt_ZeroBias_miniAOD_test()
     for(int b = 1; b <= hJet_ref->GetNbinsX(); b++){
         double pt  = hJet_ref->GetXaxis()->GetBinCenter(b);
         double ref = hJet_ref->GetBinContent(b);
+	double err_ref = hJet_ref->GetBinError(b);
         double tst = hJet_test->GetBinContent(hJet_test->FindBin(pt));
+	double err_tst = hJet_test->GetBinError(hJet_test->FindBin(pt));
         hRatio->SetBinContent(b, ref > 0 ? tst / ref : 0.);
+	hRatio->SetBinError(b, ref > 0 ? (tst / ref)*sqrt(pow(err_tst/tst,2) + pow(err_ref/ref,2)) : 0.);
     }
 
     // Style
@@ -96,8 +99,8 @@ void compareJetPt_ZeroBias_miniAOD_test()
     hRatio->GetYaxis()->SetTitleOffset(0.9);
     hRatio->GetYaxis()->SetLabelSize(0.04 * sfDn);
     hRatio->GetYaxis()->SetNdivisions(504);
-    hRatio->SetMaximum(3.0);
-    hRatio->SetMinimum(0.);
+    hRatio->SetMaximum(1.5);
+    hRatio->SetMinimum(0.5);
 
     TCanvas* c = new TCanvas("c", "", 600, 700);
 
@@ -111,15 +114,15 @@ void compareJetPt_ZeroBias_miniAOD_test()
     hJet_ref ->Draw("hist same");
 
     TLegend* lg = new TLegend(0.38, 0.62, 0.93, 0.84);
-    lg->SetBorderSize(0); lg->SetFillStyle(0); lg->SetTextSize(0.038 * sfUp);
-    lg->AddEntry(hJet_test, "pp ZeroBias miniAOD (test, 1 file)", "l");
-    lg->AddEntry(hJet_ref,  "pp ZeroBias AOD reference",          "l");
+    lg->SetBorderSize(0); lg->SetFillStyle(0); lg->SetTextSize(0.05);
+    lg->AddEntry(hJet_test, "pp ZeroBias miniAOD", "l");
+    lg->AddEntry(hJet_ref,  "pp ZeroBias AOD",          "l");
     lg->Draw();
 
     TLatex lat; lat.SetNDC();
-    lat.SetTextSize(0.040 * sfUp);
+    lat.SetTextSize(0.05);
     lat.DrawLatex(0.22, 0.20, "pp 5.02 TeV  anti-k_{T} R=0.4");
-    lat.SetTextSize(0.034 * sfUp);
+    lat.SetTextSize(0.04);
     lat.DrawLatex(0.22, 0.13, Form("miniAOD N_{evt} = %.0f,  AOD N_{evt} = %.0f", N_test, N_ref));
 
     c->cd();
