@@ -12,9 +12,11 @@
 // Run from: src/plots/jetPt/
 
 const char *inFile =
-  "/home/clayton/Downloads/PbPb_pfCandAnalyzer_output_1.root";
+  "../../../rootFiles/scanningOuput/PbPb/"
+  "PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_"
+  "mixedEventPseudoJets_pfCand_pseudoJetCandPtMin-0.0_2026-7-7.root";
 
-const char *outDir = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/";
+const char *outDir = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/jetPt/pseudoJets/mixedEvent_pfCand/";
 
 const int NCentBins     = 5;
 const int N_pool        = 100;  // N_mixedEventsInPool

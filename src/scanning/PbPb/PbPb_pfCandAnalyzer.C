@@ -180,12 +180,18 @@ TH1D *h_Jet80HLT_Prescale[NCentralityIndices];
 TH1D *h_Jet100HLT[NCentralityIndices];
 TH1D *h_Jet100HLT_Prescale[NCentralityIndices];
 // ~~~~~~~~~ pfCand / FastJet histograms ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-TH1D *h_pfPt[NCentralityIndices];
-TH1D *h_pseudoJetPt[NCentralityIndices];
-TH1D *h_fastJetPt[NCentralityIndices];
-TH1D *h_fastJetPt_JEC[NCentralityIndices];
-TH1D *h_nPFcand[NCentralityIndices];
-TH1D *h_nPFcandCS[NCentralityIndices];
+TH1D     *h_pfPt[NCentralityIndices];
+TH1D     *h_pseudoJetPt[NCentralityIndices];
+TH1D     *h_fastJetPt[NCentralityIndices];
+TH1D     *h_fastJetPt_JEC[NCentralityIndices];
+TH1D     *h_nPFcand[NCentralityIndices];
+TH1D     *h_nPFcandCS[NCentralityIndices];
+// Random-cone eta/phi map: mean cone pT at each (eta,phi) cell.
+// Cell size ~0.1x0.1 — sub-cone resolution, enough stats per cell.
+// Used to build a local UE background map for FastJet jet subtraction.
+const int    NRC_EtaBins = 32;   // -1.6 to 1.6, width 0.1
+const int    NRC_PhiBins = 64;   // -pi to pi,   width ~0.098
+TProfile2D  *h_randConeEtaPhi[NCentralityIndices];
 
 ///////////////////////  start the program
 void PbPb_pfCandAnalyzer(int group = 1){
@@ -396,6 +402,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_fastJetPt_JEC[i] = new TH1D(Form("h_fastJetPt_JEC_C%i",i),Form("FastJet anti-kT pT (JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_nPFcand[i]   = new TH1D(Form("h_nPFcand_C%i",i),  Form("N PF cands per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
 	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
+	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
       }
       else{
 	// ---------------------- event histograms --------------------------------
@@ -452,6 +459,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_fastJetPt_JEC[i] = new TH1D(Form("h_fastJetPt_JEC_C%i",i),Form("FastJet anti-kT pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_nPFcand[i]   = new TH1D(Form("h_nPFcand_C%i",i),  Form("N PF cands per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
 	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
+	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
       }
       // sumw2 commands
       h_NJetPerEvent[i]->Sumw2();
@@ -501,6 +509,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_fastJetPt_JEC[i]->Sumw2();
       h_nPFcand[i]->Sumw2();
       h_nPFcandCS[i]->Sumw2();
+      h_randConeEtaPhi[i]->Sumw2();
 
       // loop through jet pt indices
       for(int j = 0; j < NJetPtIndices; j++){
@@ -852,6 +861,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 	h_pseudoJetPt[0]->Fill(pseudoJetPt_k, w);
 	h_pseudoJetPt[CentralityIndex]->Fill(pseudoJetPt_k, w);
+
+	// record cone pT at its (eta,phi) throw location for the UE map
+	h_randConeEtaPhi[0]->Fill(randEta_k, randPhi_k, pseudoJetPt_k, w);
+	h_randConeEtaPhi[CentralityIndex]->Fill(randEta_k, randPhi_k, pseudoJetPt_k, w);
 
       }
 
@@ -1388,6 +1401,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_fastJetPt_JEC[i]->Write();
       h_nPFcand[i]->Write();
       h_nPFcandCS[i]->Write();
+      h_randConeEtaPhi[i]->Write();
 
       for(int j = 0; j < NJetPtIndices; j++){
 

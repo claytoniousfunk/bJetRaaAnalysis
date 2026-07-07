@@ -29,7 +29,7 @@ void compareJetPt_pp_PbPb()
         "../../../rootFiles/scanningOuput/PbPb/"
         "PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_2026-7-6_ultraFineCentBins.root";
     const char* outPath =
-        "../../../figures/compareJetPt_pp_PbPb.pdf";
+        "../../../figures/jetPt/compareJetPt_pp_PbPb.pdf";
 
     TFile* fpp   = TFile::Open(fppPath);
     TFile* fPbPb = TFile::Open(fPbPbPath);
@@ -285,7 +285,7 @@ void compareJetPt_pp_PbPb()
     TLatex lat2; lat2.SetNDC(); lat2.SetTextSize(0.036);
     lat2.DrawLatex(0.14, 0.945, "5.02 TeV PbPb MinBias  anti-k_{T} R=0.4");
 
-    const char* outPath2 = "../../../figures/compareJetPt_pp_PbPb_ratioPrior.pdf";
+    const char* outPath2 = "../../../figures/jetPt/compareJetPt_pp_PbPb_ratioPrior.pdf";
     c2->SaveAs(outPath2);
     printf("Saved to %s\n", outPath2);
     delete c2;
