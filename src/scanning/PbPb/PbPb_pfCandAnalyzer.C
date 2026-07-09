@@ -307,8 +307,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 
     // Load random-cone UE maps (used for RC-subtracted fastJet pT)
-    // TODO: update path to the randConeEtaPhi file for the relevant scan
-    TFile *f_RC_maps = TFile::Open("PLACEHOLDER_PATH/PbPb_MinBias_Part1_randConeEtaPhi_ultraFineCentBins.root");
+    TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_randConeEtaPhi_ultraFineCentBins.root");
     for(int i = 0; i < NCentralityIndices; i++){
       f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%d", i), h_RC_map[i]);
       if(h_RC_map[i]) h_RC_map[i]->SetDirectory(nullptr);
