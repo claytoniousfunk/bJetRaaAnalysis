@@ -933,7 +933,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
             double fastJetPt_rcSub = jet.pt() - rcMeanPt;
 	        
             if(fastJetPt_rcSub > 0){
-	      std::cout << "event : " << evi << ", cent = " << CentralityIndex << ", jet.pt() = " << jet.pt() << ", rcMeanPt = " << rcMeanPt << ", jet.eta() = " << jet.eta() << "\n";
+	      std::cout << "event : " << evi << ", cent = " << CentralityIndex << ", jet.pt() = " << jet.pt() << ", rcMeanPt = " << rcMeanPt << ", jet.eta() = " << jet.eta() << ", jet.phi() = " << jet.phi() <<   "\n";
               h_fastJetPt_bkgSub_RC[0]->Fill(fastJetPt_rcSub, w);
               h_fastJetPt_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_rcSub, w);
             }
