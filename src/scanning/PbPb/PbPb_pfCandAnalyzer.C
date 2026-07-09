@@ -931,7 +931,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
             double rcMeanPt = h_RC_map[CentralityIndex]->GetBinContent(
                                 h_RC_map[CentralityIndex]->FindBin(jet.eta(), jet.phi()));
             double fastJetPt_rcSub = jet.pt() - rcMeanPt;
-	    std::cout << "jet.pt() = " << jet.pt() << ", rcMeanPt = " << rcMeanPt;
+	    std::cout << "cent = " << CentralityIndex << ", jet.pt() = " << jet.pt() << ", rcMeanPt = " << rcMeanPt << "\n";
 	    
             if(fastJetPt_rcSub > 0){
               h_fastJetPt_bkgSub_RC[0]->Fill(fastJetPt_rcSub, w);
