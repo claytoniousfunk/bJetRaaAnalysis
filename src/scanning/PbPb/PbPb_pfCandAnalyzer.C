@@ -922,7 +922,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
           h_fastJetPt[CentralityIndex]->Fill(jet.pt(), w);
           JEC.SetJetPT(jet.pt());
           JEC.SetJetEta(jet.eta());
-          JEC.SetJetPhi(jet.phi());
+          JEC.SetJetPhi(jet.phi_std());
           double fastJetPt_JEC = JEC.GetCorrectedPT();
           h_fastJetPt_JEC[0]->Fill(fastJetPt_JEC, w);
           h_fastJetPt_JEC[CentralityIndex]->Fill(fastJetPt_JEC, w);
@@ -933,7 +933,6 @@ void PbPb_pfCandAnalyzer(int group = 1){
             double fastJetPt_rcSub = jet.pt() - rcMeanPt;
 	        
             if(fastJetPt_rcSub > 0){
-	      std::cout << "event : " << evi << ", cent = " << CentralityIndex << ", jet.pt() = " << jet.pt() << ", rcMeanPt = " << rcMeanPt << ", jet.eta() = " << jet.eta() << ", jet.phi_std() = " << jet.phi_std() <<   "\n";
               h_fastJetPt_bkgSub_RC[0]->Fill(fastJetPt_rcSub, w);
               h_fastJetPt_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_rcSub, w);
             }
