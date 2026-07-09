@@ -1,53 +1,5 @@
 
 
-TH1D* stitchSamples_alt(TH1D *h_jetMB, TH1D *h_jet60, TH1D *h_jet80, TH1D *h_jet100,
-			bool isPP, bool isPbPb){
-
-  std::cout << "Stitching samples (alt)...\n";
-
-  TH1D *h_return = (TH1D*) h_jet100->Clone("h_return");
-  
-  TH1D *h_jet80_scaled = (TH1D*) h_jet80->Clone("h_jet80_scaled");
-  TH1D *h_jet60_scaled = (TH1D*) h_jet60->Clone("h_jet60_scaled");
-  TH1D *h_jetMB_scaled = (TH1D*) h_jetMB->Clone("h_jetMB_scaled");
-
-  h_jet80_scaled->Scale(2.2560173);
-  h_jet60_scaled->Scale(5.7724389);
-
-  double jetMB_pTmin = 60.;
-  double jet60_pTmin = 100;
-  double jet80_pTmin = 130;
-  double jet100_pTmin = 200;
-  double smallShift = 0.01;
-
-  if(!isPP){
-    jet60_pTmin = jet80_pTmin;
-  }
-
-  for(int i = 0; i < h_jet60->GetSize(); i++){
-    double pT = h_jet60->GetBinCenter(i);
-    if(pT < jet60_pTmin){
-      h_return->SetBinContent(i,h_jetMB_scaled->GetBinContent(i));
-      h_return->SetBinError(i,h_jetMB_scaled->GetBinError(i));
-    }
-    else if(pT > jet60_pTmin && pT < jet80_pTmin){
-      h_return->SetBinContent(i,h_jet60_scaled->GetBinContent(i));
-      h_return->SetBinError(i,h_jet60_scaled->GetBinError(i));
-    }
-    else if(pT > jet80_pTmin && pT < jet100_pTmin){
-      h_return->SetBinContent(i,h_jet80_scaled->GetBinContent(i));
-      h_return->SetBinError(i,h_jet80_scaled->GetBinError(i));
-    }
-    else if(pT > jet100_pTmin){
-      h_return->SetBinContent(i,h_jet100->GetBinContent(i));
-      h_return->SetBinError(i,h_jet100->GetBinError(i));
-    }
-    else{};
-    
-  }
-
-  return h_return;
-}
 
 
 TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_jet60, TH1D *h_jet80, TH1D *h_jet100,
@@ -58,17 +10,13 @@ TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_jet60, TH1D *h_jet80, TH1D *h_jet100,
   TH1D *h_return = (TH1D*) h_jet100->Clone("h_return");
 
   double jetMB_pTmin = 60.;
-  double jet60_pTmin = 90;
-  double jet80_pTmin = 110;
-  double jet100_pTmin = 130;
+  double jet60_pTmin = 100;
+  double jet80_pTmin = 150;
+  double jet100_pTmin = 200;
   double smallShift = 0.01;
 
   if(!isPP){
     jet60_pTmin = jet80_pTmin;
-    jetMB_pTmin = 60.;
-    jet60_pTmin = 150;
-    jet80_pTmin = 150;
-    jet100_pTmin = 200;
   }
 
   double N_jet100 = h_jet100->Integral(h_jet100->FindBin(jet100_pTmin + smallShift),h_jet100->FindBin(500. - smallShift));
@@ -151,7 +99,7 @@ void plotJetPt_stitch(){
   TFile *file_pp_HighEGJet_jet80 = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_HighEGJet_Jet80HLT_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_2026-3-10.root");
   TFile *file_pp_HighEGJet_jet100 = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_HighEGJet_Jet100HLT_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-3-11.root");
   TFile *file_pp_SingleMuon = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_SingleMuon_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-3-16.root");
-  TFile *file_pp_MinBias = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_MinBias_mu12_pTmu-14_tight_jetTrkMaxFilter_2025-10-15.root");
+  TFile *file_pp_MinBias = TFile::Open("/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/pp/pp_MinBias_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-7-6.root");
   
 
 
@@ -264,10 +212,7 @@ void plotJetPt_stitch(){
   h_C3 = (TH1D*) stitchSamples(h_C3_jetMB,h_C3_jet60,h_C3_jet80,h_C3_jet100,0,1);
   h_C2 = (TH1D*) stitchSamples(h_C2_jetMB,h_C2_jet60,h_C2_jet80,h_C2_jet100,0,1);
   h_C1 = (TH1D*) stitchSamples(h_C1_jetMB,h_C1_jet60,h_C1_jet80,h_C1_jet100,0,1);
-  // h_C4 = (TH1D*) stitchSamples_alt(h_C4_jetMB,h_C4_jet60,h_C4_jet80,h_C4_jet100,0,1);
-  // h_C3 = (TH1D*) stitchSamples_alt(h_C3_jetMB,h_C3_jet60,h_C3_jet80,h_C3_jet100,0,1);
-  // h_C2 = (TH1D*) stitchSamples_alt(h_C2_jetMB,h_C2_jet60,h_C2_jet80,h_C2_jet100,0,1);
-  // h_C1 = (TH1D*) stitchSamples_alt(h_C1_jetMB,h_C1_jet60,h_C1_jet80,h_C1_jet100,0,1);
+
 
   stylizeHistograms(h_pp_jetMB,h_pp_jet60,h_pp_jet80,h_pp_jet100);
   stylizeHistograms(h_C4_jetMB,h_C4_jet60,h_C4_jet80,h_C4_jet100);

@@ -62,8 +62,8 @@ void compareJetPt_pp_PbPb()
 
     // --- Rebin to variable-width bins; divide by width to get dN/dpT [GeV^-1] ---
     // Finer bins at low pT, coarser at high pT where stats are limited.
-    const int NBins = 14;
-    double edges[NBins + 1] = { 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 100, 120, 150, 200, 300 };
+    const int NBins = 12;
+    double edges[NBins + 1] = {30, 35, 40, 45, 50, 60, 70, 80, 100, 120, 150, 200, 300 };
 
     auto doRebin = [&](TH1D* h, const char* name) -> TH1D* {
         TH1D* hr = (TH1D*) h->Rebin(NBins, name, edges);
@@ -82,13 +82,12 @@ void compareJetPt_pp_PbPb()
         hJet_r[ic] = doRebin(hJet[ic], Form("hJet_r_%d", ic));
 
     // --- Pin each spectrum to 1 in the 200-300 GeV bin ---
-    auto pinTo1 = [](TH1D* h){
-        int b = h->FindBin(250.);  // center of the 200-300 bin
-        double val = h->GetBinContent(b);
-        if(val > 0.) h->Scale(1. / val);
+    auto normalize = [](TH1D* h){
+      int S = h->Integral();  // center of the 200-300 bin
+      if(S > 0.) h->Scale(1. / S);
     };
-    pinTo1(hJet_pp_r);
-    for(int ic = 0; ic < NCent; ic++) pinTo1(hJet_r[ic]);
+    normalize(hJet_pp_r);
+    for(int ic = 0; ic < NCent; ic++) normalize(hJet_r[ic]);
 
     // --- Ratios (PbPb / pp) from pinned rebinned histograms ---
     TH1D* hRatio[NCent];
@@ -117,23 +116,33 @@ void compareJetPt_pp_PbPb()
         cols[ic] = TColor::GetColorPalette(int(t * (nPal - 1)));
     }
 
+    // Unique marker per centrality bin (16 distinct ROOT marker styles)
+    const int markerStyles[NCent] = {
+        20, 21, 22, 23,   // filled: circle, square, tri-up, tri-down
+        24, 25, 26, 32,   // open:   circle, square, tri-up, tri-down
+        29, 30, 33, 27,   // filled star, open star, filled diamond, open diamond
+        34, 28, 43, 45    // filled cross+, open cross+, filled cross×, open cross×
+    };
+
     // --- Style ---
     hJet_pp_r->SetLineColor(kBlack); hJet_pp_r->SetLineWidth(2);
+    hJet_pp_r->SetMarkerColor(kBlack); hJet_pp_r->SetMarkerStyle(29); // filled star for pp
+    hJet_pp_r->SetMarkerSize(0.8);
     hJet_pp_r->SetLineStyle(2); hJet_pp_r->SetStats(0); hJet_pp_r->SetTitle("");
 
     for(int ic = 0; ic < NCent; ic++){
         hJet_r[ic]->SetLineColor(cols[ic]); hJet_r[ic]->SetLineWidth(1);
-        hJet_r[ic]->SetMarkerColor(cols[ic]); hJet_r[ic]->SetMarkerStyle(20);
-        hJet_r[ic]->SetMarkerSize(0.5);
+        hJet_r[ic]->SetMarkerColor(cols[ic]); hJet_r[ic]->SetMarkerStyle(markerStyles[ic]);
+        hJet_r[ic]->SetMarkerSize(0.6);
         hJet_r[ic]->SetStats(0); hJet_r[ic]->SetTitle("");
 
         hRatio[ic]->SetLineColor(cols[ic]); hRatio[ic]->SetLineWidth(1);
-        hRatio[ic]->SetMarkerColor(cols[ic]); hRatio[ic]->SetMarkerStyle(20);
-        hRatio[ic]->SetMarkerSize(0.5);
+        hRatio[ic]->SetMarkerColor(cols[ic]); hRatio[ic]->SetMarkerStyle(markerStyles[ic]);
+        hRatio[ic]->SetMarkerSize(0.6);
         hRatio[ic]->SetStats(0); hRatio[ic]->SetTitle("");
     }
 
-    const double xLo = 20., xHi = 300.;
+    const double xLo = 30., xHi = 300.;
     hJet_pp_r->GetXaxis()->SetRangeUser(xLo, xHi);
     for(int ic = 0; ic < NCent; ic++){
         hJet_r[ic]->GetXaxis()->SetRangeUser(xLo, xHi);
@@ -148,10 +157,10 @@ void compareJetPt_pp_PbPb()
     // Upper pad y-range: pin point = 1, so min just below 1 and max captures low-pT peak
     double ymax = 0.;
     for(int ic = 0; ic < NCent; ic++) ymax = TMath::Max(ymax, hJet_r[ic]->GetMaximum());
-    hJet_pp_r->SetMaximum(ymax * 4.);
-    hJet_pp_r->SetMinimum(0.3);
+    // hJet_pp_r->SetMaximum(ymax * 4.);
+    // hJet_pp_r->SetMinimum(0.3);
     hJet_pp_r->GetXaxis()->SetLabelSize(0); hJet_pp_r->GetXaxis()->SetTitleSize(0);
-    hJet_pp_r->GetYaxis()->SetTitle("dN/dp_{T}  [norm. at 200-300 GeV]");
+    hJet_pp_r->GetYaxis()->SetTitle("1/N dN/dp_{T}");
     hJet_pp_r->GetYaxis()->SetTitleSize(0.030 * sfUp);
     hJet_pp_r->GetYaxis()->SetTitleOffset(1.80);
     hJet_pp_r->GetYaxis()->SetLabelSize(0.034 * sfUp);
@@ -166,8 +175,8 @@ void compareJetPt_pp_PbPb()
     hRatio[0]->GetYaxis()->SetTitleOffset(1.10);
     hRatio[0]->GetYaxis()->SetLabelSize(0.036 * sfDn);
     hRatio[0]->GetYaxis()->SetNdivisions(505);
-    hRatio[0]->SetMaximum(500.);
-    hRatio[0]->SetMinimum(0.05);
+    hRatio[0]->SetMaximum(2);
+    hRatio[0]->SetMinimum(0.0);
 
     TCanvas* c = new TCanvas("c", "", 600, 700);
 
@@ -197,7 +206,7 @@ void compareJetPt_pp_PbPb()
     TPad* pDn = new TPad("pDn", "", 0., 0., 1., fDn);
     pDn->SetLeftMargin(mL); pDn->SetRightMargin(mR);
     pDn->SetTopMargin(0.02); pDn->SetBottomMargin(0.30);
-    pDn->SetLogy(); pDn->SetTickx(1); pDn->SetTicky(1);
+    pDn->SetTickx(1); pDn->SetTicky(1);
     pDn->Draw(); pDn->cd();
 
     hRatio[0]->Draw("ep");
@@ -231,9 +240,9 @@ void compareJetPt_pp_PbPb()
         hRP[ic] = hNum;
         hRP[ic]->Divide(hDen);
         delete hDen;
-        // reuse the color of the more-peripheral (upper) bin
+        // reuse the color and marker of the more-peripheral (upper) bin
         hRP[ic]->SetLineColor(cols[ic + 1]); hRP[ic]->SetLineWidth(1);
-        hRP[ic]->SetMarkerColor(cols[ic + 1]); hRP[ic]->SetMarkerStyle(20);
+        hRP[ic]->SetMarkerColor(cols[ic + 1]); hRP[ic]->SetMarkerStyle(markerStyles[ic + 1]);
         hRP[ic]->SetMarkerSize(0.6);
         hRP[ic]->SetStats(0); hRP[ic]->SetTitle("");
         hRP[ic]->GetXaxis()->SetRangeUser(xLo, xHi);

@@ -241,7 +241,7 @@ TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_fakeJets, TH1D *h_jet60, TH1D *h_jet8
   h_fakeJets_scaled->Scale(N_jet80_scaled_mbRange / N_jetMB);
     
   // subtract mixed-event FastJet fake jets from MinBias spectrum
-  if(isPbPb) h_jetMB_scaled->Add(h_fakeJets_scaled,-1);
+  //if(isPbPb) h_jetMB_scaled->Add(h_fakeJets_scaled,-1);
   
   for(int i = 0; i < h_jet60->GetSize(); i++){
     double pT = h_jet60->GetBinCenter(i);
@@ -276,7 +276,7 @@ void calculateRAA(){
   TFile *file_pp_HighEGJet_jet100 = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_HighEGJet_Jet100HLT_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-3-11.root");
   //TFile *file_pp_SingleMuon = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_SingleMuon_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-3-16.root");
   TFile *file_pp_SingleMuon = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_SingleMuon_mu12_pTmu-15to999_tight_deltaR-40_mu12TriggerEfficiencyCorrection_jetTrkMaxFilter_WDecayFilter_2026-5-4.root");
-  TFile *file_pp_MinBias = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_MinBias_mu12_pTmu-14_tight_jetTrkMaxFilter_2025-10-15.root");
+  TFile *file_pp_MinBias = TFile::Open("/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/pp/pp_MinBias_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-7-6.root");
 
 
 
@@ -540,7 +540,7 @@ void calculateRAA(){
   TH1D *h_C1_clone = (TH1D*) h_C1_jetMB->Clone("h_C1_clone");
   TH1D *h_fakeJets_C1_clone = (TH1D*) h_fakeJets_C1->Clone("h_fakeJets_C1_clone");
   TH1D *h_C1_sub = (TH1D*) h_C1_jetMB->Clone("h_C1_sub");
-  h_C1_sub->Add(h_fakeJets_C1,-1);
+  //h_C1_sub->Add(h_fakeJets_C1,-1);
   h_C1_clone->SetLineColor(kRed-4);
   h_fakeJets_C1_clone->SetLineColor(kGray+1);
   h_C1_sub->SetLineColor(kRed-4);
@@ -599,7 +599,7 @@ void calculateRAA(){
   TH1D *h_C2_clone = (TH1D*) h_C2_jetMB->Clone("h_C2_clone");
   TH1D *h_fakeJets_C2_clone = (TH1D*) h_fakeJets_C2->Clone("h_fakeJets_C2_clone");
   TH1D *h_C2_sub = (TH1D*) h_C2_jetMB->Clone("h_C2_sub");
-  h_C2_sub->Add(h_fakeJets_C2,-1);
+  //h_C2_sub->Add(h_fakeJets_C2,-1);
   h_C2_clone->SetLineColor(kGreen+2);
   h_fakeJets_C2_clone->SetLineColor(kGray+1);
   h_C2_sub->SetLineColor(kGreen+2);
@@ -658,7 +658,7 @@ void calculateRAA(){
   TH1D *h_C3_clone = (TH1D*) h_C3_jetMB->Clone("h_C3_clone");
   TH1D *h_fakeJets_C3_clone = (TH1D*) h_fakeJets_C3->Clone("h_fakeJets_C3_clone");
   TH1D *h_C3_sub = (TH1D*) h_C3_jetMB->Clone("h_C3_sub");
-  h_C3_sub->Add(h_fakeJets_C3,-1);
+  //h_C3_sub->Add(h_fakeJets_C3,-1);
   h_C3_clone->SetLineColor(kBlue-4);
   h_fakeJets_C3_clone->SetLineColor(kGray+1);
   h_C3_sub->SetLineColor(kBlue-4);
@@ -716,7 +716,7 @@ void calculateRAA(){
   TH1D *h_C4_clone = (TH1D*) h_C4_jetMB->Clone("h_C4_clone");
   TH1D *h_fakeJets_C4_clone = (TH1D*) h_fakeJets_C4->Clone("h_fakeJets_C4_clone");
   TH1D *h_C4_sub = (TH1D*) h_C4_jetMB->Clone("h_C4_sub");
-  h_C4_sub->Add(h_fakeJets_C4,-1);
+  //h_C4_sub->Add(h_fakeJets_C4,-1);
   h_C4_clone->SetLineColor(kBlack);
   h_fakeJets_C4_clone->SetLineColor(kGray+1);
   h_C4_sub->SetLineColor(kBlack);
@@ -978,10 +978,10 @@ void calculateRAA(){
   /////////////////////////////////////////////////////////////////////////////
 
   // // temporary correction due to unfinished foresting
-  h_C4->Scale(1./0.975474377);
-  h_C3->Scale(1./0.975474377);
-  h_C2->Scale(1./0.975474377);
-  h_C1->Scale(1./0.975474377);
+  // h_C4->Scale(1./0.975474377);
+  // h_C3->Scale(1./0.975474377);
+  // h_C2->Scale(1./0.975474377);
+  // h_C1->Scale(1./0.975474377);
 
   // h_C4->Add(h_fakeJets_C4,-1);
   // h_C3->Add(h_fakeJets_C3,-1);

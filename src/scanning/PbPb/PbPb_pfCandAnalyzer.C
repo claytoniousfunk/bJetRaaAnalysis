@@ -192,6 +192,9 @@ TH1D     *h_nPFcandCS[NCentralityIndices];
 const int    NRC_EtaBins = 32;   // -1.6 to 1.6, width 0.1
 const int    NRC_PhiBins = 64;   // -pi to pi,   width ~0.098
 TProfile2D  *h_randConeEtaPhi[NCentralityIndices];
+TH1D        *h_fastJetPt_bkgSub_RC[NCentralityIndices];
+// RC eta/phi maps loaded from external file at run time
+TProfile2D  *h_RC_map[NCentralityIndices];
 
 ///////////////////////  start the program
 void PbPb_pfCandAnalyzer(int group = 1){
@@ -303,6 +306,14 @@ void PbPb_pfCandAnalyzer(int group = 1){
     readConfig();
 
 
+    // Load random-cone UE maps (used for RC-subtracted fastJet pT)
+    // TODO: update path to the randConeEtaPhi file for the relevant scan
+    TFile *f_RC_maps = TFile::Open("PLACEHOLDER_PATH/PbPb_MinBias_Part1_randConeEtaPhi_ultraFineCentBins.root");
+    for(int i = 0; i < NCentralityIndices; i++){
+      f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%d", i), h_RC_map[i]);
+      if(h_RC_map[i]) h_RC_map[i]->SetDirectory(nullptr);
+    }
+
     // define histograms
     h_eventsBeforeSelection = new TH1D("h_eventsBeforeSelection","events before selection",2,0,1);
     h_eventsAfterSelection = new TH1D("h_eventsAfterSelection","events before selection",2,0,1);
@@ -400,6 +411,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_pseudoJetPt[i] = new TH1D(Form("h_pseudoJetPt_C%i",i),Form("PseudoJet pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt[i] = new TH1D(Form("h_fastJetPt_C%i",i),Form("FastJet anti-kT pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_JEC[i] = new TH1D(Form("h_fastJetPt_JEC_C%i",i),Form("FastJet anti-kT pT (JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_bkgSub_RC[i] = new TH1D(Form("h_fastJetPt_bkgSub_RC_C%i",i),Form("FastJet anti-kT pT (bkg sub, random-cone), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_nPFcand[i]   = new TH1D(Form("h_nPFcand_C%i",i),  Form("N PF cands per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
 	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
 	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
@@ -457,6 +469,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_pseudoJetPt[i] = new TH1D(Form("h_pseudoJetPt_C%i",i),Form("PseudoJet pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt[i] = new TH1D(Form("h_fastJetPt_C%i",i),Form("FastJet anti-kT pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_JEC[i] = new TH1D(Form("h_fastJetPt_JEC_C%i",i),Form("FastJet anti-kT pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_bkgSub_RC[i] = new TH1D(Form("h_fastJetPt_bkgSub_RC_C%i",i),Form("FastJet anti-kT pT (bkg sub, random-cone), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_nPFcand[i]   = new TH1D(Form("h_nPFcand_C%i",i),  Form("N PF cands per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
 	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
 	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
@@ -507,6 +520,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_pseudoJetPt[i]->Sumw2();
       h_fastJetPt[i]->Sumw2();
       h_fastJetPt_JEC[i]->Sumw2();
+      h_fastJetPt_bkgSub_RC[i]->Sumw2();
       h_nPFcand[i]->Sumw2();
       h_nPFcandCS[i]->Sumw2();
       h_randConeEtaPhi[i]->Sumw2();
@@ -913,6 +927,16 @@ void PbPb_pfCandAnalyzer(int group = 1){
           double fastJetPt_JEC = JEC.GetCorrectedPT();
           h_fastJetPt_JEC[0]->Fill(fastJetPt_JEC, w);
           h_fastJetPt_JEC[CentralityIndex]->Fill(fastJetPt_JEC, w);
+          // RC-subtracted fastJet pT: subtract mean UE pT at the jet's (eta,phi) location
+          if(h_RC_map[CentralityIndex]){
+            double rcMeanPt = h_RC_map[CentralityIndex]->GetBinContent(
+                                h_RC_map[CentralityIndex]->FindBin(jet.eta(), jet.phi()));
+            double fastJetPt_rcSub = jet.pt() - rcMeanPt;
+            if(fastJetPt_rcSub > 0){
+              h_fastJetPt_bkgSub_RC[0]->Fill(fastJetPt_rcSub, w);
+              h_fastJetPt_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_rcSub, w);
+            }
+          }
         }
       }
 #endif
@@ -1399,6 +1423,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_pseudoJetPt[i]->Write();
       h_fastJetPt[i]->Write();
       h_fastJetPt_JEC[i]->Write();
+      h_fastJetPt_bkgSub_RC[i]->Write();
       h_nPFcand[i]->Write();
       h_nPFcandCS[i]->Write();
       h_randConeEtaPhi[i]->Write();
