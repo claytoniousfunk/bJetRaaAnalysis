@@ -7,7 +7,7 @@
 //   root -l -b -q plotFastJet_rcSubtraction.C
 
 const char *inFile =
-  "/home/clayton/Downloads/PbPb_pfCandAnalyzer_output_1.root";
+  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPseudoJets_pfCand_pseudoJetCandPtMin-0.0_2026-7-13_ultraFineCentBins.root";
 
 const char *outDir =
   "../../../../figures/jetPt/pseudoJets/rcSubtraction/";
@@ -34,6 +34,7 @@ const double pThi = 300.;
 
 const int colRaw  = kBlue  - 4;
 const int colSub  = kRed   - 4;
+const int colRC = kGray + 1;
 
 static void styleHist(TH1D *h, int col, double lw = 2.)
 {
@@ -67,8 +68,10 @@ void plotFastJet_rcSubtraction()
 
     TH1D *hRaw = nullptr;
     TH1D *hSub = nullptr;
+    TH1D *hRC = nullptr;
     f->GetObject(Form("h_fastJetPt_%s",        centSuffix[ci]), hRaw);
     f->GetObject(Form("h_fastJetPt_bkgSub_RC_%s", centSuffix[ci]), hSub);
+    f->GetObject(Form("h_pseudoJetPt_%s", centSuffix[ci]), hRC);
 
     if(!hRaw || !hSub){
       std::cerr << "WARNING: histograms not found for " << centSuffix[ci] << " — skipping\n";
@@ -77,11 +80,14 @@ void plotFastJet_rcSubtraction()
 
     hRaw = (TH1D*) hRaw->Clone(Form("hRaw_%s", centSuffix[ci]));
     hSub = (TH1D*) hSub->Clone(Form("hSub_%s", centSuffix[ci]));
+    hRC = (TH1D*) hRC->Clone(Form("hRC_%s",centSuffix[ci]));
     hRaw->SetDirectory(nullptr);
     hSub->SetDirectory(nullptr);
+    hRC->SetDirectory(nullptr);
 
     styleHist(hRaw, colRaw);
     styleHist(hSub, colSub);
+    styleHist(hRC, colRC);
 
     // ---- canvas with upper (spectra) and lower (ratio) pads ----------------
     TCanvas *c = new TCanvas(Form("c_%s", centSuffix[ci]), "", 700, 700);
@@ -114,11 +120,12 @@ void plotFastJet_rcSubtraction()
     hRaw->GetXaxis()->SetLabelSize(0.);
     hRaw->Draw("hist");
     hSub->Draw("hist same");
+    hRC->Draw("hist same");
 
     TLatex lat;
     lat.SetNDC();
     lat.SetTextSize(0.055);
-    lat.DrawLatex(0.18, 0.88, Form("PbPb, %s", centLabel[ci]));
+    lat.DrawLatex(0.68, 0.82, Form("PbPb, %s", centLabel[ci]));
     lat.SetTextSize(0.045);
     lat.SetTextColor(colRaw);
     lat.DrawLatex(0.18, 0.76, "FastJet (raw)");
@@ -163,8 +170,8 @@ void plotFastJet_rcSubtraction()
     TH1D *hCSNorm  = (TH1D*) hCS ->Clone(Form("hCSNorm_%s",  centSuffix[ci]));
     hSubNorm->SetDirectory(nullptr);
     hCSNorm ->SetDirectory(nullptr);
-    if(hSubNorm->Integral() > 0) hSubNorm->Scale(1. / hSubNorm->Integral());
-    if(hCSNorm ->Integral() > 0) hCSNorm ->Scale(1. / hCSNorm ->Integral());
+    if(hSubNorm->Integral() > 0) hSubNorm->Scale(1. / hSubNorm->Integral(hSubNorm->FindBin(20),hSubNorm->FindBin(500)));
+    if(hCSNorm ->Integral() > 0) hCSNorm ->Scale(1. / hCSNorm ->Integral(hCSNorm->FindBin(20),hCSNorm->FindBin(500)));
 
     const int colCS = kGreen + 2;
     styleHist(hSubNorm, colSub);
@@ -191,7 +198,7 @@ void plotFastJet_rcSubtraction()
 
     hSubNorm->GetXaxis()->SetRangeUser(pTlo, pThi);
     hSubNorm->GetYaxis()->SetRangeUser(ymin2 * 0.05, ymax2 * 50.);
-    hSubNorm->GetYaxis()->SetTitle("Norm. entries");
+    hSubNorm->GetYaxis()->SetTitle("Entries (norm. for #it{p}_{T} > 20 GeV)");
     hSubNorm->GetXaxis()->SetLabelSize(0.);
     hSubNorm->Draw("hist");
     hCSNorm ->Draw("hist same");
@@ -199,7 +206,7 @@ void plotFastJet_rcSubtraction()
     TLatex lat2;
     lat2.SetNDC();
     lat2.SetTextSize(0.055);
-    lat2.DrawLatex(0.18, 0.88, Form("PbPb, %s", centLabel[ci]));
+    lat2.DrawLatex(0.68, 0.82, Form("PbPb, %s", centLabel[ci]));
     lat2.SetTextSize(0.045);
     lat2.SetTextColor(colSub);
     lat2.DrawLatex(0.18, 0.76, "FastJet (RC subtracted)");
