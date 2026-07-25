@@ -7,7 +7,7 @@
 //   root -l -b -q plotFastJet_rcSubtraction.C
 
 const char *inFile =
-  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPseudoJets_pfCand_pseudoJetCandPtMin-0.0_2026-7-13_ultraFineCentBins.root";
+  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPseudoJets_pfCand_pseudoJetCandPtMin-0.0_2026-7-16_ultraFineCentBins.root";
 
 const char *outDir =
   "../../../../figures/jetPt/pseudoJets/rcSubtraction/";
@@ -71,6 +71,9 @@ void plotFastJet_rcSubtraction()
     TH1D *hRC = nullptr;
     f->GetObject(Form("h_fastJetPt_%s",        centSuffix[ci]), hRaw);
     f->GetObject(Form("h_fastJetPt_bkgSub_RC_%s", centSuffix[ci]), hSub);
+    // f->GetObject(Form("h_fastJetPt_JEC_%s",        centSuffix[ci]), hRaw);
+    // f->GetObject(Form("h_fastJetPt_JEC_bkgSub_RC_%s", centSuffix[ci]), hSub);
+
     f->GetObject(Form("h_pseudoJetPt_%s", centSuffix[ci]), hRC);
 
     if(!hRaw || !hSub){
@@ -131,6 +134,8 @@ void plotFastJet_rcSubtraction()
     lat.DrawLatex(0.18, 0.76, "FastJet (raw)");
     lat.SetTextColor(colSub);
     lat.DrawLatex(0.18, 0.68, "FastJet (RC subtracted)");
+    lat.SetTextColor(colRC);
+    lat.DrawLatex(0.18, 0.60, "Random Cone");
 
     // lower pad: ratio
     pDn->cd();

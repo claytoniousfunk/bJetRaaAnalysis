@@ -8,11 +8,11 @@
 // (HYDJET_pfCandAnalyzer.C line 1350), so:
 //   N_indep = (delta_eta * 2pi) / (pi * R^2) = (3.2 * 2pi) / (pi * 0.16) = 40
 
+// const char *fmixed_path =
+//   "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/HYDJET/HYDJET_pThat-unweighted_mu12_pTmu-15to999_tight_hiBinShift-0_jetTrkMaxFilter_WDecayFilter_mixedEventPseudoJets_pfCandCS_pseudoJetCandPtMin-0.0_subleadingPFCandPtMin-15_2026-6-23_ultraFineCentBins.root";
+
 const char *fmixed_path =
-  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/HYDJET/"
-  "HYDJET_pThat-unweighted_mu12_pTmu-15to999_tight_hiBinShift-0_jetTrkMaxFilter_WDecayFilter_"
-  "mixedEventPseudoJets_pfCandCS_pseudoJetCandPtMin-0.0_subleadingPFCandPtMin-15_"
-  "2026-6-16_ultraFineCentBins.root";
+  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPseudoJets_pfCand_pseudoJetCandPtMin-0.0_2026-7-14_ultraFineCentBins.root";
 
 const int    N_cones   = 100;
 const double R         = 0.4;
@@ -95,7 +95,7 @@ void plotPseudoJets_fakeJetRate(){
     TH1D *hDiff[17] = {};
     for(int iC = 1; iC <= 16; iC++){
       TH1D *hRaw;
-      fM->GetObject(Form("h_pseudoJetPt_C%d", iC), hRaw);
+      fM->GetObject(Form("h_fastJetPt_JEC_bkgSub_RC_C%d", iC), hRaw);
       if(!hRaw){ printf("WARNING: missing C%d\n", iC); continue; }
       hDiff[iC] = makeDiff(hRaw, Form("hDiff_C%d", iC));
       hDiff[iC]->SetLineColor(centColor(iC));
@@ -119,7 +119,7 @@ void plotPseudoJets_fakeJetRate(){
     leg->Draw();
 
     TLatex *lat = new TLatex(); lat->SetNDC(); lat->SetTextSize(0.050);
-    lat->DrawLatex(lm+0.02, 1.-tm+0.02, "PbPb 5.02 TeV  HYDJET");
+    lat->DrawLatex(lm+0.02, 1.-tm+0.02, "PbPb 5.02 TeV");
     lat->DrawLatex(lm+0.02, 1.-tm-0.06,
       Form("Mixed-event, anti-#it{k}_{T} #it{R}=0.4 (#it{N}_{indep}=%.0f)", N_indep));
 
@@ -171,7 +171,7 @@ void plotPseudoJets_fakeJetRate(){
       double totalEntries = 0.;
       for(int iC = cb[ic].first; iC <= cb[ic].last; iC++){
         TH1D *hRaw;
-        fM->GetObject(Form("h_pseudoJetPt_C%d", iC), hRaw);
+        fM->GetObject(Form("h_fastJetPt_JEC_bkgSub_RC_C%d", iC), hRaw);
         if(!hRaw) continue;
         totalEntries += hRaw->GetEntries();
         if(!hSum) hSum = (TH1D*) hRaw->Clone(Form("hCoarseRaw_%d", ic));
@@ -212,7 +212,7 @@ void plotPseudoJets_fakeJetRate(){
     leg2->Draw();
 
     TLatex *lat2 = new TLatex(); lat2->SetNDC(); lat2->SetTextSize(0.050);
-    lat2->DrawLatex(lm+0.02, 1.-tm+0.02, "PbPb 5.02 TeV  HYDJET");
+    lat2->DrawLatex(lm+0.02, 1.-tm+0.02, "PbPb 5.02 TeV");
     lat2->DrawLatex(lm+0.02, 1.-tm-0.06,
       Form("Mixed-event, anti-#it{k}_{T} #it{R}=0.4 (#it{N}_{indep}=%.0f)", N_indep));
 
