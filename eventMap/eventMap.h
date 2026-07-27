@@ -32,7 +32,10 @@ public :
   void loadHLT(const char* name);
   void loadBTagger();
   void loadBTaggerInputVariables();
-  void getEvent(Long64_t j){evtTree->GetEntry(j);};
+  void getEvent(Long64_t j){
+    evtTree->GetEntry(j);
+    pfCsTree->GetEntry(j);
+  };
   void loadTrack(const char* name);
   void loadGenParticle(const char* name);
   void unloadGP();
