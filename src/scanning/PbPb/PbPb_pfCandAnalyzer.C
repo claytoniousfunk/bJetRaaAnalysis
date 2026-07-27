@@ -999,7 +999,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  double dPT = -999.0;
 	  // match h_fastJetPt_PFCs to h_fastJetPt_PF
 	  for(const auto& jet_PF : jets){
-	    double dR = (jet_PF.eta(),jet_PF.phi_std(),jet_PFCs.eta(),jet_PFCs.phi_std());
+	    double dR = getDr(jet_PF.eta(),jet_PF.phi_std(),jet_PFCs.eta(),jet_PFCs.phi_std());
 	    if(dR < dR_min){
 	      dR_min = dR;
 	      dPT = jet_PF.pt() - jet_PFCs.pt();
