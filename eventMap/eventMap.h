@@ -39,6 +39,7 @@ public :
   void regEventFilter(int nfilter, std::string *filtername);
   void regEventFilter(std::vector<std::string> &filtername);
   void loadParticleFlowAnalyzer(const char* name);
+  void loadParticleFlowAnalyzer_PFCs(const char* name);
   bool checkEventFilter(){
     //mScrapingFilterreturn 1 for event needs to be skipped
     for(auto & it : filters) if(!it) return 1;
@@ -91,6 +92,10 @@ public :
   std::vector<int> *pfId=0;
   std::vector<double> *pfPt=0, *pfEta=0, *pfPhi=0;
   int nPFpart = 0;
+
+  std::vector<int> *pfCsId=0;
+  std::vector<double> *pfCsPt=0, *pfCsEta=0, *pfCsPhi=0;
+  int nPFCspart = 0;
 
   //jet set
   static const int jetMax = 9999;
@@ -314,6 +319,16 @@ void eventMap::loadParticleFlowAnalyzer(const char* name){
   evtTree->SetBranchAddress("pfPt",&pfPt);
   evtTree->SetBranchAddress("pfEta",&pfEta);
   evtTree->SetBranchAddress("pfPhi",&pfPhi);
+}
+
+void eventMap::loadParticleFlowAnalyzer_PFCs(const char* name){
+  pfTree = (TTree*) _file->Get(Form("%s/pfTree",name));
+  evtTree->AddFriend(pfTree);
+  evtTree->SetBranchAddress("nPFpart",&nPFCspart);
+  evtTree->SetBranchAddress("pfId",&pfCsId);
+  evtTree->SetBranchAddress("pfPt",&pfCsPt);
+  evtTree->SetBranchAddress("pfEta",&pfCsEta);
+  evtTree->SetBranchAddress("pfPhi",&pfCsPhi);
 }
 
 void eventMap::unloadGP(){
