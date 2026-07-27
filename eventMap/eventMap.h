@@ -55,7 +55,7 @@ public :
   int gppdgID(int j) {return gppdgIDp->at(j);}
   //  int gpIsStable(int j) {return gpStableTag->at(j);}
   //int gpSube(int j){ return gpsube->at(j);}
-  TTree *hltTree, *filterTree, *trkTree, *genParticleTree=nullptr, *recoJetTree=nullptr, *genJetTree=nullptr, *muonTree=nullptr, *muonTriggerTree=nullptr, *muonAnalyzerTree=nullptr, *pfTree=nullptr;
+  TTree *hltTree, *filterTree, *trkTree, *genParticleTree=nullptr, *recoJetTree=nullptr, *genJetTree=nullptr, *muonTree=nullptr, *muonTriggerTree=nullptr, *muonAnalyzerTree=nullptr, *pfTree=nullptr, pfCsTree=nullptr;
   TTree *jetEvtTree=nullptr, *muonEvtTree=nullptr, *genParticleEvtTree=nullptr;
   TTree *evtTree;
   TFile *_file = 0;
@@ -322,8 +322,8 @@ void eventMap::loadParticleFlowAnalyzer(const char* name){
 }
 
 void eventMap::loadParticleFlowAnalyzer_PFCs(const char* name){
-  pfTree = (TTree*) _file->Get(Form("%s/pfTree",name));
-  evtTree->AddFriend(pfTree);
+  pfCsTree = (TTree*) _file->Get(Form("%s/pfTree",name));
+  evtTree->AddFriend(pfCsTree);
   evtTree->SetBranchAddress("nPFpart",&nPFCspart);
   evtTree->SetBranchAddress("pfId",&pfCsId);
   evtTree->SetBranchAddress("pfPt",&pfCsPt);
