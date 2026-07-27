@@ -943,8 +943,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
           JEC.SetJetEta(jet.eta());
           JEC.SetJetPhi(jet.phi_std());
           double fastJetPt_JEC = JEC.GetCorrectedPT();
-          h_fastJetPt_JEC[0]->Fill(fastJetPt_JEC, w);
-          h_fastJetPt_JEC[CentralityIndex]->Fill(fastJetPt_JEC, w);
+          h_fastJetPt_PF_JEC[0]->Fill(fastJetPt_JEC, w);
+          h_fastJetPt_PF_JEC[CentralityIndex]->Fill(fastJetPt_JEC, w);
           // RC-subtracted fastJet pT: subtract mean UE pT at the jet's (eta,phi) location
           if(h_RC_map[CentralityIndex]){
             double rcMeanPt = h_RC_map[CentralityIndex]->GetBinContent(
