@@ -323,12 +323,12 @@ void eventMap::loadParticleFlowAnalyzer(const char* name){
 
 void eventMap::loadParticleFlowAnalyzer_PFCs(const char* name){
   pfCsTree = (TTree*) _file->Get(Form("%s/pfTree",name));
-  evtTree->AddFriend(pfCsTree);
-  evtTree->SetBranchAddress("nPFpart",&nPFCspart);
-  evtTree->SetBranchAddress("pfId",&pfCsId);
-  evtTree->SetBranchAddress("pfPt",&pfCsPt);
-  evtTree->SetBranchAddress("pfEta",&pfCsEta);
-  evtTree->SetBranchAddress("pfPhi",&pfCsPhi);
+  //evtTree->AddFriend(pfCsTree);
+  pfCsTree->SetBranchAddress("nPFpart",&nPFCspart);
+  pfCsTree->SetBranchAddress("pfId",&pfCsId);
+  pfCsTree->SetBranchAddress("pfPt",&pfCsPt);
+  pfCsTree->SetBranchAddress("pfEta",&pfCsEta);
+  pfCsTree->SetBranchAddress("pfPhi",&pfCsPhi);
 }
 
 void eventMap::unloadGP(){
