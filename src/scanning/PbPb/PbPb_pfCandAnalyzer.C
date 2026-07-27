@@ -1530,7 +1530,6 @@ void PbPb_pfCandAnalyzer(int group = 1){
     }
 
     wf->Close();
-    f_pfRaw->Close();
     return;
     // END WRITE
 
