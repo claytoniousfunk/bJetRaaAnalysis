@@ -599,27 +599,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
     cout << "	Loading muon triggers..." << endl;
     em->loadHLT("hltanalysis/HltTree");
     cout << "	Loading PF candidates..." << endl;
-    // em->loadParticleFlowAnalyzer_PFCs("pfcandAnalyzerCS");
-    // em->loadParticleFlowAnalyzer("pfcandAnalyzer");
-
-    pfTree = (TTree*) _file->Get(Form("%s/pfTree",name));
-    //evtTree->AddFriend(pfTree);
-    pfTree->SetBranchAddress("nPFpart",&nPFpart);
-    pfTree->SetBranchAddress("pfId",&pfId);
-    pfTree->SetBranchAddress("pfPt",&pfPt);
-    pfTree->SetBranchAddress("pfEta",&pfEta);
-    pfTree->SetBranchAddress("pfPhi",&pfPhi);
-
-    pfCsTree = (TTree*) _file->Get(Form("%s/pfTree",name));
-    //evtTree->AddFriend(pfCsTree);
-    pfCsTree->SetBranchAddress("nPFpart",&nPFCspart);
-    pfCsTree->SetBranchAddress("pfId",&pfCsId);
-    pfCsTree->SetBranchAddress("pfPt",&pfCsPt);
-    pfCsTree->SetBranchAddress("pfEta",&pfCsEta);
-    pfCsTree->SetBranchAddress("pfPhi",&pfCsPhi);
-
-
-    
+    em->loadParticleFlowAnalyzer_PFCs("pfcandAnalyzerCS");
+    em->loadParticleFlowAnalyzer("pfcandAnalyzer");
     cout << "	Variables initilized!" << endl << endl ;
     // Open a separate file handle so these branch addresses don't overwrite
     // the ones em->loadParticleFlowAnalyzer() set for em->nPFpart/pfPt/etc.
