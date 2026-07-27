@@ -18,7 +18,7 @@ bool applyJet30Trigger = false;
 bool applyJet40Trigger = false;
 bool applyJet60Trigger = false;
 bool applyJet80Trigger = false;
-bool applyJet100Trigger = false;
+bool applyJet100Trigger = true;
 bool applyAntiMu5Jet30Trigger = false;
 bool applyAntiMu5Jet40Trigger = false;
 bool applyAntiMu5Jet60Trigger = false;
@@ -36,6 +36,6 @@ bool apply_JEU_shift_up = false;
 bool apply_JEU_shift_down = false;
 // select dataset
 bool doSingleMuonSample = false;
-bool doMinBiasSample = true;
-bool doHighEGJetSample = false;
+bool doMinBiasSample = false;
+bool doHighEGJetSample = true;
 
