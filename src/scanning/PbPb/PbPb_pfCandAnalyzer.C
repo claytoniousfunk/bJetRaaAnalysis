@@ -984,13 +984,13 @@ void PbPb_pfCandAnalyzer(int group = 1){
         
 	fastjet::ClusterSequence cs_PFCs(fjInputs_PFCs, jetDef);
         std::vector<fastjet::PseudoJet> jets_PFCs = fastjet::sorted_by_pt(cs_PFCs.inclusive_jets(0.));
-        for(const auto& jet : jets_PFCs){
-          if(TMath::Abs(jet.eta()) > 1.6) continue;
-          h_fastJetPt_PFCs[0]->Fill(jet.pt(), w);
-          h_fastJetPt_PFCs[CentralityIndex]->Fill(jet.pt(), w);
-          JEC.SetJetPT(jet.pt());
-          JEC.SetJetEta(jet.eta());
-          JEC.SetJetPhi(jet.phi_std());
+        for(const auto& jet_PFCs : jets_PFCs){
+          if(TMath::Abs(jet_PFCs.eta()) > 1.6) continue;
+          h_fastJetPt_PFCs[0]->Fill(jet_PFCs.pt(), w);
+          h_fastJetPt_PFCs[CentralityIndex]->Fill(jet_PFCs.pt(), w);
+          JEC.SetJetPT(jet_PFCs.pt());
+          JEC.SetJetEta(jet_PFCs.eta());
+          JEC.SetJetPhi(jet_PFCs.phi_std());
           double fastJetPt_PFCs_JEC = JEC.GetCorrectedPT();
           h_fastJetPt_PFCs_JEC[0]->Fill(fastJetPt_PFCs_JEC, w);
           h_fastJetPt_PFCs_JEC[CentralityIndex]->Fill(fastJetPt_PFCs_JEC, w);
@@ -999,16 +999,16 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  double dPT = -999.0;
 	  // match h_fastJetPt_PFCs to h_fastJetPt_PF
 	  for(const auto& jet_PF : jets){
-	    double dR = (jet_PF.eta(),jet_PF.phi_std(),jet.eta(),jet.phi_std());
+	    double dR = (jet_PF.eta(),jet_PF.phi_std(),jet_PFCs.eta(),jet_PFCs.phi_std());
 	    if(dR < dR_min){
 	      dR_min = dR;
-	      dPT = jet_PF.pt() - jet.pt();
+	      dPT = jet_PF.pt() - jet_PFCs.pt();
 	    }
 	  }
 	  h_dRmin_PF_PFCs[0]->Fill(dR_min,w);
 	  h_dRmin_PF_PFCs[CentralityIndex]->Fill(dR_min,w);
-	  h_dPTEtaPhi_PF_PFCs[0]->Fill(jet.eta(),jet.phi_std(),dPT);
-	  h_dPTEtaPhi_PF_PFCs[CentralityIndex]->Fill(jet.eta(),jet.phi_std(),dPT);
+	  h_dPTEtaPhi_PF_PFCs[0]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
+	  h_dPTEtaPhi_PF_PFCs[CentralityIndex]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
         }
 
 	
