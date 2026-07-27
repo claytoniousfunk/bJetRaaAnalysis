@@ -991,10 +991,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
           JEC.SetJetEta(jet.eta());
           JEC.SetJetPhi(jet.phi_std());
           double fastJetPt_PFCs_JEC = JEC.GetCorrectedPT();
-          h_fastJetPt_PFCs_JEC[0]->Fill(fastJetPt_JEC, w);
-          h_fastJetPt_PFCs_JEC[CentralityIndex]->Fill(fastJetPt_JEC, w);
+          h_fastJetPt_PFCs_JEC[0]->Fill(fastJetPt_PFCs_JEC, w);
+          h_fastJetPt_PFCs_JEC[CentralityIndex]->Fill(fastJetPt_PFCs_JEC, w);
 
-	  double dR_min = -999.0;
+	  double dR_min = 999.0;
 	  double dPT = -999.0;
 	  // match h_fastJetPt_PFCs to h_fastJetPt_PF
 	  for(const auto& jet_PF : jets){
