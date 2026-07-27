@@ -601,6 +601,9 @@ void PbPb_pfCandAnalyzer(int group = 1){
     cout << "	Loading PF candidates..." << endl;
     em->loadParticleFlowAnalyzer_PFCs("pfcandAnalyzerCS");
     em->loadParticleFlowAnalyzer("pfcandAnalyzer");
+    cout << "em->nPFCspart = " << em->nPFCspart << endl;
+
+    
     cout << "	Variables initilized!" << endl << endl ;
     // Open a separate file handle so these branch addresses don't overwrite
     // the ones em->loadParticleFlowAnalyzer() set for em->nPFpart/pfPt/etc.
