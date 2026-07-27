@@ -664,7 +664,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 
       em->getEvent(evi); // load event info from eventMap
-      cout << "em->nPFCspart = " << em->nPFCspart << endl;
+      //cout << "em->nPFCspart = " << em->nPFCspart << endl;
 
       if(evi == 0) {
 	std::cout << "Processing events...\n";
