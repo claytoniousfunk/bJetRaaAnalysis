@@ -422,7 +422,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
 	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
-	h_dRmin_PF_PFCs[i] = new TH1D(Form("h_dRmin_PF_PFCs_C%i",i), Form("min #Delta r[fastJet(PF),fastJet(PFCs)], hiBin %i-%i",centEdges[0],centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
+	h_dRmin_PF_PFCs[i] = new TH1D(Form("h_dRmin_PF_PFCs_C%i",i), Form("min #Delta r[fastJet(PF),fastJet(PFCs)], hiBin %i-%i",centEdges[0],centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax);
 						
       }
       else{
@@ -486,7 +486,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
 	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
-	h_dRmin_PF_PFCs[i] = new TH1D(Form("h_dRmin_PF_PFCs_C%i",i), Form("min #Delta r[fastJet(PF),fastJet(PFCs)], hiBin %i-%i",centEdges[i-1],centEdges[i]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
+	h_dRmin_PF_PFCs[i] = new TH1D(Form("h_dRmin_PF_PFCs_C%i",i), Form("min #Delta r[fastJet(PF),fastJet(PFCs)], hiBin %i-%i",centEdges[i-1],centEdges[i]),NdRBins,dRBinMin,dRBinMax);
       }
       // sumw2 commands
       h_NJetPerEvent[i]->Sumw2();
@@ -664,8 +664,6 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 
       em->getEvent(evi); // load event info from eventMap
-      if(pfTreeStd_raw) pfTreeStd_raw->GetEntry(evi);
-      if(pfTreeCS_raw)  pfTreeCS_raw ->GetEntry(evi);
 
       if(evi == 0) {
 	std::cout << "Processing events...\n";
@@ -828,9 +826,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
    
       ///// PF Candidate Analyzer / Pseudo-Jet Calculator / FastJet Clustering
 
-      int NCandidatesToSample_PF = em->nPFpart;
-      int NCandidatesToSample_PFCs = em->nPFCspart;
-
+      int NCandidatesToSample = em->nPFpart;
+      
       // pre-load mixed-event PF candidates from same-centrality events into a pool
       std::vector<double> pool_pfPt, pool_pfEta, pool_pfPhi;
       if(doEventMixing){
@@ -1505,10 +1502,12 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
       h_pfPt[i]->Write();
       h_pseudoJetPt[i]->Write();
-      h_fastJetPt[i]->Write();
-      h_fastJetPt_JEC[i]->Write();
-      h_fastJetPt_bkgSub_RC[i]->Write();
-      h_fastJetPt_JEC_bkgSub_RC[i]->Write();
+      h_fastJetPt_PF[i]->Write();
+      h_fastJetPt_PF_JEC[i]->Write();
+      h_fastJetPt_PFCs[i]->Write();
+      h_fastJetPt_PFCs_JEC[i]->Write();
+      h_fastJetPt_PF_bkgSub_RC[i]->Write();
+      h_fastJetPt_PF_JEC_bkgSub_RC[i]->Write();
       h_nPFcand[i]->Write();
       h_nPFcandCS[i]->Write();
       h_randConeEtaPhi[i]->Write();
