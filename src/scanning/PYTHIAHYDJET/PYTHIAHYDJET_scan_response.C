@@ -405,11 +405,11 @@ void PYTHIAHYDJET_scan_response(int group = 1){
   cout << "	Initializing variables ... " << endl;
   em->init();
   cout << "	Loading jet..." << endl;
-  em->loadJet(jetTreeString);
+  em->loadJet("akCs4PFJetAnalyzer/t");
   cout << "Loading muon triggers..." << endl;
-  em->loadMuonTrigger(hltString);
+  em->loadHLT("hltanalysis/HltTree");
   cout << "	Loading gen particles..." << endl;
-  em->loadGenParticle();
+  em->loadGenParticle("HiGenParticleAna/hi");
   cout << "	Variables initilized!" << endl << endl ;
   int NEvents = em->evtTree->GetEntries();
   cout << "	Number of events = " << NEvents << endl;
