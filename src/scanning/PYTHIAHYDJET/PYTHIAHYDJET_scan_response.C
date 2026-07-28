@@ -169,6 +169,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 						 doDiJetSample_batch14,
 						 doDiJetSample_batch15,
 						 pthatcut,
+						 doPThatWeight,
 						 doVzReweight,
 						 doHiBinReweight,
 						 doJetPtReweight,
@@ -537,8 +538,12 @@ void PYTHIAHYDJET_scan_response(int group = 1){
     //double w_reweight_vz = fitFxn_vz->Eval(em->vz);
     double w_reweight_vz = 1.0;
 	
-
-    double w = em->weight * w_reweight_vz * w_reweight_hiBin;
+    double w_pthat = 1.0;
+    if(doPThatWeight){
+      w_pthat = em->weight;
+    }
+    
+    double w = w_pthat * w_reweight_vz * w_reweight_hiBin;
 
     double leadingMatchedRecoJetPt = -999.0;
 

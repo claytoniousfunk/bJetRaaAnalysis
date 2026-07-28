@@ -20,6 +20,7 @@ TString configureOutputDatasetName(TString generator,
 				   bool doDiJetSample_batch14,
 				   bool doDiJetSample_batch15,
 				   double pThat,
+				   bool doPThatWeight,
 				   bool doVzReweight,
 				   bool doHiBinReweight,
 				   bool doJetPtReweight,
@@ -53,6 +54,9 @@ TString configureOutputDatasetName(TString generator,
   TString datasetIndicator = "";  
   datasetIndicator = "_DiJet";
   result.Append(datasetIndicator);
+
+  if(doPThatWeight) result.Append(Form("_pThat-%2.0f",pThat));
+  else result.Append("_pThat-unweighted");
   
   result.Append(Form("_pThat-%2.0f",pThat));
   if(applyJet60Trigger) result.Append("_Jet60HLT");
