@@ -1125,8 +1125,11 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_inclRecoJetPt[0]->Fill(x,w);
 	h_inclRecoJetPt[CentralityIndex]->Fill(x,w);
 
-	h_inclRawJetEta[0]->Fill(rawJetPt_i,w);
-	h_inclRawJetEta[CentralityIndex]->Fill(rawJetPt_i,w);
+	h_inclRawJetPt[0]->Fill(rawJetPt_i,w);
+	h_inclRawJetPt[CentralityIndex]->Fill(rawJetPt_i,w);
+
+	h_inclRecoJetEta[0]->Fill(y,w);
+	h_inclRecoJetEta[CentralityIndex]->Fill(y,w);
 
 	h_inclRecoJetPhi[0]->Fill(z,w);
 	h_inclRecoJetPhi[CentralityIndex]->Fill(z,w);
