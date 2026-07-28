@@ -136,6 +136,7 @@ TH1D *h_hiBin_inclRecoMuonTag_triggerOn;
 // ~~~~~~~~~ jet variables ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // ----------------------------------------- incl. reco jets --------------
 TH1D *h_inclRecoJetPt[NCentralityIndices];
+TH1D *h_inclRawJetPt[NCentralityIndices];
 TH1D *h_inclRecoJetEta[NCentralityIndices];
 TH1D *h_inclRecoJetPhi[NCentralityIndices];
 TH2D *h_inclRecoJetPt_inclRecoJetEta[NCentralityIndices];
@@ -288,6 +289,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
+    suffixEdit.Append("_dPTMapBkgSub");
 
     TString output = Form("%s%s%s/PbPb_pfCandAnalyzer_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data(),group);
 
@@ -311,9 +313,11 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 
     // Load random-cone UE maps (used for RC-subtracted fastJet pT)
-    TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_randConeEtaPhi_2026-7-8_ultraFineCentBins.root");
+    //TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_randConeEtaPhi_2026-7-8_ultraFineCentBins.root");  // randomCone maps
+    TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-7-28_ultraFineCentBins.root"); // fastJet PF vs PFCs maps
     for(int i = 0; i < NCentralityIndices; i++){
-      f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%d", i), h_RC_map[i]);
+      //f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%d", i), h_RC_map[i]);
+      f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_C%i", i), h_RC_map[i]);
       if(h_RC_map[i]) h_RC_map[i]->SetDirectory(nullptr);
     }
 
@@ -376,6 +380,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_NMuTaggedJetPerEvent[i] = new TH1D(Form("h_NMuTaggedJetPerEvent_C%i",i),Form("Number of #it{#mu}-tagged jets per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),100,0,100);
 	// ----------------------------------------- incl. reco jets --------------   
 	h_inclRecoJetPt[i] = new TH1D(Form("h_inclRecoJetPt_C%i",i),Form("incl. reco p_{T}^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_inclRawJetPt[i] = new TH1D(Form("h_inclRawJetPt_C%i",i),Form("incl. raw p_{T}^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_inclRecoJetEta[i] = new TH1D(Form("h_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NEtaBins,etaMin,etaMax);
 	h_inclRecoJetPhi[i] = new TH1D(Form("h_inclRecoJetPhi_C%i",i),Form("incl. reco #phi^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPhiBins,phiMin,phiMax);
 	h_inclRecoJetPt_inclRecoJetEta[i] = new TH2D(Form("h_inclRecoJetPt_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet} vs. incl reco p_{T}^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,NEtaBins,etaMin,etaMax);
@@ -440,6 +445,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_NMuTaggedJetPerEvent[i] = new TH1D(Form("h_NMuTaggedJetPerEvent_C%i",i),Form("Number of #it{#mu}-tagged jets per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),100,0,100);
 	// ----------------------------------------- incl. reco jets --------------   
 	h_inclRecoJetPt[i] = new TH1D(Form("h_inclRecoJetPt_C%i",i),Form("incl. reco p_{T}^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_inclRawJetPt[i] = new TH1D(Form("h_inclRawJetPt_C%i",i),Form("incl. raw p_{T}^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_inclRecoJetEta[i] = new TH1D(Form("h_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NEtaBins,etaMin,etaMax);
 	h_inclRecoJetPhi[i] = new TH1D(Form("h_inclRecoJetPhi_C%i",i),Form("incl. reco #phi^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPhiBins,phiMin,phiMax);
 	h_inclRecoJetPt_inclRecoJetEta[i] = new TH2D(Form("h_inclRecoJetPt_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet} vs. incl reco p_{T}^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,NEtaBins,etaMin,etaMax);
@@ -501,6 +507,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_vz_inclRecoMuonTag[i]->Sumw2();
       h_vz_inclRecoMuonTag_triggerOn[i]->Sumw2();
       h_inclRecoJetPt[i]->Sumw2();
+      h_inclRawJetPt[i]->Sumw2();
       h_inclRecoJetEta[i]->Sumw2();
       h_inclRecoJetPhi[i]->Sumw2();
       h_inclRecoJetPt_inclRecoJetEta[i]->Sumw2();
@@ -602,14 +609,6 @@ void PbPb_pfCandAnalyzer(int group = 1){
     em->loadParticleFlowAnalyzer_PFCs("pfcandAnalyzerCS");
     em->loadParticleFlowAnalyzer("pfcandAnalyzer");
     cout << "	Variables initilized!" << endl << endl ;
-    // Open a separate file handle so these branch addresses don't overwrite
-    // the ones em->loadParticleFlowAnalyzer() set for em->nPFpart/pfPt/etc.
-    // TFile* f_pfRaw = TFile::Open(input.c_str());
-    // TTree* pfTreeStd_raw = (TTree*) f_pfRaw->Get("pfcandAnalyzer/pfTree");
-    // TTree* pfTreeCS_raw  = (TTree*) f_pfRaw->Get("pfcandAnalyzerCS/pfTree");
-    // int nPFcand_std = 0, nPFcand_cs = 0;
-    // if(pfTreeStd_raw) pfTreeStd_raw->SetBranchAddress("nPFpart", &nPFcand_std);
-    // if(pfTreeCS_raw)  pfTreeCS_raw ->SetBranchAddress("nPFpart", &nPFcand_cs);
     int NEvents = em->evtTree->GetEntries();
     cout << "	Number of events = " << NEvents << endl;
     //int NJets = em->recoJetTree->GetEntries();
@@ -1059,6 +1058,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	JEC.SetJetPhi(em->jetphi[i]);
 
 	double x = JEC.GetCorrectedPT();  // use manual JEC
+	double rawJetPt_i = em->rawpt[i];
 	//double x = em->jetpt[i]; // use built-in JEC
 	double y = em->jeteta[i]; // recoJetEta
 	double z = em->jetphi[i]; // recoJetPhi
@@ -1125,8 +1125,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_inclRecoJetPt[0]->Fill(x,w);
 	h_inclRecoJetPt[CentralityIndex]->Fill(x,w);
 
-	h_inclRecoJetEta[0]->Fill(y,w);
-	h_inclRecoJetEta[CentralityIndex]->Fill(y,w);
+	h_inclRawJetEta[0]->Fill(rawJetPt_i,w);
+	h_inclRawJetEta[CentralityIndex]->Fill(rawJetPt_i,w);
 
 	h_inclRecoJetPhi[0]->Fill(z,w);
 	h_inclRecoJetPhi[CentralityIndex]->Fill(z,w);
@@ -1469,6 +1469,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_dimuonMass_sameSign[i]->Write();
    
       h_inclRecoJetPt[i]->Write();
+      h_inclRawJetPt[i]->Write();
       h_inclRecoJetEta[i]->Write();
       h_inclRecoJetPhi[i]->Write();
       h_inclRecoJetPt_inclRecoJetEta[i]->Write();
