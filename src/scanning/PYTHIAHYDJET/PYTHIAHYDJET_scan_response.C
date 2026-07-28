@@ -409,7 +409,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
   cout << "Loading muon triggers..." << endl;
   em->loadHLT(hltString);
   cout << "	Loading gen particles..." << endl;
-  em->loadGenParticle();
+  em->loadGenParticle("genParticleTree");
   cout << "	Variables initilized!" << endl << endl ;
   int NEvents = em->evtTree->GetEntries();
   cout << "	Number of events = " << NEvents << endl;
