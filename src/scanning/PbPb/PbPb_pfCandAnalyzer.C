@@ -285,7 +285,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 						   fillMu7,
 						   fillMu12,
 						   pseudoJetCandPt_min,
-						   doEventMixing);
+						   doEventMixing,
+						   skipSingleConstituentJets);
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
