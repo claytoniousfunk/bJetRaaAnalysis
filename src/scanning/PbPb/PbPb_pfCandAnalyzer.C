@@ -937,6 +937,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
         std::vector<fastjet::PseudoJet> jets = fastjet::sorted_by_pt(cs.inclusive_jets(0.));
         for(const auto& jet : jets){
           if(TMath::Abs(jet.eta()) > 1.6) continue;
+	  std::vector<fastjet::PseudoJet> constituents = jet.constituents();
+	  if(skipSingleConstituentJets){
+	    if (constituents.size() < 2) continue;  // cut single-track/single-constituent jets
+	  }
           h_fastJetPt_PF[0]->Fill(jet.pt(), w);
           h_fastJetPt_PF[CentralityIndex]->Fill(jet.pt(), w);
           JEC.SetJetPT(jet.pt());
@@ -985,6 +989,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
         std::vector<fastjet::PseudoJet> jets_PFCs = fastjet::sorted_by_pt(cs_PFCs.inclusive_jets(0.));
         for(const auto& jet_PFCs : jets_PFCs){
           if(TMath::Abs(jet_PFCs.eta()) > 1.6) continue;
+	  std::vector<fastjet::PseudoJet> constituents_PFCs = jet_PFCs.constituents();
+	  if(skipSingleConstituentJets){
+	    if (constituents_PFCs.size() < 2) continue;  // cut single-track/single-constituent jets
+	  }
           h_fastJetPt_PFCs[0]->Fill(jet_PFCs.pt(), w);
           h_fastJetPt_PFCs[CentralityIndex]->Fill(jet_PFCs.pt(), w);
           JEC.SetJetPT(jet_PFCs.pt());
@@ -998,6 +1006,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  double dPT = -999.0;
 	  // match h_fastJetPt_PFCs to h_fastJetPt_PF
 	  for(const auto& jet_PF : jets){
+	    std::vector<fastjet::PseudoJet> constituents_PF = jet_PF.constituents();
+	    if(skipSingleConstituentJets){
+	      if (constituents_PF.size() < 2) continue;  // cut single-track/single-constituent jets
+	    }
 	    double dR = getDr(jet_PF.eta(),jet_PF.phi_std(),jet_PFCs.eta(),jet_PFCs.phi_std());
 	    if(dR < dR_min){
 	      dR_min = dR;

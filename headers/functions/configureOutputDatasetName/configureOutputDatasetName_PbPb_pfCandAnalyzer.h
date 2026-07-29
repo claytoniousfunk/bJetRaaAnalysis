@@ -22,7 +22,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
 				   bool fillMu7,
 				   bool fillMu12,
 				   double pseudoJetCandPt_min,
-				   bool doEventMixing)
+				   bool doEventMixing,
+				   bool skipSingleConstituentJets)
 {
 
   TString result = "output";
@@ -63,8 +64,7 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   // pfCand / event-mixing options
   if(doEventMixing) result.Append("_mixedEventPFClustering");
   else result.Append("_sameEventPFClustering");
-  /* if(doConstituentSubtraction) result.Append("_pfCandCS"); */
-  /* else result.Append("_pfCand"); */
+  if(skipSingleConstituentJets) ("_skipSingleConstituentJets");
   result.Append(Form("_pseudoJetCandPtMin-%1.1f",pseudoJetCandPt_min));
 
   TDatime dt;
