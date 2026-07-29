@@ -64,7 +64,7 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   // pfCand / event-mixing options
   if(doEventMixing) result.Append("_mixedEventPFClustering");
   else result.Append("_sameEventPFClustering");
-  if(skipSingleConstituentJets) ("_skipSingleConstituentJets");
+  if(skipSingleConstituentJets) result.Append("_skipSingleConstituentJets");
   result.Append(Form("_pseudoJetCandPtMin-%1.1f",pseudoJetCandPt_min));
 
   TDatime dt;
