@@ -1080,14 +1080,17 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 	  h_fastJetPtPF_dRmin[0][0]->Fill(matchedPtPF,dR_min,w);
 	  h_fastJetPtPF_dRmin[CentralityIndex][0]->Fill(matchedPtPF,dR_min,w);
-	  h_fastJetPtPF_dRmin[0][jetPtIndex_PFCs]->Fill(matchedPtPF,dR_min,w);
-	  h_fastJetPtPF_dRmin[CentralityIndex][jetPtIndex_PFCs]->Fill(matchedPtPF,dR_min,w);
+	  if(jetPtIndex_PFCs > 0){
+	    h_fastJetPtPF_dRmin[0][jetPtIndex_PFCs]->Fill(matchedPtPF,dR_min,w);
+	    h_fastJetPtPF_dRmin[CentralityIndex][jetPtIndex_PFCs]->Fill(matchedPtPF,dR_min,w);
+	  }
 
 	  h_fastJetPtPF_etaPFCs[0][0]->Fill(matchedPtPF,jet_PFCs.eta(),w);
 	  h_fastJetPtPF_etaPFCs[CentralityIndex][0]->Fill(matchedPtPF,jet_PFCs.eta(),w);
-	  h_fastJetPtPF_etaPFCs[0][jetPtIndex_PFCs]->Fill(matchedPtPF,jet_PFCs.eta(),w);
-	  h_fastJetPtPF_etaPFCs[CentralityIndex][jetPtIndex_PFCs]->Fill(matchedPtPF,jet_PFCs.eta(),w);
-
+	  if(jetPtIndex_PFCs > 0){
+	    h_fastJetPtPF_etaPFCs[0][jetPtIndex_PFCs]->Fill(matchedPtPF,jet_PFCs.eta(),w);
+	    h_fastJetPtPF_etaPFCs[CentralityIndex][jetPtIndex_PFCs]->Fill(matchedPtPF,jet_PFCs.eta(),w);
+	  }
 	  
         }
 
