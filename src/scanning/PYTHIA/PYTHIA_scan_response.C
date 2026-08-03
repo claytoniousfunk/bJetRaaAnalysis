@@ -373,11 +373,11 @@ void PYTHIA_scan_response(int group = 1){
   cout << "	Loading muon..." << endl;
   em->loadMuon(muonTreeString);
   cout << "	Loading muon triggers..." << endl;
-  em->loadMuonTrigger(hltString);
+  em->loadHLT(hltString);
   cout << "	Loading tracks..." << endl;
   em->loadTrack("ppTrack/trackTree");
   cout << "	Loading gen particles..." << endl;
-  em->loadGenParticle();
+  em->loadGenParticle("genParticleTree");
   cout << "	Variables initilized!" << endl << endl ;
   int NEvents = em->evtTree->GetEntries();
   cout << "	Number of events = " << NEvents << endl;
