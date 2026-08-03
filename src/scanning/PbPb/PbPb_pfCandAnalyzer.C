@@ -925,12 +925,16 @@ void PbPb_pfCandAnalyzer(int group = 1){
             double pt  = em->pfPt->at(l);
             double eta = em->pfEta->at(l);
             double phi = em->pfPhi->at(l);
+	    int id = em->pfId->at(l);
             if(pt < pseudoJetCandPt_min) continue;
             double px = pt * TMath::Cos(phi);
             double py = pt * TMath::Sin(phi);
             double pz = pt * TMath::SinH(eta);
             double E  = pt * TMath::CosH(eta);
-            fjInputs.push_back(fastjet::PseudoJet(px, py, pz, E));
+	    bool isCharged = (id == 1 || id == 2 || id == 3); // id = h, e, mu
+	    fastjet::PseudoJet pseudoJet_l(px, py, pz, E);
+	    pseudoJet_l.set_user_index(isCharged ? 1 : 0);
+            fjInputs.push_back(pseudoJet_l);
           }
         }
         fastjet::JetDefinition jetDef(fastjet::antikt_algorithm, dR_max_pfcand);
@@ -942,13 +946,25 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  if(skipSingleConstituentJets){
 	    if (constituents.size() < 2) continue;  // cut single-track/single-constituent jets
 	  }
-          h_fastJetPt_PF[0]->Fill(jet.pt(), w);
-          h_fastJetPt_PF[CentralityIndex]->Fill(jet.pt(), w);
+	  
+	  double trackMaxPt = 0.0;
+	  for(const auto& c : constituents){
+	    if(c.user_index == 1 && c.pt() > trackMaxPt) trackMaxPt = c.pt();
+	  }
+	           
           JEC.SetJetPT(jet.pt());
           JEC.SetJetEta(jet.eta());
           JEC.SetJetPhi(jet.phi_std());
           double fastJetPt_JEC = JEC.GetCorrectedPT();
-          h_fastJetPt_PF_JEC[0]->Fill(fastJetPt_JEC, w);
+	  // apply jet pT cut to match forest
+	  if(fastJetPt_JEC < 20.) continue;
+	  if(doJetTrkMaxFilter){
+	    // do track-max pT cut
+	    if(!passesJetTrkMaxFilter(trackMaxPt,fastJetPt_JEC)) continue;
+	  }
+	  h_fastJetPt_PF[0]->Fill(jet.pt(), w);
+	  h_fastJetPt_PF[CentralityIndex]->Fill(jet.pt(), w);
+	  h_fastJetPt_PF_JEC[0]->Fill(fastJetPt_JEC, w);
           h_fastJetPt_PF_JEC[CentralityIndex]->Fill(fastJetPt_JEC, w);
           // RC-subtracted fastJet pT: subtract mean UE pT at the jet's (eta,phi) location
           if(h_RC_map[CentralityIndex]){
@@ -978,12 +994,16 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  double pt  = em->pfCsPt->at(l);
 	  double eta = em->pfCsEta->at(l);
 	  double phi = em->pfCsPhi->at(l);
+	  double id = em->pfCsId->at(l);
 	  if(pt < pseudoJetCandPt_min) continue;
 	  double px = pt * TMath::Cos(phi);
 	  double py = pt * TMath::Sin(phi);
 	  double pz = pt * TMath::SinH(eta);
 	  double E  = pt * TMath::CosH(eta);
-	  fjInputs_PFCs.push_back(fastjet::PseudoJet(px, py, pz, E));
+	  bool isCharged = (id == 1 || id == 2 || id == 3); // id = h, e, mu,
+	  fastjet::PseudoJet pseudoJet_l(px, py, pz, E);
+	  pseudoJet_l.set_user_index(isCharge ? 1 : 0);
+	  fjInputs_PFCs.push_back(pseudoJet_l);
 	}
         
 	fastjet::ClusterSequence cs_PFCs(fjInputs_PFCs, jetDef);
@@ -994,12 +1014,22 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  if(skipSingleConstituentJets){
 	    if (constituents_PFCs.size() < 2) continue;  // cut single-track/single-constituent jets
 	  }
-          h_fastJetPt_PFCs[0]->Fill(jet_PFCs.pt(), w);
-          h_fastJetPt_PFCs[CentralityIndex]->Fill(jet_PFCs.pt(), w);
+	  double trackMaxPt = 0.0;
+	  for(const auto& c : constituents_PFCs){
+	    if(c.user_index == 1 && c.pt() > trackMaxPt) trackMaxPt = c.pt();
+	  }
+	  
           JEC.SetJetPT(jet_PFCs.pt());
           JEC.SetJetEta(jet_PFCs.eta());
           JEC.SetJetPhi(jet_PFCs.phi_std());
           double fastJetPt_PFCs_JEC = JEC.GetCorrectedPT();
+	  if(fastJetPt_PFCs_JEC < 20.) continue;
+	  if(doJetTrkMaxFilter){
+	    // do track-max pT cut
+	    if(!passesJetTrkMaxFilter(trackMaxPt,fastJetPt_PFCs_JEC)) continue;
+	  }
+	  h_fastJetPt_PFCs[0]->Fill(jet_PFCs.pt(), w);
+          h_fastJetPt_PFCs[CentralityIndex]->Fill(jet_PFCs.pt(), w);
           h_fastJetPt_PFCs_JEC[0]->Fill(fastJetPt_PFCs_JEC, w);
           h_fastJetPt_PFCs_JEC[CentralityIndex]->Fill(fastJetPt_PFCs_JEC, w);
 
