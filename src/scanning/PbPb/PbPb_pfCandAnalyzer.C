@@ -579,8 +579,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  h_inclRecoJetEta_inclRecoJetPhi_inclRecoMuonTag_triggerOn[i][j] = new TH2D(Form("h_inclRecoJetEta_inclRecoJetPhi_inclRecoMuonTag_triggerOn_C%iJ%i",i,j),Form("incl. reco #phi^{jet} vs. incl. reco #eta^{jet}, tagged with incl. reco muon, trigger ON, hiBin %i - %i, p_{T}^{jet} %3.0f - %3.0f", centEdges[0],centEdges[NCentralityIndices-1],jetPtEdges[j-1],jetPtEdges[j]),NEtaBins,etaMin,etaMax,NPhiBins,phiMin,phiMax);
 	}
 	else if(j==0){
-	  h_fastJetPtPF_dRmin[i][j] = new TH2D(Form("h_fastJetPtPF_dRmin_C%iJ%i",i,j),Form("dR(PF,PFCs) vs fastJetPt(PF), hiBin %i - %i, p_{T}^{PFCs} 20 - 500",centEdges[i-1],centEdges[i],jetPtEdges[0],jetPtEdges[NJetPtIndices-1]),NPtBins,ptMin,ptMax,NdRBins,dRBinMin,dRBinMax);
-	  h_fastJetPtPF_etaPFCs[i][j] = new TH2D(Form("h_fastJetPtPF_etaPFCs_C%iJ%i",i,j),Form("#eta(PFCs) vs fastJetPt(PF), hiBin %i - %i, p_{T}^{PFCs} 20 - 500",centEdges[i-1],centEdges[i],jetPtEdges[0],jetPtEdges[NJetPtIndices-1]),NPtBins,ptMin,ptMax,NEtaBins,etaMin,etaMax);
+	  h_fastJetPtPF_dRmin[i][j] = new TH2D(Form("h_fastJetPtPF_dRmin_C%iJ%i",i,j),Form("dR(PF,PFCs) vs fastJetPt(PF), hiBin %i - %i, p_{T}^{PFCs} 20 - 500",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,NdRBins,dRBinMin,dRBinMax);
+	  h_fastJetPtPF_etaPFCs[i][j] = new TH2D(Form("h_fastJetPtPF_etaPFCs_C%iJ%i",i,j),Form("#eta(PFCs) vs fastJetPt(PF), hiBin %i - %i, p_{T}^{PFCs} 20 - 500",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,NEtaBins,etaMin,etaMax);
 	  h_muPtOverJetPt[i][j] = new TH1D(Form("h_muPtOverJetPt_C%iJ%i",i,j),Form("p_{T}^{#mu} / p_{T}^{jet}, hiBin %i - %i, p_{T}^{jet} %3.0f - %3.0f", centEdges[i-1],centEdges[i],jetPtEdges[0],jetPtEdges[NJetPtIndices-1]),100,0,1);
 	  h_mupt_muptrel[i][j] = new TH2D(Form("h_mupt_muptrel_C%iJ%i",i,j),Form("muPtRel vs. muPt, hiBin %i - %i, p_{T}^{jet} %3.0f - %3.0f",centEdges[i-1],centEdges[i],jetPtEdges[0],jetPtEdges[NJetPtIndices-1]),NMuPtBins,muPtMin,muPtMax,NMuRelPtBins,muRelPtMin,muRelPtMax);
 	  h_inclRecoJetEta_inclRecoJetPhi[i][j] = new TH2D(Form("h_inclRecoJetEta_inclRecoJetPhi_C%iJ%i",i,j),Form("incl. reco #phi^{jet} vs. incl. reco #eta^{jet}, hiBin %i - %i, p_{T}^{jet} %3.0f - %3.0f", centEdges[i-1],centEdges[i],jetPtEdges[0],jetPtEdges[NJetPtIndices-1]),NEtaBins,etaMin,etaMax,NPhiBins,phiMin,phiMax);
@@ -1050,7 +1050,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    // do track-max pT cut
 	    if(!passesJetTrkMaxFilter(trackMaxPt,fastJetPt_PFCs_JEC)) continue;
 	  }
-	  jetPtIndex_PFCs = getJetPtIndex(fastJetPt_PFCs_JEC);
+	  jetPtIndex_PFCs = getJetPtBin(fastJetPt_PFCs_JEC);
 	  
 	  h_fastJetPt_PFCs[0]->Fill(jet_PFCs.pt(), w);
           h_fastJetPt_PFCs[CentralityIndex]->Fill(jet_PFCs.pt(), w);
@@ -1078,15 +1078,15 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  h_dPTEtaPhi_PF_PFCs[0]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
 	  h_dPTEtaPhi_PF_PFCs[CentralityIndex]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
 
-	  h_fastJetPtPF_dRmin[0][0]->Fill(matchedPtPF,,dR_min,w);
-	  h_fastJetPtPF_dRmin[CentralityIndex][0]->Fill(matchedPtPF,,dR_min,w);
-	  h_fastJetPtPF_dRmin[0][jetPtIndex_PFCs]->Fill(matchedPtPF,,dR_min,w);
-	  h_fastJetPtPF_dRmin[CentralityIndex][jetPtIndex_PFCs]->Fill(matchedPtPF,,dR_min,w);
+	  h_fastJetPtPF_dRmin[0][0]->Fill(matchedPtPF,dR_min,w);
+	  h_fastJetPtPF_dRmin[CentralityIndex][0]->Fill(matchedPtPF,dR_min,w);
+	  h_fastJetPtPF_dRmin[0][jetPtIndex_PFCs]->Fill(matchedPtPF,dR_min,w);
+	  h_fastJetPtPF_dRmin[CentralityIndex][jetPtIndex_PFCs]->Fill(matchedPtPF,dR_min,w);
 
-	  h_fastJetPtPF_etaPFCs[0][0]->Fill(matchedPtPF,,jet_PFCs.eta(),w);
-	  h_fastJetPtPF_etaPFCs[CentralityIndex][0]->Fill(matchedPtPF,,jet_PFCs.eta(),w);
-	  h_fastJetPtPF_etaPFCs[0][jetPtIndex_PFCs]->Fill(matchedPtPF,,jet_PFCs.eta(),w);
-	  h_fastJetPtPF_etaPFCs[CentralityIndex][jetPtIndex_PFCs]->Fill(matchedPtPF,,jet_PFCs.eta(),w);
+	  h_fastJetPtPF_etaPFCs[0][0]->Fill(matchedPtPF,jet_PFCs.eta(),w);
+	  h_fastJetPtPF_etaPFCs[CentralityIndex][0]->Fill(matchedPtPF,jet_PFCs.eta(),w);
+	  h_fastJetPtPF_etaPFCs[0][jetPtIndex_PFCs]->Fill(matchedPtPF,jet_PFCs.eta(),w);
+	  h_fastJetPtPF_etaPFCs[CentralityIndex][jetPtIndex_PFCs]->Fill(matchedPtPF,jet_PFCs.eta(),w);
 
 	  
         }
