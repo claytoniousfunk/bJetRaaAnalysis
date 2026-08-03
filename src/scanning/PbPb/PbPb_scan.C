@@ -522,6 +522,7 @@ void PbPb_scan(int group = 1){
     //int NJets = em->recoJetTree->GetEntries();
     int NJets = em->recoJetTree->GetEntries();
     cout << "     Number of jets = " << NJets << endl;
+    em->loadParticleFlowAnalyzer_PFCs("pfcandAnalyzerCS");
 
     // define event filters
     if(doSingleMuonSample){
