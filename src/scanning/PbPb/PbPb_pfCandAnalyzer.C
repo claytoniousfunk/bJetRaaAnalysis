@@ -290,7 +290,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
-    suffixEdit.Append("_dPTMapBkgSub");
+    //suffixEdit.Append("_dPTMapBkgSub");
 
     TString output = Form("%s%s%s/PbPb_pfCandAnalyzer_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data(),group);
 
@@ -317,8 +317,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
     //TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_randConeEtaPhi_2026-7-8_ultraFineCentBins.root");  // randomCone maps
     TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-7-28_ultraFineCentBins.root"); // fastJet PF vs PFCs maps
     for(int i = 0; i < NCentralityIndices; i++){
-      //f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%d", i), h_RC_map[i]);
-      f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_C%i", i), h_RC_map[i]);
+      f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%d", i), h_RC_map[i]);
+      //f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_C%i", i), h_RC_map[i]);
       if(h_RC_map[i]) h_RC_map[i]->SetDirectory(nullptr);
     }
 
