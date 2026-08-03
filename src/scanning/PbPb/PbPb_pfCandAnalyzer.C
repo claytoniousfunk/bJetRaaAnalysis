@@ -949,7 +949,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  
 	  double trackMaxPt = 0.0;
 	  for(const auto& c : constituents){
-	    if(c.user_index == 1 && c.pt() > trackMaxPt) trackMaxPt = c.pt();
+	    if(c.user_index() == 1 && c.pt() > trackMaxPt) trackMaxPt = c.pt();
 	  }
 	           
           JEC.SetJetPT(jet.pt());
@@ -1002,7 +1002,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  double E  = pt * TMath::CosH(eta);
 	  bool isCharged = (id == 1 || id == 2 || id == 3); // id = h, e, mu,
 	  fastjet::PseudoJet pseudoJet_l(px, py, pz, E);
-	  pseudoJet_l.set_user_index(isCharge ? 1 : 0);
+	  pseudoJet_l.set_user_index(isCharged ? 1 : 0);
 	  fjInputs_PFCs.push_back(pseudoJet_l);
 	}
         
@@ -1016,7 +1016,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  }
 	  double trackMaxPt = 0.0;
 	  for(const auto& c : constituents_PFCs){
-	    if(c.user_index == 1 && c.pt() > trackMaxPt) trackMaxPt = c.pt();
+	    if(c.user_index() == 1 && c.pt() > trackMaxPt) trackMaxPt = c.pt();
 	  }
 	  
           JEC.SetJetPT(jet_PFCs.pt());
