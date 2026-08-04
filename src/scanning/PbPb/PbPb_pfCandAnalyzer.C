@@ -295,6 +295,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
     TString suffixEdit = CENT_SCHEME_SUFFIX;
     suffixEdit.Append("_dPTMapBkgSub");
     suffixEdit.Append("_fixFastJetPtCut");
+    suffixEdit.Append("_fixJECApplicationOrder");
 
     TString output = Form("%s%s%s/PbPb_pfCandAnalyzer_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data(),group);
 
@@ -993,7 +994,11 @@ void PbPb_pfCandAnalyzer(int group = 1){
             double rcMeanPt = h_RC_map[CentralityIndex]->GetBinContent(
                                 h_RC_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
             double fastJetPt_rcSub = jet.pt() - rcMeanPt;
-	    double fastJetPt_JEC_rcSub = fastJetPt_JEC - rcMeanPt;
+	    
+	    JEC.SetJetPT(fastJetPt_rcSub);
+	    JEC.SetJetEta(jet.eta());
+	    JEC.SetJetPhi(jet.phi_std());
+	    double fastJetPt_JEC_rcSub = JEC.GetCorrectedPT();
 	        
             if(fastJetPt_rcSub > 0){
 
