@@ -294,6 +294,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
     suffixEdit.Append("_dPTMapBkgSub");
+    suffixEdit.Append("_fixFastJetPtCut");
 
     TString output = Form("%s%s%s/PbPb_pfCandAnalyzer_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data(),group);
 
