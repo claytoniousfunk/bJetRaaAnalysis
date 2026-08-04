@@ -978,8 +978,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
           JEC.SetJetEta(jet.eta());
           JEC.SetJetPhi(jet.phi_std());
           double fastJetPt_JEC = JEC.GetCorrectedPT();
-	  // apply jet pT cut to match forest
-	  if(fastJetPt_JEC < 20.) continue;
+	  
 	  if(doJetTrkMaxFilter){
 	    // do track-max pT cut
 	    if(!passesJetTrkMaxFilter(trackMaxPt,fastJetPt_JEC)) continue;
@@ -996,6 +995,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    double fastJetPt_JEC_rcSub = fastJetPt_JEC - rcMeanPt;
 	        
             if(fastJetPt_rcSub > 0){
+
+	      // apply jet pT cut to match forest
+	      if(fastJetPt_JEC_rcSub < 20.) continue;
+	      
               h_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetPt_rcSub, w);
               h_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_rcSub, w);
 
