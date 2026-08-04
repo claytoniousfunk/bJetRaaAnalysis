@@ -318,7 +318,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
     // Load random-cone UE maps (used for RC-subtracted fastJet pT)
     //TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_randConeEtaPhi_2026-7-8_ultraFineCentBins.root");  // randomCone maps
-    TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-7-28_ultraFineCentBins.root"); // fastJet PF vs PFCs maps
+    //TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-7-28_ultraFineCentBins.root"); // fastJet PF vs PFCs maps
+    TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-4_ultraFineCentBins.root"); 
     for(int i = 0; i < NCentralityIndices; i++){
       //f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%d", i), h_RC_map[i]);
       f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_C%i", i), h_RC_map[i]);
