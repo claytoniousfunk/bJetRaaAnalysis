@@ -291,7 +291,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 						   pseudoJetCandPt_min,
 						   doEventMixing,
 						   skipSingleConstituentJets,
-						   useDeltaPTMapsForBkgSub);
+						   useDeltaPTMapsForBkgSub,
+						   useGeoCorrForRCMap);
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
@@ -325,7 +326,9 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
       if(useDeltaPTMapsForBkgSub) f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_C%i", i), h_RC_map[i]);
       else{
-	f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%d", i), h_RC_map[i]);
+	if(useGeoCorrForRCMap) f_RC_maps->GetObject(Form("h_randConeEtaPhi_geoCorr_C%d", i), h_RC_map[i]);
+	else f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%d", i), h_RC_map[i]);
+	
       }
       
       if(h_RC_map[i]) h_RC_map[i]->SetDirectory(nullptr);

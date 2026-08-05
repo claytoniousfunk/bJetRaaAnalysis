@@ -24,7 +24,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
 				   double pseudoJetCandPt_min,
 				   bool doEventMixing,
 				   bool skipSingleConstituentJets,
-				   bool useDeltaPTMapsForBkgSub)
+				   bool useDeltaPTMapsForBkgSub,
+				   bool useGeoCorrForRCMap)
 {
 
   TString result = "output";
@@ -69,7 +70,10 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   result.Append(Form("_pseudoJetCandPtMin-%1.1f",pseudoJetCandPt_min));
 
   if(useDeltaPTMapsForBkgSub) result.Append("_dPTMapBkgSub");
-  else result.Append("_RCMapBkgSub");
+  else{
+    if(useGeoCorrForRCMap) result.Append("_RCGeoCorrMapBkgSub");
+    else result.Append("_RCMapBkgSub");
+  }
 
   TDatime dt;
   result.Append(Form("_%i-%i-%i",dt.GetYear(),dt.GetMonth(),dt.GetDay()));
