@@ -563,7 +563,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_nPFcand[i]->Sumw2();
       h_nPFcandCS[i]->Sumw2();
       h_randConeEtaPhi[i]->Sumw2();
-      h_randConeEtaPhi_geoCorr[i]-Sumw2();
+      h_randConeEtaPhi_geoCorr[i]->Sumw2();
       h_dPTEtaPhi_PF_PFCs[i]->Sumw2();
       h_dRmin_PF_PFCs[i]->Sumw2();
 
