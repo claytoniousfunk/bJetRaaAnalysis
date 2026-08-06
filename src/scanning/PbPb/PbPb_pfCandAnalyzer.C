@@ -320,7 +320,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 
     // Load random-cone UE maps (used for RC-subtracted fastJet pT)
-    TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/"); 
+    TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_RCMapBkgSub_2026-8-5_ultraFineCentBins.root"); 
     for(int i = 0; i < NCentralityIndices; i++){
 
       if(useDeltaPTMapsForBkgSub) f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_C%i", i), h_RC_map[i]);
