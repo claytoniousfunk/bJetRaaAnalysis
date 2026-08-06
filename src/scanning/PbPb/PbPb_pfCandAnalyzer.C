@@ -569,7 +569,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_randConeEtaPhi[i]->Sumw2();
       h_randConeEtaPhi_geoCorr[i]->Sumw2();
       h_dPTEtaPhi_PF_PFCs[i]->Sumw2();
-      h_dPTEtaPhi_PF_PFCs_dPTAbove0[i]
+      h_dPTEtaPhi_PF_PFCs_dPTAbove0[i]->Sumw2();
       h_dRmin_PF_PFCs[i]->Sumw2();
 
       // loop through jet pt indices
