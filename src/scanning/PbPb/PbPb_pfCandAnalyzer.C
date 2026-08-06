@@ -203,12 +203,32 @@ const int    NRC_EtaBins = 32;   // -1.6 to 1.6, width 0.1
 const int    NRC_PhiBins = 64;   // -pi to pi,   width ~0.098
 TProfile2D  *h_randConeEtaPhi[NCentralityIndices];
 TProfile2D  *h_randConeEtaPhi_geoCorr[NCentralityIndices];
+
 TH1D        *h_fastJetPt_PF_bkgSub_RC[NCentralityIndices];
 TH1D        *h_fastJetPt_PF_JEC_bkgSub_RC[NCentralityIndices];
-TH1D        *h_fastJetPt_PF_bkgSub_RC_etaReflect[NCentralityIndices];
-TH1D        *h_fastJetPt_PF_JEC_bkgSub_RC_etaReflect[NCentralityIndices];
+
+TH1D        *h_fastJetPt_PF_bkgSub_RC_geoCorr[NCentralityIndices];
+TH1D        *h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[NCentralityIndices];
+
+TH1D        *h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[NCentralityIndices];
+TH1D        *h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[NCentralityIndices];
+
+TH1D        *h_fastJetPt_PF_bkgSub_dPT[NCentralityIndices];
+TH1D        *h_fastJetPt_PF_JEC_bkgSub_dPT[NCentralityIndices];
+
+TH1D        *h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[NCentralityIndices];
+TH1D        *h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[NCentralityIndices];
+
+TH1D        *h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[NCentralityIndices];
+TH1D        *h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[NCentralityIndices];
+
+
 // RC eta/phi maps loaded from external file at run time
 TProfile2D  *h_RC_map[NCentralityIndices];
+TProfile2D  *h_RC_geoCorr_map[NCentralityIndices];
+TProfile2D  *h_dPT_map[NCentralityIndices];
+TProfile2D  *h_dPT_dPTAbove0_map[NCentralityIndices];
+TProfile2D  *h_dPT_PFCsPTAbove60_map[NCentralityIndices];
 
 ///////////////////////  start the program
 void PbPb_pfCandAnalyzer(int group = 1){
@@ -326,14 +346,26 @@ void PbPb_pfCandAnalyzer(int group = 1){
     TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_RCMapBkgSub_2026-8-5_ultraFineCentBins.root"); 
     for(int i = 0; i < NCentralityIndices; i++){
 
-      if(useDeltaPTMapsForBkgSub) f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_C%i", i), h_RC_map[i]);
-      else{
-	if(useGeoCorrForRCMap) f_RC_maps->GetObject(Form("h_randConeEtaPhi_geoCorr_C%i", i), h_RC_map[i]);
-	else f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%i", i), h_RC_map[i]);
+      f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%i",i), h_RC_map[i]);
+      f_RC_maps->GetObject(Form("h_randConeEtaPhi_geoCorr_C%i",i) h_RC_geoCorr_map[i]);
+      f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_C%i",i), h_dPT_map[i]);
+      f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_dPTAbove0_C%i",i) h_dPT_dPTAbove0_map[i]);
+      f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60_C%i",i) h_dPT_PFCsPTAbove60_map[i]);
+				
+     
+      // if(useDeltaPTMapsForBkgSub) f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_C%i", i), h_RC_map[i]);
+      // else{
+      // 	if(useGeoCorrForRCMap) f_RC_maps->GetObject(Form("h_randConeEtaPhi_geoCorr_C%i", i), h_RC_map[i]);
+      // 	else f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%i", i), h_RC_map[i]);
 	
-      }
+      // }
       
       if(h_RC_map[i]) h_RC_map[i]->SetDirectory(nullptr);
+      if(h_RC_geoCorr_map[i]) h_RC_geoCorr_map[i]->SetDirectory(nullptr);
+      if(h_dPT_map[i]) h_dPT_map[i]->SetDirectory(nullptr);
+      if(h_dPT_dPTAbove0_map[i]) h_dPT_dPTAbove0_map[i]->SetDirectory(nullptr);
+      if(h_dPT_PFCsPTAbove60_map[i]) h_dPT_PFCsPTAbove60_map[i]->SetDirectory(nullptr);
+      
     }
 
     // define histograms
@@ -439,8 +471,16 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_fastJetPt_PFCs_JEC[i] = new TH1D(Form("h_fastJetPt_PFCs_JEC_C%i",i),Form("FastJet anti-kT pT (PFCs, JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_bkgSub_RC[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, random-cone), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_JEC_bkgSub_RC[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, random-cone), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
-	h_fastJetPt_PF_bkgSub_RC_etaReflect[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_etaReflect_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, random-cone, #eta-reflect), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
-	h_fastJetPt_PF_JEC_bkgSub_RC_etaReflect[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_etaReflect_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, random-cone, #eta-reflect), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_RC_geoCorr[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_geoCorr_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, random-cone, geometry correction), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, random-cone, geometry correction), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, random-cone, geometry correction, #eta-reflect), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, random-cone, geometry correction, #eta-reflect), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_dPT[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, dPT), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_dPT[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, dPT), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_dPTAbove0_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, dPT), dPT > 0, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, dPT), dPT > 0, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, dPT), pT(PFCs) > 60, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, dPT), pT(PFCs) > 60, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_nPFcand[i]   = new TH1D(Form("h_nPFcand_C%i",i),  Form("N PF cands per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
 	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
 	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
@@ -508,10 +548,24 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_fastJetPt_PF_JEC[i] = new TH1D(Form("h_fastJetPt_PF_JEC_C%i",i),Form("FastJet (PF) anti-kT pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PFCs[i] = new TH1D(Form("h_fastJetPt_PFCs_C%i",i),Form("FastJet (PFCs) anti-kT pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PFCs_JEC[i] = new TH1D(Form("h_fastJetPt_PFCs_JEC_C%i",i),Form("FastJet (PFCs) anti-kT pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-	h_fastJetPt_PF_bkgSub_RC[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_C%i",i),Form("FastJet (PF) anti-kT pT (bkg sub, random-cone), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+
+
+	h_fastJetPt_PF_bkgSub_RC[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, random-cone), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_JEC_bkgSub_RC[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, random-cone), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-	h_fastJetPt_PF_bkgSub_RC_etaReflect[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_etaReflect_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, random-cone, #eta-reflect), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-	h_fastJetPt_PF_JEC_bkgSub_RC_etaReflect[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_etaReflect_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, random-cone, #eta-reflect), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_RC_geoCorr[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_geoCorr_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, random-cone, geometry correction), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, random-cone, geometry correction), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, random-cone, geometry correction, #eta-reflect), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, random-cone, geometry correction, #eta-reflect), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_dPT[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, dPT), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_dPT[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, dPT), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_dPTAbove0_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, dPT), dPT > 0, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, dPT), dPT > 0, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, dPT), pT(PFCs) > 60, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, dPT), pT(PFCs) > 60, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+
+
+
+
 	h_nPFcand[i]   = new TH1D(Form("h_nPFcand_C%i",i),  Form("N PF cands per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
 	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
 	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
@@ -571,10 +625,20 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_fastJetPt_PF_JEC[i]->Sumw2();
       h_fastJetPt_PFCs[i]->Sumw2();
       h_fastJetPt_PFCs_JEC[i]->Sumw2();
+
       h_fastJetPt_PF_bkgSub_RC[i]->Sumw2();
       h_fastJetPt_PF_JEC_bkgSub_RC[i]->Sumw2();
-      h_fastJetPt_PF_bkgSub_RC_etaReflect[i]->Sumw2();
-      h_fastJetPt_PF_JEC_bkgSub_RC_etaReflect[i]->Sumw2();
+      h_fastJetPt_PF_bkgSub_RC_geoCorr[i]->Sumw2();
+      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[i]->Sumw2();
+      h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[i]->Sumw2();
+      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[i]->Sumw2();
+      h_fastJetPt_PF_bkgSub_dPT[i]->Sumw2();
+      h_fastJetPt_PF_JEC_bkgSub_dPT[i]->Sumw2();
+      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[i]->Sumw2();
+      h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[i]->Sumw2();
+      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[i]->Sumw2();
+      h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[i]->Sumw2();
+
       h_nPFcand[i]->Sumw2();
       h_nPFcandCS[i]->Sumw2();
       h_randConeEtaPhi[i]->Sumw2();
@@ -1022,20 +1086,52 @@ void PbPb_pfCandAnalyzer(int group = 1){
           if(h_RC_map[CentralityIndex]){
             double rcMeanPt = h_RC_map[CentralityIndex]->GetBinContent(
                                 h_RC_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
-	    double rcMeanPt_etaReflect = h_RC_map[CentralityIndex]->GetBinContent(
-                                h_RC_map[CentralityIndex]->FindBin(-1.*jet.eta(), jet.phi_std()));
-            double fastJetPt_rcSub = jet.pt() - rcMeanPt;
-	    double fastJetPt_rcSub_etaReflect = jet.pt() - rcMeanPt_etaReflect;
+
+	    double rcMeanPt_geoCorr = h_RC_geoCorr_map[CentralityIndex]->GetBinContent(
+                                h_RC_geoCorr_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
+
+
+	    double rcMeanPt_geoCorr_etaReflect = h_RC_geoCorr_map[CentralityIndex]->GetBinContent(
+                                h_RC_geoCorr_map[CentralityIndex]->FindBin(-1.*jet.eta(), jet.phi_std()));
+
+
+	    double dPTMeanPt = h_dPT_map[CentralityIndex]->GetBinContent(h_dPT_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
+
+	    double dPTMeanPt_dPTAbove0 = h_dPT_dPTAbove0_map[CentralityIndex]->GetBinContent(h_dPT_dPTAbove0_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
+
+	    double dPTMeanPt_PFCsPTAbove60 = h_dPT_PFCsPTAbove60_map[CentralityIndex]->GetBinContent(h_dPT_PFCsPTAbove60_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
+
+
+
+	    double fastJetPt_rcSub = jet.pt() - rcMeanPt;
+	    double fastJetPt_rcSub_geoCorr = jet.pt() - rcMeanPt_geoCorr;
+	    double fastJetPt_rcSub_geoCorr_etaReflect = jet.pt() - rcMeanPt_geoCorr_etaReflect;
+	    double fastJetPt_dPTSub = jet.pt() - dPTMeanPt;
+	    double fastJetPt_dPTSub_dPTAbove0 = jet.pt() - dPTMeanPt_dPTAbove0;
+	    double fastJetPt_dPTSub_PFCsPTAbove60 = jet.pt() - dPTMeanPt_PFCsPTAbove60;
+
+	    JEC.SetJetEta(jet.eta());
+	    JEC.SetJetPhi(jet.phi_std());
 	    
 	    JEC.SetJetPT(fastJetPt_rcSub);
-	    JEC.SetJetEta(jet.eta());
-	    JEC.SetJetPhi(jet.phi_std());
 	    double fastJetPt_JEC_rcSub = JEC.GetCorrectedPT();
 
-	    JEC.SetJetPT(fastJetPt_rcSub_etaReflect);
-	    JEC.SetJetEta(jet.eta());
-	    JEC.SetJetPhi(jet.phi_std());
-	    double fastJetPt_JEC_rcSub_etaReflect = JEC.GetCorrectedPT();
+	    JEC.SetJetPT(fastJetPt_rcSub_geoCorr);
+	    double fastJetPt_JEC_rcSub_geoCorr = JEC.GetCorrectedPT();
+
+	    JEC.SetJetPT(fastJetPt_rcSub_geoCorr_etaReflect);
+	    double fastJetPt_JEC_rcSub_geoCorr_etaReflect = JEC.GetCorrectedPT();
+
+	    JEC.SetJetPT(fastJetPt_dPTSub);
+	    double fastJetPt_JEC_dPTSub = JEC.GetCorrectedPT();
+
+	    JEC.SetJetPT(fastJetPt_dPTSub_dPTAbove0);
+	    double fastJetPt_JEC_dPTSub_dPTAbove0 = JEC.GetCorrectedPT();
+
+	    JEC.SetJetPT(fastJetPt_dPTSub_PFCsPTAbove60);
+	    double fastJetPt_JEC_dPTSub_PFCsPTAbove60 = JEC.GetCorrectedPT();
+
+	    
 	        
             if(fastJetPt_rcSub > 0){
 
@@ -1048,15 +1144,36 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	      h_fastJetPt_PF_JEC_bkgSub_RC[0]->Fill(fastJetPt_JEC_rcSub, w);
               h_fastJetPt_PF_JEC_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_JEC_rcSub, w);
 
-	      h_fastJetPt_PF_bkgSub_RC_etaReflect[0]->Fill(fastJetPt_rcSub_etaReflect, w);
-              h_fastJetPt_PF_bkgSub_RC_etaReflect[CentralityIndex]->Fill(fastJetPt_rcSub_etaReflect, w);
+	      h_fastJetPt_PF_bkgSub_RC_geoCorr[0]->Fill(fastJetPt_rcSub_geoCorr, w);
+              h_fastJetPt_PF_bkgSub_RC_geoCorr[CentralityIndex]->Fill(fastJetPt_rcSub_geoCorr, w);
 
-	      h_fastJetPt_PF_JEC_bkgSub_RC_etaReflect[0]->Fill(fastJetPt_JEC_rcSub_etaReflect, w);
-              h_fastJetPt_PF_JEC_bkgSub_RC_etaReflect[CentralityIndex]->Fill(fastJetPt_JEC_rcSub_etaReflect, w);
+	      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[0]->Fill(fastJetPt_JEC_rcSub_geoCorr, w);
+              h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[CentralityIndex]->Fill(fastJetPt_JEC_rcSub_geoCorr, w);
 
-	      
+	      h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[0]->Fill(fastJetPt_rcSub_geoCorr_etaReflect, w);
+              h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[CentralityIndex]->Fill(fastJetPt_rcSub_geoCorr_etaReflect, w);
+
+	      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[0]->Fill(fastJetPt_JEC_rcSub_geoCorr_etaReflect, w);
+              h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[CentralityIndex]->Fill(fastJetPt_JEC_rcSub_geoCorr_etaReflect, w);
 
 
+	      h_fastJetPt_PF_bkgSub_dPT[0]->Fill(fastJetPt_dPTSub,w);
+	      h_fastJetPt_PF_bkgSub_dPT[CentralityIndex]->Fill(fastJetPt_dPTSub,w);
+
+	      h_fastJetPt_JEC_PF_bkgSub_dPT[0]->Fill(fastJetPt_JEC_dPTSub,w);
+	      h_fastJetPt_JEC_PF_bkgSub_dPT[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub,w);
+
+	      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[0]->Fill(fastJetPt_dPTSub_dPTAbove0,w);
+	      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[CentralityIndex]->Fill(fastJetPt_dPTSub_dPTAbove0,w);
+
+	      h_fastJetPt_JEC_PF_bkgSub_dPT_dPTAbove0[0]->Fill(fastJetPt_JEC_dPTSub_dPTAbove0,w);
+	      h_fastJetPt_JEC_PF_bkgSub_dPT_dPTAbove0[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_dPTAbove0,w);
+
+	      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[0]->Fill(fastJetPt_dPTSub_PFCsPTAbove60,w);
+	      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[CentralityIndex]->Fill(fastJetPt_dPTSub_PFCsPTAbove60,w);
+
+	      h_fastJetPt_JEC_PF_bkgSub_dPT_PFCsPTAbove60[0]->Fill(fastJetPt_JEC_dPTSub_PFCsPTAbove60,w);
+	      h_fastJetPt_JEC_PF_bkgSub_dPT_PFCsPTAbove60[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_PFCsPTAbove60,w);
 	      
             }
           }
@@ -1664,8 +1781,16 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_fastJetPt_PFCs_JEC[i]->Write();
       h_fastJetPt_PF_bkgSub_RC[i]->Write();
       h_fastJetPt_PF_JEC_bkgSub_RC[i]->Write();
-      h_fastJetPt_PF_bkgSub_RC_etaReflect[i]->Write();
-      h_fastJetPt_PF_JEC_bkgSub_RC_etaReflect[i]->Write();
+      h_fastJetPt_PF_bkgSub_RC_geoCorr[i]->Write();
+      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[i]->Write();
+      h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[i]->Write();
+      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[i]->Write();
+      h_fastJetPt_PF_bkgSub_dPT[i]->Write();
+      h_fastJetPt_PF_JEC_bkgSub_dPT[i]->Write();
+      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[i]->Write();
+      h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[i]->Write();
+      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[i]->Write();
+      h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[i]->Write();
       h_nPFcand[i]->Write();
       h_nPFcandCS[i]->Write();
       h_randConeEtaPhi[i]->Write();
