@@ -23,7 +23,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
 				   bool fillMu12,
 				   double pseudoJetCandPt_min,
 				   bool doEventMixing,
-				   bool skipSingleConstituentJets)
+				   bool skipSingleConstituentJets,
+				   bool doHiBinReweightToHardProbesJet80)
 {
 
   TString result = "output";
@@ -41,6 +42,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   if(applyJet60Trigger) result.Append("_Jet60HLT");
   if(applyJet80Trigger) result.Append("_Jet80HLT");
   if(applyJet100Trigger) result.Append("_Jet100HLT");
+
+  if(doHiBinReweightToHardProbesJet80) result.Append("_hiBinReweightToHardProbesJet80");
 
   if(fillMu5) result.Append(Form("_mu5_pTmu-%1.0fto%1.0f_hybridSoft",muPtCut,muPtMaxCut));
   else if(fillMu7) result.Append(Form("_mu7_pTmu-%1.0fto%2.0f_hybridSoft",muPtCut,muPtMaxCut));
