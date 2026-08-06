@@ -37,4 +37,4 @@ bool doSingleMuonSample = false;
 bool doMinBiasSample = true;
 bool doHardProbesSample = false;
 // reweight functions (for bkg subtraction)
-bool doHiBinReweightToHardProbesJet80 = false;
+bool doHiBinReweightToHardProbesJet80 = true;
