@@ -314,9 +314,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 						   fillMu12,
 						   pseudoJetCandPt_min,
 						   doEventMixing,
-						   skipSingleConstituentJets,
-						   useDeltaPTMapsForBkgSub,
-						   useGeoCorrForRCMap);
+						   skipSingleConstituentJets);
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
@@ -343,7 +341,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 
     // Load random-cone UE maps (used for RC-subtracted fastJet pT)
-    TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_RCMapBkgSub_2026-8-5_ultraFineCentBins.root"); 
+    TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_RCGeoCorrMapBkgSub_2026-8-6_ultraFineCentBins.root"); 
     for(int i = 0; i < NCentralityIndices; i++){
 
       f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%i",i), h_RC_map[i]);
@@ -1131,51 +1129,54 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    JEC.SetJetPT(fastJetPt_dPTSub_PFCsPTAbove60);
 	    double fastJetPt_JEC_dPTSub_PFCsPTAbove60 = JEC.GetCorrectedPT();
 
-	    
-	        
-            if(fastJetPt_rcSub > 0){
-
-	      // apply jet pT cut to match forest
-	      if(fastJetPt_JEC_rcSub < 20.) continue;
-	      
-              h_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetPt_rcSub, w);
+	    if(fastJetPt_JEC_rcSub > 20.){
+	      h_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetPt_rcSub, w);
               h_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_rcSub, w);
 
 	      h_fastJetPt_PF_JEC_bkgSub_RC[0]->Fill(fastJetPt_JEC_rcSub, w);
               h_fastJetPt_PF_JEC_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_JEC_rcSub, w);
+	    }
 
+	    if(fastJetPt_JEC_rcSub_geoCorr > 20.){
 	      h_fastJetPt_PF_bkgSub_RC_geoCorr[0]->Fill(fastJetPt_rcSub_geoCorr, w);
               h_fastJetPt_PF_bkgSub_RC_geoCorr[CentralityIndex]->Fill(fastJetPt_rcSub_geoCorr, w);
 
 	      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[0]->Fill(fastJetPt_JEC_rcSub_geoCorr, w);
               h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[CentralityIndex]->Fill(fastJetPt_JEC_rcSub_geoCorr, w);
+	    }
 
+	    if(fastJetPt_JEC_rcSub_geoCorr_etaReflect > 20.){
 	      h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[0]->Fill(fastJetPt_rcSub_geoCorr_etaReflect, w);
               h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[CentralityIndex]->Fill(fastJetPt_rcSub_geoCorr_etaReflect, w);
 
 	      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[0]->Fill(fastJetPt_JEC_rcSub_geoCorr_etaReflect, w);
               h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[CentralityIndex]->Fill(fastJetPt_JEC_rcSub_geoCorr_etaReflect, w);
+	    }
 
-
+	    if(fastJetPt_JEC_dPTSub > 20.){
 	      h_fastJetPt_PF_bkgSub_dPT[0]->Fill(fastJetPt_dPTSub,w);
 	      h_fastJetPt_PF_bkgSub_dPT[CentralityIndex]->Fill(fastJetPt_dPTSub,w);
 
 	      h_fastJetPt_JEC_PF_bkgSub_dPT[0]->Fill(fastJetPt_JEC_dPTSub,w);
 	      h_fastJetPt_JEC_PF_bkgSub_dPT[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub,w);
+	    }
 
+	    if(fastJetPt_JEC_dPTSub_dPTAbove0){
 	      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[0]->Fill(fastJetPt_dPTSub_dPTAbove0,w);
 	      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[CentralityIndex]->Fill(fastJetPt_dPTSub_dPTAbove0,w);
 
 	      h_fastJetPt_JEC_PF_bkgSub_dPT_dPTAbove0[0]->Fill(fastJetPt_JEC_dPTSub_dPTAbove0,w);
 	      h_fastJetPt_JEC_PF_bkgSub_dPT_dPTAbove0[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_dPTAbove0,w);
+	    }
 
+	    if(fastJetPt_dPTSub_PFCsPTAbove60){
 	      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[0]->Fill(fastJetPt_dPTSub_PFCsPTAbove60,w);
 	      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[CentralityIndex]->Fill(fastJetPt_dPTSub_PFCsPTAbove60,w);
 
 	      h_fastJetPt_JEC_PF_bkgSub_dPT_PFCsPTAbove60[0]->Fill(fastJetPt_JEC_dPTSub_PFCsPTAbove60,w);
 	      h_fastJetPt_JEC_PF_bkgSub_dPT_PFCsPTAbove60[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_PFCsPTAbove60,w);
-	      
-            }
+	    }
+	    
           }
         }
 
