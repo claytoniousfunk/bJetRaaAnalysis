@@ -191,6 +191,7 @@ TH1D     *h_fastJetPt_PFCs_JEC[NCentralityIndices];
 TH1D     *h_nPFcand[NCentralityIndices];
 TH1D     *h_nPFcandCS[NCentralityIndices];
 TProfile2D *h_dPTEtaPhi_PF_PFCs[NCentralityIndices];
+TProfile2D *h_dPTEtaPhi_PF_PFCs_dPTAbove0[NCentralityIndices];
 TH1D       *h_dRmin_PF_PFCs[NCentralityIndices];
 TH2D     *h_fastJetPtPF_dRmin[NCentralityIndices][NJetPtIndices];
 TH2D     *h_fastJetPtPF_etaPFCs[NCentralityIndices][NJetPtIndices];
@@ -319,9 +320,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 
     // Load random-cone UE maps (used for RC-subtracted fastJet pT)
-    //TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_randConeEtaPhi_2026-7-8_ultraFineCentBins.root");  // randomCone maps
-    //TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-7-28_ultraFineCentBins.root"); // fastJet PF vs PFCs maps
-    TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-4_ultraFineCentBins.root"); 
+    TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/"); 
     for(int i = 0; i < NCentralityIndices; i++){
 
       if(useDeltaPTMapsForBkgSub) f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_C%i", i), h_RC_map[i]);
@@ -442,6 +441,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_randConeEtaPhi_geoCorr[i] = new TProfile2D(Form("h_randConeEtaPhi_geoCorr_C%i",i),Form("Mean random-cone p_{T} (w/ geometric correction) vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_dPTEtaPhi_PF_PFCs_dPTAbove0[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_dPTAbove0_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), #Delta p_{T} > 0, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dRmin_PF_PFCs[i] = new TH1D(Form("h_dRmin_PF_PFCs_C%i",i), Form("min #Delta r[fastJet(PF),fastJet(PFCs)], hiBin %i-%i",centEdges[0],centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax);
 						
       }
@@ -509,6 +509,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_randConeEtaPhi_geoCorr[i] = new TProfile2D(Form("h_randConeEtaPhi_geoCorr_C%i",i),Form("Mean random-cone p_{T} (w/ geometric correction) vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_dPTEtaPhi_PF_PFCs_dPTAbove0[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_dPTAbove0_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), #Delta p_{T} > 0, hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dRmin_PF_PFCs[i] = new TH1D(Form("h_dRmin_PF_PFCs_C%i",i), Form("min #Delta r[fastJet(PF),fastJet(PFCs)], hiBin %i-%i",centEdges[i-1],centEdges[i]),NdRBins,dRBinMin,dRBinMax);
       }
       // sumw2 commands
@@ -568,6 +569,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_randConeEtaPhi[i]->Sumw2();
       h_randConeEtaPhi_geoCorr[i]->Sumw2();
       h_dPTEtaPhi_PF_PFCs[i]->Sumw2();
+      h_dPTEtaPhi_PF_PFCs_dPTAbove0[i]
       h_dRmin_PF_PFCs[i]->Sumw2();
 
       // loop through jet pt indices
@@ -1100,6 +1102,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  h_dRmin_PF_PFCs[CentralityIndex]->Fill(dR_min,w);
 	  h_dPTEtaPhi_PF_PFCs[0]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
 	  h_dPTEtaPhi_PF_PFCs[CentralityIndex]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
+	  if(dPT > 0){
+	    h_dPTEtaPhi_PF_PFCs_dPTAbove0[0]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
+	    h_dPTEtaPhi_PF_PFCs_dPTAbove0[CentralityIndex]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
+	  }
 
 	  h_fastJetPtPF_dRmin[0][0]->Fill(matchedPtPF,dR_min,w);
 	  h_fastJetPtPF_dRmin[CentralityIndex][0]->Fill(matchedPtPF,dR_min,w);
@@ -1626,6 +1632,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_randConeEtaPhi[i]->Write();
       h_randConeEtaPhi_geoCorr[i]->Write();
       h_dPTEtaPhi_PF_PFCs[i]->Write();
+      h_dPTEtaPhi_PF_PFCs_dPTAbove0[i]->Write();
       h_dRmin_PF_PFCs[i]->Write();
 
       for(int j = 0; j < NJetPtIndices; j++){
