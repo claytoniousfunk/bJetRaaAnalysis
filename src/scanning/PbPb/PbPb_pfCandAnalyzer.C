@@ -345,10 +345,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
     for(int i = 0; i < NCentralityIndices; i++){
 
       f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%i",i), h_RC_map[i]);
-      f_RC_maps->GetObject(Form("h_randConeEtaPhi_geoCorr_C%i",i) h_RC_geoCorr_map[i]);
+      f_RC_maps->GetObject(Form("h_randConeEtaPhi_geoCorr_C%i",i), h_RC_geoCorr_map[i]);
       f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_C%i",i), h_dPT_map[i]);
-      f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_dPTAbove0_C%i",i) h_dPT_dPTAbove0_map[i]);
-      f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60_C%i",i) h_dPT_PFCsPTAbove60_map[i]);
+      f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_dPTAbove0_C%i",i), h_dPT_dPTAbove0_map[i]);
+      f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60_C%i",i), h_dPT_PFCsPTAbove60_map[i]);
 				
      
       // if(useDeltaPTMapsForBkgSub) f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_C%i", i), h_RC_map[i]);
@@ -1157,24 +1157,24 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	      h_fastJetPt_PF_bkgSub_dPT[0]->Fill(fastJetPt_dPTSub,w);
 	      h_fastJetPt_PF_bkgSub_dPT[CentralityIndex]->Fill(fastJetPt_dPTSub,w);
 
-	      h_fastJetPt_JEC_PF_bkgSub_dPT[0]->Fill(fastJetPt_JEC_dPTSub,w);
-	      h_fastJetPt_JEC_PF_bkgSub_dPT[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub,w);
+	      h_fastJetPt_PF_JEC_bkgSub_dPT[0]->Fill(fastJetPt_JEC_dPTSub,w);
+	      h_fastJetPt_PF_JEC_bkgSub_dPT[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub,w);
 	    }
 
 	    if(fastJetPt_JEC_dPTSub_dPTAbove0){
 	      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[0]->Fill(fastJetPt_dPTSub_dPTAbove0,w);
 	      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[CentralityIndex]->Fill(fastJetPt_dPTSub_dPTAbove0,w);
 
-	      h_fastJetPt_JEC_PF_bkgSub_dPT_dPTAbove0[0]->Fill(fastJetPt_JEC_dPTSub_dPTAbove0,w);
-	      h_fastJetPt_JEC_PF_bkgSub_dPT_dPTAbove0[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_dPTAbove0,w);
+	      h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[0]->Fill(fastJetPt_JEC_dPTSub_dPTAbove0,w);
+	      h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_dPTAbove0,w);
 	    }
 
 	    if(fastJetPt_dPTSub_PFCsPTAbove60){
 	      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[0]->Fill(fastJetPt_dPTSub_PFCsPTAbove60,w);
 	      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[CentralityIndex]->Fill(fastJetPt_dPTSub_PFCsPTAbove60,w);
 
-	      h_fastJetPt_JEC_PF_bkgSub_dPT_PFCsPTAbove60[0]->Fill(fastJetPt_JEC_dPTSub_PFCsPTAbove60,w);
-	      h_fastJetPt_JEC_PF_bkgSub_dPT_PFCsPTAbove60[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_PFCsPTAbove60,w);
+	      h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[0]->Fill(fastJetPt_JEC_dPTSub_PFCsPTAbove60,w);
+	      h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_PFCsPTAbove60,w);
 	    }
 	    
           }
