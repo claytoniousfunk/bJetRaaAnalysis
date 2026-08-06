@@ -1303,6 +1303,9 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	if(w > weightCut) continue;
       }
 
+      h_vz[0]->Fill(em->vz,w);
+      h_vz[CentralityIndex]->Fill(em->vz,w);
+      
       h_hiBin->Fill(hiBin_shifted,w);
 
       h_nPFcand[0]->Fill(nPFcand_std, w);
@@ -2568,8 +2571,6 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       if(eventHasGoodJet){
 
 	h_hiBin_jet->Fill(hiBin_shifted,w);
-	h_vz[0]->Fill(em->vz,w);
-	h_vz[CentralityIndex]->Fill(em->vz,w);
 
 	if(eventHasInclRecoMuonTag){
 
