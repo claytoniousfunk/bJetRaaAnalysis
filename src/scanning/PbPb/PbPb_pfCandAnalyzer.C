@@ -1672,6 +1672,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_randConeEtaPhi_geoCorr[i]->Write();
       h_dPTEtaPhi_PF_PFCs[i]->Write();
       h_dPTEtaPhi_PF_PFCs_dPTAbove0[i]->Write();
+      h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[i]->Write();
       h_dRmin_PF_PFCs[i]->Write();
 
       for(int j = 0; j < NJetPtIndices; j++){
