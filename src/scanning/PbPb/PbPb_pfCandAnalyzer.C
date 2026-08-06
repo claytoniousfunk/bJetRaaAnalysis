@@ -1161,7 +1161,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	      h_fastJetPt_PF_JEC_bkgSub_dPT[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub,w);
 	    }
 
-	    if(fastJetPt_JEC_dPTSub_dPTAbove0){
+	    if(fastJetPt_JEC_dPTSub_dPTAbove0 > 20.){
 	      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[0]->Fill(fastJetPt_dPTSub_dPTAbove0,w);
 	      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[CentralityIndex]->Fill(fastJetPt_dPTSub_dPTAbove0,w);
 
@@ -1169,7 +1169,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	      h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_dPTAbove0,w);
 	    }
 
-	    if(fastJetPt_dPTSub_PFCsPTAbove60){
+	    if(fastJetPt_JEC_dPTSub_PFCsPTAbove60 > 20.){
 	      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[0]->Fill(fastJetPt_dPTSub_PFCsPTAbove60,w);
 	      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[CentralityIndex]->Fill(fastJetPt_dPTSub_PFCsPTAbove60,w);
 
