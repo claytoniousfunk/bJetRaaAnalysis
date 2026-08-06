@@ -99,9 +99,10 @@ TF1 *fitFxn_PbPb_HLT_C4, *fitFxn_PbPb_HLT_C3, *fitFxn_PbPb_HLT_C2, *fitFxn_PbPb_
 #include "../scan_muon_tag.h"
 // pfCand analysis variables
 #include "../../../headers/AnalysisSetup/pseudoJets.h"
-
-
-
+// hibin fit parameters / functions
+#include "../../../headers/fitParameters/hiBinFitParams_PYTHIAHYDJET.h"
+TF1 *fitFxn_hiBin;
+#include "../../../headers/fitFunctions/fitFxn_hiBin.h"
 
 
 // initialize histograms
@@ -314,7 +315,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 						   fillMu12,
 						   pseudoJetCandPt_min,
 						   doEventMixing,
-						   skipSingleConstituentJets);
+						   skipSingleConstituentJets,
+						   doHiBinReweightToHardProbesJet80);
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
@@ -760,7 +762,13 @@ void PbPb_pfCandAnalyzer(int group = 1){
     JER_fxn->SetParameter(1,-9.72986e-01);
     JER_fxn->SetParameter(2,3.67352e-04);
 
+    if(doHiBinReweightToHardProbesJet80){
+      loadFitFxn_hiBin_jet80();
+    }
 
+
+
+    
     // event loop
     int eventCounter = 0;
     int evi_frac = 0;
@@ -795,6 +803,12 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
       // In data, event weight = 1
       double w = 1.0;
+
+      double w_reweight_hiBin = 1.0;
+      if(doHiBinReweightToHardProbesJet80){
+	w_reweight_hiBin = fitFxn_hiBin->Eval(em->hiBin);
+	w = w * w_reweight_hiBin;
+      }
 
    
       int matchFlag[10] = {0,0,0,0,0,0,0,0,0,0};
