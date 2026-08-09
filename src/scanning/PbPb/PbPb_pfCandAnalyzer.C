@@ -1041,7 +1041,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
             double pt  = pool_pfPt[idx];
             double eta = pool_pfEta[idx];
             double phi = pool_pfPhi[idx];
-	    int id = em->pfId->at(l);
+	    int id = em->pfId->at(idx);
             if(pt < pseudoJetCandPt_min) continue;
             double px = pt * TMath::Cos(phi);
             double py = pt * TMath::Sin(phi);
