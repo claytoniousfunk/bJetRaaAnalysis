@@ -1041,12 +1041,16 @@ void PbPb_pfCandAnalyzer(int group = 1){
             double pt  = pool_pfPt[idx];
             double eta = pool_pfEta[idx];
             double phi = pool_pfPhi[idx];
+	    int id = em->pfId->at(l);
             if(pt < pseudoJetCandPt_min) continue;
             double px = pt * TMath::Cos(phi);
             double py = pt * TMath::Sin(phi);
             double pz = pt * TMath::SinH(eta);
             double E  = pt * TMath::CosH(eta);
-            fjInputs.push_back(fastjet::PseudoJet(px, py, pz, E));
+	    bool isCharged = (id == 1 || id == 2 || id == 3); // id = h, e, mu
+	    fastjet::PseudoJet pseudoJet_s(px, py, pz, E);
+	    pseudoJet_s.set_user_index(isCharged ? 1 : 0);
+            fjInputs.push_back(pseudoJet_s);
           }
         }
         else{
