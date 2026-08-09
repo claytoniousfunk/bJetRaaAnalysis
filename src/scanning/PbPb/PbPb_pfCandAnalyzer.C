@@ -948,7 +948,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       int NCandidatesToSample = em->nPFpart;
       
       // pre-load mixed-event PF candidates from same-centrality events into a pool
-      std::vector<double> pool_pfPt, pool_pfEta, pool_pfPhi;
+      std::vector<double> pool_pfPt, pool_pfEta, pool_pfPhi, pool_pfId;
       if(doEventMixing){
 	int eventsInPool = 0;
 	int jPool = 0;
@@ -960,6 +960,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    pool_pfPt.push_back(em->pfPt->at(l));
 	    pool_pfEta.push_back(em->pfEta->at(l));
 	    pool_pfPhi.push_back(em->pfPhi->at(l));
+	    pool_pfId.push_back(em->pfId->at(l));
 	  }
 	  eventsInPool++;
 	  jPool++;
@@ -1041,7 +1042,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
             double pt  = pool_pfPt[idx];
             double eta = pool_pfEta[idx];
             double phi = pool_pfPhi[idx];
-	    int id = em->pfId->at(idx);
+	    int id = pool_pfId[idx];
             if(pt < pseudoJetCandPt_min) continue;
             double px = pt * TMath::Cos(phi);
             double py = pt * TMath::Sin(phi);
