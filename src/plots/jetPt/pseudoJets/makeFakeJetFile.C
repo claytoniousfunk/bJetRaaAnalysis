@@ -1,29 +1,40 @@
 // Build rootFiles/fakeJets/fakeJets.root for use in calculateRAA.C.
 //
-// Fake-jet estimate = FastJet(JEC) - RandomCone, both per event.
-//   FastJet  : h_fastJetPt_JEC_C{i} / N_events          (one clustering per event)
-//   RandomCone: h_pseudoJetPt_C{i}  / (N_events*N_pool)  (N_pool cones per event)
+// Fake-jet estimate = FastJet(no JEC, random-cone pT subtracted), per event.
+//   FastJet  : h_fastJetPt_PF_bkgSub_RC_C{i} / N_events          (one clustering per event)
+//   RandomCone: h_pseudoJetPt_C{i}           / (N_events*N_pool)  (N_pool cones per event)
 //
-// Subtracting the random-cone baseline removes the uniform UE contribution
-// and leaves only the excess from anti-kT clustering, i.e. the jet-like fake rate.
+// The random-cone baseline subtraction is currently disabled (see below); the
+// per-jet RC pT subtraction is already folded into h_fastJetPt_PF_bkgSub_RC.
 // Bins that go negative after subtraction are zeroed (statistical fluctuations).
 //
-// Coarse-bin mapping (matches calculateRAA.C):
-//   C1 = 0-10%  : hiBin 0-20
-//   C2 = 10-30% : hiBin 20-60
-//   C3 = 30-50% : hiBin 60-100
-//   C4 = 50-80% : hiBin 100-160
+// The input file is binned in ultra-fine centrality slices (10 hiBin units each),
+// which do NOT match the coarse classes used by calculateRAA.C. The slices are
+// summed here -- raw counts and event counts added separately, then divided --
+// so the output is the per-event fake rate of the full coarse class:
+//   C1 = 0-10%  : hiBin   0-20  = slices  1- 2
+//   C2 = 10-30% : hiBin  20-60  = slices  3- 6
+//   C3 = 30-50% : hiBin  60-100 = slices  7-10
+//   C4 = 50-80% : hiBin 100-160 = slices 11-16
+// C0 (hiBin 0-160, inclusive) is taken directly from the input C0 histogram.
+//
+// NOTE: the input sample carries a hiBin reweighting to HardProbes Jet80, so the
+// centrality distribution within each coarse class is Jet80-like rather than
+// MinBias-like. That mismatch is not corrected here.
 
 const char *fmixed_path =
-  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/"
-  "PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_"
-  "mixedEventPseudoJets_pfCand_pseudoJetCandPtMin-0.0_2026-7-7.root";
+  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_hiBinReweightToHardProbesJet80_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-9_ultraFineCentBins.root";
 
 const char *outPath =
   "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/fakeJets/fakeJets.root";
 
 const int    N_pool  = 100;   // N_mixedEventsInPool
 const double pT_min  = 20.;   // zero out bins below this threshold
+
+// coarse class -> [first, last] ultra-fine slice index (inclusive).
+// Index 0 is the inclusive hiBin 0-160 histogram, taken as-is.
+const int sliceLo[5] = {0,  1,  3,  7, 11};
+const int sliceHi[5] = {0,  2,  6, 10, 16};
 
 void makeFakeJetFile(){
   gSystem->Exec("mkdir -p /home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/fakeJets");
@@ -34,28 +45,47 @@ void makeFakeJetFile(){
   TFile *fOut = TFile::Open(outPath, "RECREATE");
 
   for(int ci = 0; ci <= 4; ci++){
-    TH1D *hFJ = nullptr, *hRC = nullptr, *hvz = nullptr;
-    fM->GetObject(Form("h_fastJetPt_JEC_C%d", ci), hFJ);
-    fM->GetObject(Form("h_pseudoJetPt_C%d",   ci), hRC);
-    fM->GetObject(Form("h_vz_C%d",             ci), hvz);
-    if(!hFJ || !hRC || !hvz){
-      printf("WARNING: missing histograms for C%d\n", ci); continue;
+
+    // --- sum the raw (un-normalised) slice histograms and their event counts ---
+    TH1D *hFJ_sum = nullptr, *hRC_sum = nullptr;
+    double N_events = 0.;
+    bool ok = true;
+
+    for(int si = sliceLo[ci]; si <= sliceHi[ci]; si++){
+      TH1D *hFJ = nullptr, *hRC = nullptr, *hvz = nullptr;
+      fM->GetObject(Form("h_fastJetPt_PF_bkgSub_RC_C%d", si), hFJ);
+      fM->GetObject(Form("h_pseudoJetPt_C%d",             si), hRC);
+      fM->GetObject(Form("h_vz_C%d",                      si), hvz);
+      if(!hFJ || !hRC || !hvz){
+        printf("WARNING: missing histograms for slice C%d (coarse C%d)\n", si, ci); ok = false; break;
+      }
+
+      if(!hFJ_sum){
+        hFJ_sum = (TH1D*) hFJ->Clone(Form("hFJ_sum_C%d", ci));
+        hRC_sum = (TH1D*) hRC->Clone(Form("hRC_sum_C%d", ci));
+        hFJ_sum->SetDirectory(nullptr);
+        hRC_sum->SetDirectory(nullptr);
+      }
+      else{
+        hFJ_sum->Add(hFJ);
+        hRC_sum->Add(hRC);
+      }
+      N_events += hvz->Integral();
     }
 
-    double N_events = hvz->Integral();
+    if(!ok || !hFJ_sum) continue;
     if(N_events <= 0){ printf("WARNING: N_events=0 for C%d, skipping\n", ci); continue; }
 
-    TH1D *hFJ_norm = (TH1D*) hFJ->Clone(Form("hFJ_C%d", ci));
-    TH1D *hRC_norm = (TH1D*) hRC->Clone(Form("hRC_C%d", ci));
-    hFJ_norm->SetDirectory(nullptr);
-    hRC_norm->SetDirectory(nullptr);
+    // --- per-event normalisation of the summed class ---
+    TH1D *hFJ_norm = hFJ_sum;
+    TH1D *hRC_norm = hRC_sum;
     hFJ_norm->Scale(1. / N_events);
     hRC_norm->Scale(1. / (N_events * double(N_pool)));
 
-    // difference: FastJet(JEC) - RandomCone
+    // difference: FastJet - RandomCone
     TH1D *hOut = (TH1D*) hFJ_norm->Clone(Form("h_fakeJets_C%d", ci));
     hOut->SetDirectory(nullptr);
-    hOut->Add(hRC_norm, -1.);
+    //hOut->Add(hRC_norm, -1.);
 
     // zero bins below pT_min or that went negative
     for(int b = 1; b <= hOut->GetNbinsX(); b++){
@@ -66,8 +96,9 @@ void makeFakeJetFile(){
       }
     }
 
-    printf("h_fakeJets_C%d: N_events=%.0f  FJ/evt=%.4f  RC/evt=%.4f  diff=%.4f\n",
-           ci, N_events, hFJ_norm->Integral(), hRC_norm->Integral(), hOut->Integral());
+    printf("h_fakeJets_C%d: slices %d-%d  N_events=%.0f  FJ/evt=%.4f  RC/evt=%.4f  diff=%.4f\n",
+           ci, sliceLo[ci], sliceHi[ci], N_events,
+           hFJ_norm->Integral(), hRC_norm->Integral(), hOut->Integral());
 
     fOut->cd();
     hOut->Write();
