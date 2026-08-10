@@ -321,12 +321,24 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
 
-    TString output = Form("%s%s%s/PbPb_pfCandAnalyzer_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data(),group);
+    TString outputDir = Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data());
+
+    TString output = Form("%s/PbPb_pfCandAnalyzer_output_%i.root",outputDir.Data(),group);
 
     std::cout << "output dataset = " << output << std::endl;
 
-    if(gSystem->AccessPathName(Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data()))){
-      std::cout << "\033[1;31m Output directory not found: \033[0m " << Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data()) << std::endl;
+    // Create the output directory if it is not already there. With one condor
+    // job per input file many jobs race to create the same directory, so a
+    // failed mkdir is not itself an error -- another job winning the race looks
+    // identical to a real failure. Only give up if the directory is still
+    // missing after the attempt.
+    if(gSystem->AccessPathName(outputDir)){
+      std::cout << " Output directory not found, creating: " << outputDir << std::endl;
+      gSystem->mkdir(outputDir, kTRUE);
+    }
+
+    if(gSystem->AccessPathName(outputDir)){
+      std::cout << "\033[1;31m Could not create output directory: \033[0m " << outputDir << std::endl;
       return;
     }
   
