@@ -29,7 +29,22 @@ jobname = 'PbPb_pfCandAnalyzer_mixedEvent_fastJet'
 # job index is matched against `ifile` inside the analyzer.
 dblist = '../../../fileNames/fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt'
 
-exe = 'run_pfCandAnalyzer_condor.C'
+# How the analyzer is run.
+#
+#   True  (default): build a standalone binary once here, jobs run it directly.
+#                    No cling, so ROOT never autoloads Delphes and its embedded
+#                    FastJet cannot hijack fastjet::ClusterSequence (that
+#                    collision segfaults the ACLiC path). Also removes ~2000
+#                    redundant ACLiC compiles.
+#   False: legacy path -- each job compiles the macro with ACLiC via
+#          run_pfCandAnalyzer_condor.C. KNOWN BROKEN on any LCG view that ships
+#          Delphes: it segfaults in ClusterSequence's constructor. Kept only for
+#          use on a stack without Delphes.
+use_standalone_binary = True
+
+binary = 'pfCandAnalyzer_PbPb'
+makefile = 'Makefile.pfCandAnalyzer'
+exe = 'run_pfCandAnalyzer_condor.C'   # used only when use_standalone_binary is False
 
 # Sourced at the top of every job script. Must put fastjet-config on PATH and
 # libfastjet on LD_LIBRARY_PATH. Replace with the view you use interactively --
@@ -58,7 +73,17 @@ here = os.path.dirname(os.path.abspath(__file__))
 dblist_path = dblist if os.path.isabs(dblist) else os.path.join(here, dblist)
 if not os.path.isfile(dblist_path):
     raise SystemExit(f'ERROR: input list not found: {dblist_path}')
-if not os.path.isfile(os.path.join(here, exe)):
+if use_standalone_binary:
+    # Build once, now, in the submitting shell -- so a compile failure is seen
+    # here instead of 1993 times on the farm.
+    print(f'Building {binary} ...')
+    rc = os.system(f'cd {here} && make -f {makefile}')
+    if rc != 0:
+        raise SystemExit(f'ERROR: build failed (make -f {makefile} returned {rc})')
+    if not os.path.isfile(os.path.join(here, binary)):
+        raise SystemExit(f'ERROR: build reported success but {binary} is missing')
+    print(f'Built {os.path.join(here, binary)}\n')
+elif not os.path.isfile(os.path.join(here, exe)):
     raise SystemExit(f'ERROR: executable macro not found: {os.path.join(here, exe)}')
 
 with open(dblist_path) as f:
@@ -78,11 +103,14 @@ for i in range(njobs):
     end = min((i + 1) * nsplit, nfiles)
 
     lines = ['#!/bin/bash', 'set -e', '', env_setup, '']
-    if force_fastjet_preload:
+    if force_fastjet_preload and not use_standalone_binary:
         lines += ['export LD_PRELOAD="$(fastjet-config --prefix)/lib/libfastjet.so"', '']
     lines += [f'cd {here}', '']
     for idx in range(start, end + 1):
-        lines.append(f"root -l -b -q '{exe}({idx})'")
+        if use_standalone_binary:
+            lines.append(f'./{binary} {idx}')
+        else:
+            lines.append(f"root -l -b -q '{exe}({idx})'")
     lines.append('')
 
     script_path = os.path.join(jobdir, f'script_{i}.sh')

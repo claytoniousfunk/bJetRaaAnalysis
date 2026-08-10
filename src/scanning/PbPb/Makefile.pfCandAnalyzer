@@ -1,0 +1,43 @@
+# Build the standalone PbPb pf-candidate analyzer.
+#
+#   make -f Makefile.pfCandAnalyzer
+#   ./pfCandAnalyzer_PbPb 1
+#
+# Requires root-config and fastjet-config in PATH (source the LCG view first).
+# See main_pfCandAnalyzer.cc for why this exists instead of an ACLiC build.
+
+TARGET := pfCandAnalyzer_PbPb
+
+ROOTCFLAGS := $(shell root-config --cflags)
+ROOTLIBS   := $(shell root-config --libs)
+FJCFLAGS   := $(shell fastjet-config --cxxflags)
+FJLIBS     := $(shell fastjet-config --libs)
+FJPREFIX   := $(shell fastjet-config --prefix)
+
+ifeq ($(strip $(FJCFLAGS)),)
+  $(error fastjet-config not found in PATH -- source the LCG view first)
+endif
+ifeq ($(strip $(ROOTCFLAGS)),)
+  $(error root-config not found in PATH -- source the LCG view first)
+endif
+
+# -Wno-* only silences the pre-existing warnings in the analysis headers so real
+# problems stay visible.
+CXXFLAGS := -O2 -DDO_FASTJET $(ROOTCFLAGS) $(FJCFLAGS) \
+            -Wno-sign-compare -Wno-empty-body -Wno-ignored-qualifiers
+
+# rpath so the binary finds the standalone libfastjet without relying on
+# LD_LIBRARY_PATH being identical on the worker node.
+LDFLAGS := $(ROOTLIBS) $(FJLIBS) -Wl,-rpath,$(FJPREFIX)/lib
+
+SRC  := main_pfCandAnalyzer.cc
+DEPS := PbPb_pfCandAnalyzer.C
+
+.PHONY: all clean
+all: $(TARGET)
+
+$(TARGET): $(SRC) $(DEPS)
+	$(CXX) $(CXXFLAGS) -o $@ $(SRC) $(LDFLAGS)
+
+clean:
+	rm -f $(TARGET)
