@@ -24,6 +24,17 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <iostream>
+#include <string>
+#include <vector>
+
+// rootcling's generated dictionary emits a `using namespace std;` before it
+// includes the macro, so ACLiC builds get it for free. The analysis headers
+// depend on that: eventMap.h declares bare `vector<Float_t>*`, common.h a bare
+// `string`, and several headers use unqualified cout/endl. Replicate it here so
+// a plain g++ translation unit sees the same names.
+namespace std {}
+using namespace std;
 
 #include "PbPb_pfCandAnalyzer.C"
 
