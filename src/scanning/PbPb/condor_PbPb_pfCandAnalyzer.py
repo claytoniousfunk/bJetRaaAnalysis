@@ -36,6 +36,14 @@ exe = 'run_pfCandAnalyzer_condor.C'
 # `which fastjet-config` in a working shell will tell you which one that is.
 env_setup = 'source /cvmfs/sft.cern.ch/lcg/views/LCG_105/x86_64-el9-gcc13-opt/setup.sh'
 
+# The LCG views ship Delphes, which bundles its own FastJet build and claims the
+# fastjet:: namespace in its rootmap. ROOT's class autoloading can therefore
+# resolve fastjet::ClusterSequence into libDelphesDisplay.so instead of the
+# standalone libfastjet the macro was compiled against, which segfaults.
+# run_pfCandAnalyzer_condor.C preloads the real libfastjet to prevent this.
+# Set this True to also force it at the process level, which is airtight.
+force_fastjet_preload = False
+
 time_flavour = '"tomorrow"'   # 1 day; mixed-event running is slow, workday (8h) may not be enough
 request_memory = 3000         # MB; the 100-event PF candidate pool is ~30 MB, ROOT buffers dominate
 nsplit = 1                    # input files per condor job
@@ -69,7 +77,10 @@ for i in range(njobs):
     start = i * nsplit + 1
     end = min((i + 1) * nsplit, nfiles)
 
-    lines = ['#!/bin/bash', 'set -e', '', env_setup, '', f'cd {here}', '']
+    lines = ['#!/bin/bash', 'set -e', '', env_setup, '']
+    if force_fastjet_preload:
+        lines += ['export LD_PRELOAD="$(fastjet-config --prefix)/lib/libfastjet.so"', '']
+    lines += [f'cd {here}', '']
     for idx in range(start, end + 1):
         lines.append(f"root -l -b -q '{exe}({idx})'")
     lines.append('')

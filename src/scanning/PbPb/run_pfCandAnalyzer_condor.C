@@ -44,17 +44,21 @@ void run_pfCandAnalyzer_condor(int group = 1){
   // --- FastJet flags ------------------------------------------------------
   TString fjCxxFlags = gSystem->GetFromPipe("fastjet-config --cxxflags 2>/dev/null");
   TString fjLibs     = gSystem->GetFromPipe("fastjet-config --libs 2>/dev/null");
+  TString fjLibDir   = "";
 
   if(fjCxxFlags.Length() > 0 && fjLibs.Length() > 0){
+    fjLibDir = gSystem->GetFromPipe("fastjet-config --prefix 2>/dev/null");
+    fjLibDir += "/lib";
     gSystem->AddIncludePath(fjCxxFlags + " -DDO_FASTJET");
-    gSystem->AddLinkedLibs(fjLibs);
+    gSystem->AddLinkedLibs(fjLibs + Form(" -Wl,-rpath,%s", fjLibDir.Data()));
     printf("FastJet via fastjet-config: %s\n", fjCxxFlags.Data());
   }
   else{
     const char *fjHome = gSystem->Getenv("FASTJET_HOME");
     if(fjHome && strlen(fjHome) > 0){
+      fjLibDir = Form("%s/lib", fjHome);
       gSystem->AddIncludePath(Form("-DDO_FASTJET -I%s/include", fjHome));
-      gSystem->AddLinkedLibs(Form("-L%s/lib -lfastjet", fjHome));
+      gSystem->AddLinkedLibs(Form("-L%s/lib -lfastjet -Wl,-rpath,%s/lib", fjHome, fjHome));
       printf("FastJet via FASTJET_HOME: %s\n", fjHome);
     }
     else{
@@ -66,11 +70,33 @@ void run_pfCandAnalyzer_condor(int group = 1){
     }
   }
 
+  // --- preload the real libfastjet ----------------------------------------
+  // Delphes bundles its own copy of the FastJet sources and its rootmap claims
+  // the fastjet:: namespace. Loading the compiled macro triggers ROOT class
+  // autoloading, which pulls in libDelphesDisplay.so; the dynamic linker then
+  // resolves fastjet::ClusterSequence etc. to Delphes' embedded build while the
+  // macro was compiled against the headers of the standalone one. The layouts
+  // differ, so ClusterSequence's ctor segfaults inside SharedPtr<UserInfoBase>.
+  // Loading the genuine library first puts its symbols in the global scope
+  // ahead of Delphes'. If a site ever loads Delphes even earlier, fall back to
+  // LD_PRELOAD in the job script (see condor_PbPb_pfCandAnalyzer.py).
+  TString fjSo = fjLibDir + "/libfastjet.so";
+  if(gSystem->Load(fjSo) < 0){
+    printf("ERROR: could not load %s\n", fjSo.Data());
+    gSystem->Exit(1);
+  }
+  printf("Preloaded FastJet: %s\n", fjSo.Data());
+
   // --- compile and run ----------------------------------------------------
   if(gROOT->LoadMacro("PbPb_pfCandAnalyzer.C+") != 0){
     printf("ERROR: ACLiC failed to build PbPb_pfCandAnalyzer.C\n");
     gSystem->Exit(1);
   }
+
+  // Report which libraries actually provide the FastJet symbols. If a Delphes
+  // library shows up here, the preload lost the race -- use LD_PRELOAD.
+  printf("Loaded FastJet/Delphes libraries: %s\n",
+         gSystem->GetLibraries("fastjet|Delphes", "D", kFALSE));
 
   gROOT->ProcessLine(Form("PbPb_pfCandAnalyzer(%d)", group));
 }
