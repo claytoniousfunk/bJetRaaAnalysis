@@ -30,14 +30,21 @@ CXXFLAGS := -O2 -DDO_FASTJET $(ROOTCFLAGS) $(FJCFLAGS) \
 # LD_LIBRARY_PATH being identical on the worker node.
 LDFLAGS := $(ROOTLIBS) $(FJLIBS) -Wl,-rpath,$(FJPREFIX)/lib
 
-SRC  := main_pfCandAnalyzer.cc
-DEPS := PbPb_pfCandAnalyzer.C
+SRC     := main_pfCandAnalyzer.cc
+DEPFILE := $(TARGET).d
 
 .PHONY: all clean
 all: $(TARGET)
 
-$(TARGET): $(SRC) $(DEPS)
-	$(CXX) $(CXXFLAGS) -o $@ $(SRC) $(LDFLAGS)
+# -MMD -MF records every header the compile actually pulled in, and the
+# generated .d file is included below. Without it make only watches the two
+# files named here, so an edit to a config header -- e.g. flipping
+# doHiBinReweightToHardProbesJet80 in headers/config/config_PbPb.h -- leaves the
+# binary silently stale and the next run uses the old setting.
+$(TARGET): $(SRC)
+	$(CXX) $(CXXFLAGS) -MMD -MF $(DEPFILE) -o $@ $(SRC) $(LDFLAGS)
+
+-include $(DEPFILE)
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) $(DEPFILE)
