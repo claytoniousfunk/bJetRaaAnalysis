@@ -8,7 +8,7 @@ bool doFastJetClustering = true;      // true = run anti-kT R=0.4 on PF candidat
 bool skipSingleConstituentJets = false;
 bool useDeltaPTMapsForBkgSub = false;
 
-bool useGeoCorrForRCMap = true;
+bool useGeoCorrForRCMap = false;
 
 int N_mixedEventsInPool = 100;
 
