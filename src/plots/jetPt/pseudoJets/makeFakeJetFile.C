@@ -18,12 +18,14 @@
 //   C4 = 50-80% : hiBin 100-160 = slices 11-16
 // C0 (hiBin 0-160, inclusive) is taken directly from the input C0 histogram.
 //
-// NOTE: the input sample carries a hiBin reweighting to HardProbes Jet80, so the
-// centrality distribution within each coarse class is Jet80-like rather than
-// MinBias-like. That mismatch is not corrected here.
+// The input sample is unweighted (flat in hiBin). An earlier reweighted-to-Jet80
+// scan was used here; within a coarse class that shifted the composition toward
+// the central edge and inflated the per-event rate by 1.05 (0-10%) up to 1.71
+// (50-80%), which over-subtracted by the same factor. Do not point this at a
+// hiBinReweight* file without forming the fake fraction per ultra-fine slice.
 
 const char *fmixed_path =
-  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_hiBinReweightToHardProbesJet80_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-9_ultraFineCentBins.root";
+  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-11_ultraFineCentBins.root";
 
 const char *outPath =
   "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/fakeJets/fakeJets.root";
