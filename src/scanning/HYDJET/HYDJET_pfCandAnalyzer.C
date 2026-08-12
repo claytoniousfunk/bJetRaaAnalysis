@@ -308,8 +308,67 @@ TH2D *h_muptrel_hiBin_lJets[NJetPtIndices];
 TH1D *h_inclMuPt;
 TH1D *h_pfPt[NCentralityIndices];
 TH1D *h_pseudoJetPt[NCentralityIndices];
-TH1D *h_fastJetPt[NCentralityIndices];
-TH1D *h_fastJetPt_JEC[NCentralityIndices];
+TH1D *h_pseudoJetPt_geoCorr[NCentralityIndices];
+TH1D *h_fastJetPt_PF[NCentralityIndices];
+TH1D *h_fastJetPt_PF_JEC[NCentralityIndices];
+
+// same binning as PbPb_pfCandAnalyzer.C so the maps are directly comparable
+const int    NRC_EtaBins = 32;   // -1.6 to 1.6, width 0.1
+const int    NRC_PhiBins = 64;   // -pi to pi,   width ~0.098
+// dR within which a clustered jet counts as sitting on a gen jet
+const double fastJetGenMatchDr = 0.2;
+
+// Random-cone UE map, so the HYDJET underlying event can be compared to the
+// data one measured by PbPb_pfCandAnalyzer.C (plotRandConeMeanVsCent.C reads it).
+TProfile2D *h_randConeEtaPhi[NCentralityIndices];
+TProfile2D *h_randConeEtaPhi_geoCorr[NCentralityIndices];
+
+// --- parity with PbPb_pfCandAnalyzer.C -------------------------------------
+// PFCs clustering, needed for the dPT background estimators
+TH1D     *h_fastJetPt_PFCs[NCentralityIndices];
+TH1D     *h_fastJetPt_PFCs_JEC[NCentralityIndices];
+TH1D     *h_nPFcandFastJet[NCentralityIndices];
+TH1D     *h_dRmin_PF_PFCs[NCentralityIndices];
+
+// dPT = pT(fastJet PF) - pT(fastJet PFCs), as an alternative UE map
+TProfile2D *h_dPTEtaPhi_PF_PFCs[NCentralityIndices];
+TProfile2D *h_dPTEtaPhi_PF_PFCs_dPTAbove0[NCentralityIndices];
+TProfile2D *h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[NCentralityIndices];
+
+// background-subtracted FastJet spectra
+TH1D *h_fastJetPt_PF_bkgSub_RC[NCentralityIndices];
+TH1D *h_fastJetPt_PF_JEC_bkgSub_RC[NCentralityIndices];
+TH1D *h_fastJetPt_PF_bkgSub_RC_geoCorr[NCentralityIndices];
+TH1D *h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[NCentralityIndices];
+TH1D *h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[NCentralityIndices];
+TH1D *h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[NCentralityIndices];
+TH1D *h_fastJetPt_PF_bkgSub_dPT[NCentralityIndices];
+TH1D *h_fastJetPt_PF_JEC_bkgSub_dPT[NCentralityIndices];
+TH1D *h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[NCentralityIndices];
+TH1D *h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[NCentralityIndices];
+TH1D *h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[NCentralityIndices];
+TH1D *h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[NCentralityIndices];
+
+// UE maps read back from a previous pass (see f_RC_maps below)
+TProfile2D *h_RC_map[NCentralityIndices];
+TProfile2D *h_RC_geoCorr_map[NCentralityIndices];
+TProfile2D *h_dPT_map[NCentralityIndices];
+TProfile2D *h_dPT_dPTAbove0_map[NCentralityIndices];
+TProfile2D *h_dPT_PFCsPTAbove60_map[NCentralityIndices];
+
+// Path to the UE maps used for the bkgSub variants. As on the PbPb side this is
+// a two-pass setup: run once to produce h_randConeEtaPhi* / h_dPTEtaPhi*, then
+// point this at that output and run again. Empty string = skip the bkgSub fills.
+const char *hydjetRCMapPath = "";
+
+// Closure of the fake-jet estimate. In SAME-event running each clustered jet is
+// checked against this event's gen jets: no gen jet underneath means a genuinely
+// combinatorial jet, which is what the mixed-event estimate is supposed to
+// predict. In MIXED-event running the constituents come from other events, so
+// the match is meaningless and only h_fastJetPt* are filled.
+TH1D *h_fastJetPt_PF_JEC_matchedGen[NCentralityIndices];
+TH1D *h_fastJetPt_PF_JEC_unmatchedGen[NCentralityIndices];
+TH2D *h_fastJetPt_PF_JEC_dRnearestGen[NCentralityIndices];
 TH1D *h_nPFcand[NCentralityIndices];
 TH1D *h_nPFcandCS[NCentralityIndices];
 
@@ -403,13 +462,24 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 
     TString suffixEdit = "_ultraFineCentBins";
     
-    TString output = Form("%s%s%s/HYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data(),group);
-    //TString output = Form("%s%s_ultraFineCentBins/HYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
+    TString outputDir = Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data());
+
+    TString output = Form("%s/HYDJET_scan_output_%i.root",outputDir.Data(),group);
 
     std::cout << "output dataset = " << output << std::endl;
 
-    if(gSystem->AccessPathName(Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data()))){
-      std::cout << "\033[1;31m Output directory not found: \033[0m " << Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data()) << std::endl;
+    // Create the output directory if it is not already there. With one condor
+    // job per input file many jobs race to create the same directory, so a
+    // failed mkdir is not itself an error -- another job winning the race looks
+    // identical to a real failure. Only give up if the directory is still
+    // missing after the attempt.
+    if(gSystem->AccessPathName(outputDir)){
+      std::cout << " Output directory not found, creating: " << outputDir << std::endl;
+      gSystem->mkdir(outputDir, kTRUE);
+    }
+
+    if(gSystem->AccessPathName(outputDir)){
+      std::cout << "\033[1;31m Could not create output directory: \033[0m " << outputDir << std::endl;
       return;
     }
   
@@ -540,8 +610,33 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	h_leadingGenJetPt_xJets_greaterThanPthat[i] = new TH1D(Form("h_leadingGenJetPt_xJets_greaterThanPthat_C%i",i),Form("leadingGenJetPt, xJets, pT > pThat, hiBin %i - %i",centEdges[0], centEdges[NCentralityIndices-1]),500,0,500);
 	h_pfPt[i] = new TH1D(Form("h_pfPt_C%i",i),Form("pfCand pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),100,0,100);
 	h_pseudoJetPt[i] = new TH1D(Form("h_pseudoJetPt_C%i",i),Form("PseudoJet pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
-	h_fastJetPt[i] = new TH1D(Form("h_fastJetPt_C%i",i),Form("FastJet anti-kT pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
-	h_fastJetPt_JEC[i] = new TH1D(Form("h_fastJetPt_JEC_C%i",i),Form("FastJet anti-kT pT (JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_pseudoJetPt_geoCorr[i] = new TH1D(Form("h_pseudoJetPt_geoCorr_C%i",i),Form("PseudoJet pT (w/ geometric correction), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF[i] = new TH1D(Form("h_fastJetPt_PF_C%i",i),Form("FastJet anti-kT pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC[i] = new TH1D(Form("h_fastJetPt_PF_JEC_C%i",i),Form("FastJet anti-kT pT (JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_randConeEtaPhi_geoCorr[i] = new TProfile2D(Form("h_randConeEtaPhi_geoCorr_C%i",i),Form("Mean random-cone p_{T} (w/ geometric correction) vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_fastJetPt_PFCs[i] = new TH1D(Form("h_fastJetPt_PFCs_C%i",i),Form("h_fastJetPt_PFCs, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PFCs_JEC[i] = new TH1D(Form("h_fastJetPt_PFCs_JEC_C%i",i),Form("h_fastJetPt_PFCs_JEC, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_RC[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_C%i",i),Form("h_fastJetPt_PF_bkgSub_RC, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_RC[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_C%i",i),Form("h_fastJetPt_PF_JEC_bkgSub_RC, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_RC_geoCorr[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_geoCorr_C%i",i),Form("h_fastJetPt_PF_bkgSub_RC_geoCorr, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_C%i",i),Form("h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect_C%i",i),Form("h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect_C%i",i),Form("h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_dPT[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_C%i",i),Form("h_fastJetPt_PF_bkgSub_dPT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_dPT[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_C%i",i),Form("h_fastJetPt_PF_JEC_bkgSub_dPT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_dPTAbove0_C%i",i),Form("h_fastJetPt_PF_bkgSub_dPT_dPTAbove0, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0_C%i",i),Form("h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60_C%i",i),Form("h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60_C%i",i),Form("h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_nPFcandFastJet[i] = new TH1D(Form("h_nPFcandFastJet_C%i",i),Form("N PF cands clustered by FastJet, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
+	h_dRmin_PF_PFCs[i] = new TH1D(Form("h_dRmin_PF_PFCs_C%i",i),Form("dR_{min}(PF,PFCs), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),100,0,1.0);
+	h_dPTEtaPhi_PF_PFCs[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_C%i",i),Form("h_dPTEtaPhi_PF_PFCs vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_dPTEtaPhi_PF_PFCs_dPTAbove0[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_dPTAbove0_C%i",i),Form("h_dPTEtaPhi_PF_PFCs_dPTAbove0 vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60_C%i",i),Form("h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60 vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_fastJetPt_PF_JEC_matchedGen[i] = new TH1D(Form("h_fastJetPt_PF_JEC_matchedGen_C%i",i),Form("FastJet pT (JEC), gen jet within dR, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_unmatchedGen[i] = new TH1D(Form("h_fastJetPt_PF_JEC_unmatchedGen_C%i",i),Form("FastJet pT (JEC), no gen jet within dR, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_dRnearestGen[i] = new TH2D(Form("h_fastJetPt_PF_JEC_dRnearestGen_C%i",i),Form("dR to nearest gen jet vs FastJet pT (JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,100,0,1.0);
 	h_nPFcand[i]   = new TH1D(Form("h_nPFcand_C%i",i),  Form("N PF cands per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
 	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
 
@@ -684,8 +779,33 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	h_leadingGenJetPt_xJets_greaterThanPthat[i] = new TH1D(Form("h_leadingGenJetPt_xJets_greaterThanPthat_C%i",i),Form("leadingGenJetPt, xJets, pT > pThat, hiBin %i - %i",centEdges[i-1], centEdges[i]),500,0,500);
 	h_pfPt[i] = new TH1D(Form("h_pfPt_C%i",i),Form("pfCand pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),100,0,100);
 	h_pseudoJetPt[i] = new TH1D(Form("h_pseudoJetPt_C%i",i),Form("PseudoJet pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-	h_fastJetPt[i] = new TH1D(Form("h_fastJetPt_C%i",i),Form("FastJet anti-kT pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-	h_fastJetPt_JEC[i] = new TH1D(Form("h_fastJetPt_JEC_C%i",i),Form("FastJet anti-kT pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_pseudoJetPt_geoCorr[i] = new TH1D(Form("h_pseudoJetPt_geoCorr_C%i",i),Form("PseudoJet pT (w/ geometric correction), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF[i] = new TH1D(Form("h_fastJetPt_PF_C%i",i),Form("FastJet anti-kT pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC[i] = new TH1D(Form("h_fastJetPt_PF_JEC_C%i",i),Form("FastJet anti-kT pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_randConeEtaPhi_geoCorr[i] = new TProfile2D(Form("h_randConeEtaPhi_geoCorr_C%i",i),Form("Mean random-cone p_{T} (w/ geometric correction) vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_fastJetPt_PFCs[i] = new TH1D(Form("h_fastJetPt_PFCs_C%i",i),Form("h_fastJetPt_PFCs, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PFCs_JEC[i] = new TH1D(Form("h_fastJetPt_PFCs_JEC_C%i",i),Form("h_fastJetPt_PFCs_JEC, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_RC[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_C%i",i),Form("h_fastJetPt_PF_bkgSub_RC, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_RC[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_C%i",i),Form("h_fastJetPt_PF_JEC_bkgSub_RC, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_RC_geoCorr[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_geoCorr_C%i",i),Form("h_fastJetPt_PF_bkgSub_RC_geoCorr, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_C%i",i),Form("h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect_C%i",i),Form("h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect_C%i",i),Form("h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_dPT[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_C%i",i),Form("h_fastJetPt_PF_bkgSub_dPT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_dPT[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_C%i",i),Form("h_fastJetPt_PF_JEC_bkgSub_dPT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_dPTAbove0_C%i",i),Form("h_fastJetPt_PF_bkgSub_dPT_dPTAbove0, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0_C%i",i),Form("h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60_C%i",i),Form("h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60_C%i",i),Form("h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_nPFcandFastJet[i] = new TH1D(Form("h_nPFcandFastJet_C%i",i),Form("N PF cands clustered by FastJet, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
+	h_dRmin_PF_PFCs[i] = new TH1D(Form("h_dRmin_PF_PFCs_C%i",i),Form("dR_{min}(PF,PFCs), hiBin %i - %i",centEdges[i-1],centEdges[i]),100,0,1.0);
+	h_dPTEtaPhi_PF_PFCs[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_C%i",i),Form("h_dPTEtaPhi_PF_PFCs vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_dPTEtaPhi_PF_PFCs_dPTAbove0[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_dPTAbove0_C%i",i),Form("h_dPTEtaPhi_PF_PFCs_dPTAbove0 vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60_C%i",i),Form("h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60 vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_fastJetPt_PF_JEC_matchedGen[i] = new TH1D(Form("h_fastJetPt_PF_JEC_matchedGen_C%i",i),Form("FastJet pT (JEC), gen jet within dR, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_unmatchedGen[i] = new TH1D(Form("h_fastJetPt_PF_JEC_unmatchedGen_C%i",i),Form("FastJet pT (JEC), no gen jet within dR, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_dRnearestGen[i] = new TH2D(Form("h_fastJetPt_PF_JEC_dRnearestGen_C%i",i),Form("dR to nearest gen jet vs FastJet pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,100,0,1.0);
 	h_nPFcand[i]   = new TH1D(Form("h_nPFcand_C%i",i),  Form("N PF cands per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
 	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
 
@@ -828,8 +948,33 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       h_leadingGenJetPt_xJets_greaterThanPthat[i]->Sumw2();
       h_pfPt[i]->Sumw2();
       h_pseudoJetPt[i]->Sumw2();
-      h_fastJetPt[i]->Sumw2();
-      h_fastJetPt_JEC[i]->Sumw2();
+      h_pseudoJetPt_geoCorr[i]->Sumw2();
+      h_randConeEtaPhi[i]->Sumw2();
+      h_randConeEtaPhi_geoCorr[i]->Sumw2();
+      h_fastJetPt_PFCs[i]->Sumw2();
+      h_fastJetPt_PFCs_JEC[i]->Sumw2();
+      h_fastJetPt_PF_bkgSub_RC[i]->Sumw2();
+      h_fastJetPt_PF_JEC_bkgSub_RC[i]->Sumw2();
+      h_fastJetPt_PF_bkgSub_RC_geoCorr[i]->Sumw2();
+      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[i]->Sumw2();
+      h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[i]->Sumw2();
+      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[i]->Sumw2();
+      h_fastJetPt_PF_bkgSub_dPT[i]->Sumw2();
+      h_fastJetPt_PF_JEC_bkgSub_dPT[i]->Sumw2();
+      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[i]->Sumw2();
+      h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[i]->Sumw2();
+      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[i]->Sumw2();
+      h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[i]->Sumw2();
+      h_dPTEtaPhi_PF_PFCs[i]->Sumw2();
+      h_dPTEtaPhi_PF_PFCs_dPTAbove0[i]->Sumw2();
+      h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[i]->Sumw2();
+      h_nPFcandFastJet[i]->Sumw2();
+      h_dRmin_PF_PFCs[i]->Sumw2();
+      h_fastJetPt_PF_JEC_matchedGen[i]->Sumw2();
+      h_fastJetPt_PF_JEC_unmatchedGen[i]->Sumw2();
+      h_fastJetPt_PF_JEC_dRnearestGen[i]->Sumw2();
+      h_fastJetPt_PF[i]->Sumw2();
+      h_fastJetPt_PF_JEC[i]->Sumw2();
       h_nPFcand[i]->Sumw2();
       h_nPFcandCS[i]->Sumw2();
 
@@ -1133,6 +1278,37 @@ void HYDJET_pfCandAnalyzer(int group = 1){
     cout << "	Number of events = " << NEvents << endl;
     int NJets = em->recoJetTree->GetEntries();
     cout << "     Number of jets = " << NJets << endl;
+    // Both collections, as in PbPb_pfCandAnalyzer.C: the dPT estimators need the
+    // PF and the PFCs clustering in the same event. doConstituentSubtraction now
+    // only selects which one feeds the cones and the primary FastJet pass.
+    em->loadParticleFlowAnalyzer_PFCs("pfcandAnalyzerCS");
+
+    // UE maps from a previous pass; absent on the first pass, in which case the
+    // bkgSub variants are simply left unfilled.
+    for(int i = 0; i < NCentralityIndices; i++){
+      h_RC_map[i] = nullptr; h_RC_geoCorr_map[i] = nullptr;
+      h_dPT_map[i] = nullptr; h_dPT_dPTAbove0_map[i] = nullptr;
+      h_dPT_PFCsPTAbove60_map[i] = nullptr;
+    }
+    if(TString(hydjetRCMapPath).Length() > 0){
+      TFile *f_RC_maps = TFile::Open(hydjetRCMapPath);
+      if(f_RC_maps && !f_RC_maps->IsZombie()){
+        for(int i = 0; i < NCentralityIndices; i++){
+          f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%i",i), h_RC_map[i]);
+          f_RC_maps->GetObject(Form("h_randConeEtaPhi_geoCorr_C%i",i), h_RC_geoCorr_map[i]);
+          f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_C%i",i), h_dPT_map[i]);
+          f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_dPTAbove0_C%i",i), h_dPT_dPTAbove0_map[i]);
+          f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60_C%i",i), h_dPT_PFCsPTAbove60_map[i]);
+          if(h_RC_map[i]) h_RC_map[i]->SetDirectory(nullptr);
+          if(h_RC_geoCorr_map[i]) h_RC_geoCorr_map[i]->SetDirectory(nullptr);
+          if(h_dPT_map[i]) h_dPT_map[i]->SetDirectory(nullptr);
+          if(h_dPT_dPTAbove0_map[i]) h_dPT_dPTAbove0_map[i]->SetDirectory(nullptr);
+          if(h_dPT_PFCsPTAbove60_map[i]) h_dPT_PFCsPTAbove60_map[i]->SetDirectory(nullptr);
+        }
+        printf("loaded UE maps from %s\n", hydjetRCMapPath);
+      }
+      else printf("WARNING: cannot open %s -- bkgSub variants will be empty\n", hydjetRCMapPath);
+    }
     if(doConstituentSubtraction) em->loadParticleFlowAnalyzer("pfcandAnalyzerCS");
     else                         em->loadParticleFlowAnalyzer("pfcandAnalyzer");
     TTree* pfTreeStd_raw = (TTree*) f->Get("pfcandAnalyzer/pfTree");
@@ -1361,7 +1537,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 
       // pre-load N_mixedEventsInPool same-centrality events into an in-memory pool
       // before the cone loop: O(N_cones) getEvent() calls instead of O(N_cones * nPFpart)
-      std::vector<double> pool_pfPt, pool_pfEta, pool_pfPhi;
+      std::vector<double> pool_pfPt, pool_pfEta, pool_pfPhi, pool_pfId;
       if(doEventMixing){
 	int eventsInPool = 0;
 	int jPool = 0;
@@ -1373,6 +1549,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	    pool_pfPt.push_back(em->pfPt->at(l));
 	    pool_pfEta.push_back(em->pfEta->at(l));
 	    pool_pfPhi.push_back(em->pfPhi->at(l));
+	    pool_pfId.push_back(em->pfId->at(l));
 	  }
 	  eventsInPool++;
 	  jPool++;
@@ -1388,6 +1565,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	double randEta_k = 3.2*randomGenerator->Rndm() - 1.6;
 	double randPhi_k = 2*pi*randomGenerator->Rndm() - pi;
 	double pseudoJetPt_k = 0.;
+	double pseudoJetPt_geoCorr_k = 0.;
 
 	if(doEventMixing){
 	  // sample NCandidatesToSample candidates at random from the pool,
@@ -1404,6 +1582,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 		h_pfPt[0]->Fill(pfPt_l, w);
 		h_pfPt[CentralityIndex]->Fill(pfPt_l, w);
 		pseudoJetPt_k += pfPt_l;
+		pseudoJetPt_geoCorr_k += pfPt_l * TMath::Cos(dR_kl);
 	      }
 	    }
 	  }
@@ -1418,6 +1597,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	      h_pfPt[0]->Fill(pfPt_l, w);
 	      h_pfPt[CentralityIndex]->Fill(pfPt_l, w);
 	      pseudoJetPt_k += pfPt_l;
+	      pseudoJetPt_geoCorr_k += pfPt_l * TMath::Cos(dR_kl);
 	    }
 	  }
 	}
@@ -1425,11 +1605,25 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 	h_pseudoJetPt[0]->Fill(pseudoJetPt_k, w);
 	h_pseudoJetPt[CentralityIndex]->Fill(pseudoJetPt_k, w);
 
+	h_pseudoJetPt_geoCorr[0]->Fill(pseudoJetPt_geoCorr_k, w);
+	h_pseudoJetPt_geoCorr[CentralityIndex]->Fill(pseudoJetPt_geoCorr_k, w);
+
+	// record the cone pT at its throw location, so the HYDJET UE map can be
+	// overlaid on the data one
+	h_randConeEtaPhi[0]->Fill(randEta_k, randPhi_k, pseudoJetPt_k, w);
+	h_randConeEtaPhi[CentralityIndex]->Fill(randEta_k, randPhi_k, pseudoJetPt_k, w);
+
+	// geoCorr is accumulated in both the mixed- and same-event branches, matching
+	// PbPb_pfCandAnalyzer.C.
+	h_randConeEtaPhi_geoCorr[0]->Fill(randEta_k, randPhi_k, pseudoJetPt_geoCorr_k, w);
+	h_randConeEtaPhi_geoCorr[CentralityIndex]->Fill(randEta_k, randPhi_k, pseudoJetPt_geoCorr_k, w);
+
       }
 
       // FastJet anti-kT clustering on PF candidates
 #ifdef DO_FASTJET
       if(doFastJetClustering){
+
         std::vector<fastjet::PseudoJet> fjInputs;
         if(doEventMixing && poolSize > 0){
           // randomly sample NCandidatesToSample particles from the mixed pool
@@ -1440,12 +1634,16 @@ void HYDJET_pfCandAnalyzer(int group = 1){
             double pt  = pool_pfPt[idx];
             double eta = pool_pfEta[idx];
             double phi = pool_pfPhi[idx];
+            int id     = (int)pool_pfId[idx];
             if(pt < pseudoJetCandPt_min) continue;
             double px = pt * TMath::Cos(phi);
             double py = pt * TMath::Sin(phi);
             double pz = pt * TMath::SinH(eta);
             double E  = pt * TMath::CosH(eta);
-            fjInputs.push_back(fastjet::PseudoJet(px, py, pz, E));
+            bool isCharged = (id == 1 || id == 2 || id == 3); // id = h, e, mu
+            fastjet::PseudoJet pseudoJet_s(px, py, pz, E);
+            pseudoJet_s.set_user_index(isCharged ? 1 : 0);
+            fjInputs.push_back(pseudoJet_s);
           }
         }
         else{
@@ -1453,27 +1651,214 @@ void HYDJET_pfCandAnalyzer(int group = 1){
             double pt  = em->pfPt->at(l);
             double eta = em->pfEta->at(l);
             double phi = em->pfPhi->at(l);
+            int id     = em->pfId->at(l);
             if(pt < pseudoJetCandPt_min) continue;
             double px = pt * TMath::Cos(phi);
             double py = pt * TMath::Sin(phi);
             double pz = pt * TMath::SinH(eta);
             double E  = pt * TMath::CosH(eta);
-            fjInputs.push_back(fastjet::PseudoJet(px, py, pz, E));
+            bool isCharged = (id == 1 || id == 2 || id == 3);
+            fastjet::PseudoJet pseudoJet_l(px, py, pz, E);
+            pseudoJet_l.set_user_index(isCharged ? 1 : 0);
+            fjInputs.push_back(pseudoJet_l);
           }
         }
+
+        h_nPFcandFastJet[0]->Fill((int)fjInputs.size(), w);
+        h_nPFcandFastJet[CentralityIndex]->Fill((int)fjInputs.size(), w);
+
         fastjet::JetDefinition jetDef(fastjet::antikt_algorithm, dR_max);
         fastjet::ClusterSequence cs(fjInputs, jetDef);
         std::vector<fastjet::PseudoJet> jets = fastjet::sorted_by_pt(cs.inclusive_jets(0.));
+
         for(const auto& jet : jets){
           if(TMath::Abs(jet.eta()) > 1.6) continue;
-          h_fastJetPt[0]->Fill(jet.pt(), w);
-          h_fastJetPt[CentralityIndex]->Fill(jet.pt(), w);
+          std::vector<fastjet::PseudoJet> constituents = jet.constituents();
+          if(skipSingleConstituentJets){
+            if(constituents.size() < 2) continue;
+          }
+          double trackMaxPt = 0.0;
+          for(const auto& c : constituents){
+            if(c.user_index() == 1 && c.pt() > trackMaxPt) trackMaxPt = c.pt();
+          }
+
           JEC.SetJetPT(jet.pt());
           JEC.SetJetEta(jet.eta());
-          JEC.SetJetPhi(jet.phi());
+          JEC.SetJetPhi(jet.phi_std());
           double fastJetPt_JEC = JEC.GetCorrectedPT();
-          h_fastJetPt_JEC[0]->Fill(fastJetPt_JEC, w);
-          h_fastJetPt_JEC[CentralityIndex]->Fill(fastJetPt_JEC, w);
+
+          if(doJetTrkMaxFilter){
+            if(!passesJetTrkMaxFilter(trackMaxPt,fastJetPt_JEC)) continue;
+          }
+
+          h_fastJetPt_PF[0]->Fill(jet.pt(), w);
+          h_fastJetPt_PF[CentralityIndex]->Fill(jet.pt(), w);
+          h_fastJetPt_PF_JEC[0]->Fill(fastJetPt_JEC, w);
+          h_fastJetPt_PF_JEC[CentralityIndex]->Fill(fastJetPt_JEC, w);
+
+          // background-subtracted variants, using the maps from a previous pass
+          if(h_RC_map[CentralityIndex]){
+            double rcMeanPt = h_RC_map[CentralityIndex]->GetBinContent(
+                                h_RC_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
+            double rcMeanPt_geoCorr = h_RC_geoCorr_map[CentralityIndex] ?
+              h_RC_geoCorr_map[CentralityIndex]->GetBinContent(
+                h_RC_geoCorr_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std())) : 0.;
+            double rcMeanPt_geoCorr_etaReflect = h_RC_geoCorr_map[CentralityIndex] ?
+              h_RC_geoCorr_map[CentralityIndex]->GetBinContent(
+                h_RC_geoCorr_map[CentralityIndex]->FindBin(-1.*jet.eta(), jet.phi_std())) : 0.;
+            double dPTMeanPt = h_dPT_map[CentralityIndex] ?
+              h_dPT_map[CentralityIndex]->GetBinContent(
+                h_dPT_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std())) : 0.;
+            double dPTMeanPt_dPTAbove0 = h_dPT_dPTAbove0_map[CentralityIndex] ?
+              h_dPT_dPTAbove0_map[CentralityIndex]->GetBinContent(
+                h_dPT_dPTAbove0_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std())) : 0.;
+            double dPTMeanPt_PFCsPTAbove60 = h_dPT_PFCsPTAbove60_map[CentralityIndex] ?
+              h_dPT_PFCsPTAbove60_map[CentralityIndex]->GetBinContent(
+                h_dPT_PFCsPTAbove60_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std())) : 0.;
+
+            double fastJetPt_rcSub                    = jet.pt() - rcMeanPt;
+            double fastJetPt_rcSub_geoCorr            = jet.pt() - rcMeanPt_geoCorr;
+            double fastJetPt_rcSub_geoCorr_etaReflect = jet.pt() - rcMeanPt_geoCorr_etaReflect;
+            double fastJetPt_dPTSub                   = jet.pt() - dPTMeanPt;
+            double fastJetPt_dPTSub_dPTAbove0         = jet.pt() - dPTMeanPt_dPTAbove0;
+            double fastJetPt_dPTSub_PFCsPTAbove60     = jet.pt() - dPTMeanPt_PFCsPTAbove60;
+
+            JEC.SetJetEta(jet.eta()); JEC.SetJetPhi(jet.phi_std());
+            JEC.SetJetPT(fastJetPt_rcSub);                    double fastJetPt_JEC_rcSub = JEC.GetCorrectedPT();
+            JEC.SetJetPT(fastJetPt_rcSub_geoCorr);            double fastJetPt_JEC_rcSub_geoCorr = JEC.GetCorrectedPT();
+            JEC.SetJetPT(fastJetPt_rcSub_geoCorr_etaReflect); double fastJetPt_JEC_rcSub_geoCorr_etaReflect = JEC.GetCorrectedPT();
+            JEC.SetJetPT(fastJetPt_dPTSub);                   double fastJetPt_JEC_dPTSub = JEC.GetCorrectedPT();
+            JEC.SetJetPT(fastJetPt_dPTSub_dPTAbove0);         double fastJetPt_JEC_dPTSub_dPTAbove0 = JEC.GetCorrectedPT();
+            JEC.SetJetPT(fastJetPt_dPTSub_PFCsPTAbove60);     double fastJetPt_JEC_dPTSub_PFCsPTAbove60 = JEC.GetCorrectedPT();
+
+            if(fastJetPt_JEC_rcSub > 20.){
+              h_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetPt_rcSub, w);
+              h_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_rcSub, w);
+              h_fastJetPt_PF_JEC_bkgSub_RC[0]->Fill(fastJetPt_JEC_rcSub, w);
+              h_fastJetPt_PF_JEC_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_JEC_rcSub, w);
+            }
+            if(fastJetPt_JEC_rcSub_geoCorr > 20.){
+              h_fastJetPt_PF_bkgSub_RC_geoCorr[0]->Fill(fastJetPt_rcSub_geoCorr, w);
+              h_fastJetPt_PF_bkgSub_RC_geoCorr[CentralityIndex]->Fill(fastJetPt_rcSub_geoCorr, w);
+              h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[0]->Fill(fastJetPt_JEC_rcSub_geoCorr, w);
+              h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[CentralityIndex]->Fill(fastJetPt_JEC_rcSub_geoCorr, w);
+            }
+            if(fastJetPt_JEC_rcSub_geoCorr_etaReflect > 20.){
+              h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[0]->Fill(fastJetPt_rcSub_geoCorr_etaReflect, w);
+              h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[CentralityIndex]->Fill(fastJetPt_rcSub_geoCorr_etaReflect, w);
+              h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[0]->Fill(fastJetPt_JEC_rcSub_geoCorr_etaReflect, w);
+              h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[CentralityIndex]->Fill(fastJetPt_JEC_rcSub_geoCorr_etaReflect, w);
+            }
+            if(fastJetPt_JEC_dPTSub > 20.){
+              h_fastJetPt_PF_bkgSub_dPT[0]->Fill(fastJetPt_dPTSub, w);
+              h_fastJetPt_PF_bkgSub_dPT[CentralityIndex]->Fill(fastJetPt_dPTSub, w);
+              h_fastJetPt_PF_JEC_bkgSub_dPT[0]->Fill(fastJetPt_JEC_dPTSub, w);
+              h_fastJetPt_PF_JEC_bkgSub_dPT[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub, w);
+            }
+            if(fastJetPt_JEC_dPTSub_dPTAbove0 > 20.){
+              h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[0]->Fill(fastJetPt_dPTSub_dPTAbove0, w);
+              h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[CentralityIndex]->Fill(fastJetPt_dPTSub_dPTAbove0, w);
+              h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[0]->Fill(fastJetPt_JEC_dPTSub_dPTAbove0, w);
+              h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_dPTAbove0, w);
+            }
+            if(fastJetPt_JEC_dPTSub_PFCsPTAbove60 > 20.){
+              h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[0]->Fill(fastJetPt_dPTSub_PFCsPTAbove60, w);
+              h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[CentralityIndex]->Fill(fastJetPt_dPTSub_PFCsPTAbove60, w);
+              h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[0]->Fill(fastJetPt_JEC_dPTSub_PFCsPTAbove60, w);
+              h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_PFCsPTAbove60, w);
+            }
+          }
+
+          // Closure label -- same-event only. In mixed running the constituents
+          // come from other events, so matching against this event's gen jets
+          // would be meaningless.
+          if(!doEventMixing){
+            double dRnearest = 999.0;
+            for(int j = 0; j < em->ngj; j++){
+              double dR = getDr(jet.eta(), jet.phi_std(), em->genjeteta[j], em->genjetphi[j]);
+              if(dR < dRnearest) dRnearest = dR;
+            }
+            if(dRnearest < fastJetGenMatchDr){
+              h_fastJetPt_PF_JEC_matchedGen[0]->Fill(fastJetPt_JEC, w);
+              h_fastJetPt_PF_JEC_matchedGen[CentralityIndex]->Fill(fastJetPt_JEC, w);
+            }
+            else{
+              h_fastJetPt_PF_JEC_unmatchedGen[0]->Fill(fastJetPt_JEC, w);
+              h_fastJetPt_PF_JEC_unmatchedGen[CentralityIndex]->Fill(fastJetPt_JEC, w);
+            }
+            h_fastJetPt_PF_JEC_dRnearestGen[0]->Fill(fastJetPt_JEC, TMath::Min(dRnearest,0.9999), w);
+            h_fastJetPt_PF_JEC_dRnearestGen[CentralityIndex]->Fill(fastJetPt_JEC, TMath::Min(dRnearest,0.9999), w);
+          }
+        }
+
+        // FastJet anti-kT clustering on PFCs candidates, and the PF-PFCs dPT maps
+        std::vector<fastjet::PseudoJet> fjInputs_PFCs;
+        for(int l = 0; l < em->nPFCspart; l++){
+          double pt  = em->pfCsPt->at(l);
+          double eta = em->pfCsEta->at(l);
+          double phi = em->pfCsPhi->at(l);
+          int id     = em->pfCsId->at(l);
+          if(pt < pseudoJetCandPt_min) continue;
+          double px = pt * TMath::Cos(phi);
+          double py = pt * TMath::Sin(phi);
+          double pz = pt * TMath::SinH(eta);
+          double E  = pt * TMath::CosH(eta);
+          bool isCharged = (id == 1 || id == 2 || id == 3);
+          fastjet::PseudoJet pseudoJet_l(px, py, pz, E);
+          pseudoJet_l.set_user_index(isCharged ? 1 : 0);
+          fjInputs_PFCs.push_back(pseudoJet_l);
+        }
+        fastjet::ClusterSequence cs_PFCs(fjInputs_PFCs, jetDef);
+        std::vector<fastjet::PseudoJet> jets_PFCs = fastjet::sorted_by_pt(cs_PFCs.inclusive_jets(0.));
+        for(const auto& jet_PFCs : jets_PFCs){
+          if(TMath::Abs(jet_PFCs.eta()) > 1.6) continue;
+          std::vector<fastjet::PseudoJet> constituents_PFCs = jet_PFCs.constituents();
+          if(skipSingleConstituentJets){
+            if(constituents_PFCs.size() < 2) continue;
+          }
+          double trackMaxPt = 0.0;
+          for(const auto& c : constituents_PFCs){
+            if(c.user_index() == 1 && c.pt() > trackMaxPt) trackMaxPt = c.pt();
+          }
+          JEC.SetJetPT(jet_PFCs.pt());
+          JEC.SetJetEta(jet_PFCs.eta());
+          JEC.SetJetPhi(jet_PFCs.phi_std());
+          double fastJetPt_PFCs_JEC = JEC.GetCorrectedPT();
+          if(fastJetPt_PFCs_JEC < 20.) continue;
+          if(doJetTrkMaxFilter){
+            if(!passesJetTrkMaxFilter(trackMaxPt,fastJetPt_PFCs_JEC)) continue;
+          }
+
+          h_fastJetPt_PFCs[0]->Fill(jet_PFCs.pt(), w);
+          h_fastJetPt_PFCs[CentralityIndex]->Fill(jet_PFCs.pt(), w);
+          h_fastJetPt_PFCs_JEC[0]->Fill(fastJetPt_PFCs_JEC, w);
+          h_fastJetPt_PFCs_JEC[CentralityIndex]->Fill(fastJetPt_PFCs_JEC, w);
+
+          double dR_min = 999.0;
+          double dPT = -999.0;
+          for(const auto& jet_PF : jets){
+            std::vector<fastjet::PseudoJet> constituents_PF = jet_PF.constituents();
+            if(skipSingleConstituentJets){
+              if(constituents_PF.size() < 2) continue;
+            }
+            double dR = getDr(jet_PF.eta(),jet_PF.phi_std(),jet_PFCs.eta(),jet_PFCs.phi_std());
+            if(dR < dR_min){
+              dR_min = dR;
+              dPT = jet_PF.pt() - jet_PFCs.pt();
+            }
+          }
+          h_dRmin_PF_PFCs[0]->Fill(dR_min,w);
+          h_dRmin_PF_PFCs[CentralityIndex]->Fill(dR_min,w);
+          h_dPTEtaPhi_PF_PFCs[0]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
+          h_dPTEtaPhi_PF_PFCs[CentralityIndex]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
+          if(dPT > 0){
+            h_dPTEtaPhi_PF_PFCs_dPTAbove0[0]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
+            h_dPTEtaPhi_PF_PFCs_dPTAbove0[CentralityIndex]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
+          }
+          if(jet_PFCs.pt() > 60.){
+            h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[0]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
+            h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[CentralityIndex]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
+          }
         }
       }
 #endif
@@ -3008,8 +3393,33 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       // h_leadingGenJetPt_xJets_greaterThanPthat[i]->Write();
       h_pfPt[i]->Write();
       h_pseudoJetPt[i]->Write();
-      h_fastJetPt[i]->Write();
-      h_fastJetPt_JEC[i]->Write();
+      h_pseudoJetPt_geoCorr[i]->Write();
+      h_fastJetPt_PF[i]->Write();
+      h_fastJetPt_PF_JEC[i]->Write();
+      h_randConeEtaPhi[i]->Write();
+      h_randConeEtaPhi_geoCorr[i]->Write();
+      h_fastJetPt_PFCs[i]->Write();
+      h_fastJetPt_PFCs_JEC[i]->Write();
+      h_fastJetPt_PF_bkgSub_RC[i]->Write();
+      h_fastJetPt_PF_JEC_bkgSub_RC[i]->Write();
+      h_fastJetPt_PF_bkgSub_RC_geoCorr[i]->Write();
+      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[i]->Write();
+      h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[i]->Write();
+      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[i]->Write();
+      h_fastJetPt_PF_bkgSub_dPT[i]->Write();
+      h_fastJetPt_PF_JEC_bkgSub_dPT[i]->Write();
+      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[i]->Write();
+      h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[i]->Write();
+      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[i]->Write();
+      h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[i]->Write();
+      h_dPTEtaPhi_PF_PFCs[i]->Write();
+      h_dPTEtaPhi_PF_PFCs_dPTAbove0[i]->Write();
+      h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[i]->Write();
+      h_nPFcandFastJet[i]->Write();
+      h_dRmin_PF_PFCs[i]->Write();
+      h_fastJetPt_PF_JEC_matchedGen[i]->Write();
+      h_fastJetPt_PF_JEC_unmatchedGen[i]->Write();
+      h_fastJetPt_PF_JEC_dRnearestGen[i]->Write();
       h_nPFcand[i]->Write();
       h_nPFcandCS[i]->Write();
 
