@@ -90,6 +90,13 @@ TF1 *fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C1;
 #include "../../../headers/functions/etaPhiMask.h"
 // getDr function
 #include "../../../headers/functions/getDr.h"
+
+// dR within which a reco jet counts as matched to a gen jet, for the
+// reco-jet-indexed diagnostics (h_recoJetPt_all / _matchedDr / _unmatchedDr).
+// Half the jet radius is the usual choice for R = 0.4. This is deliberately
+// separate from the refpt == genjetpt test used for the response matrix, so the
+// two can be compared rather than conflated.
+const double recoGenMatchDr = 0.2;
 // getJetPtBin function
 #include "../../../headers/functions/getJetPtBin.h"
 // getPtRel function
@@ -231,6 +238,21 @@ void PYTHIAHYDJET_scan_response(int group = 1){
   TH2D *h_inclGenJetPt_inclRecoMuonTag_flavor[NCentralityIndices];
   TH2D *h_leadingRecoJetPtOverPThat_pThat[NCentralityIndices];
   TH1D *h_unmatchedRecoJetPt[NCentralityIndices][7];
+
+  // Reco-jet-indexed matching diagnostics. Unlike h_matchedRecoJetPt_genJetPt
+  // (filled per GEN jet) and h_unmatchedRecoJetPt (filled per reco jet with a
+  // different weight), these are all filled in ONE loop over reco jets with the
+  // SAME weight and one dR condition, so
+  //     all = matchedDr + unmatchedDr
+  // holds bin by bin and fractions of reco jets are well defined.
+  TH1D *h_recoJetPt_all[NCentralityIndices];
+  TH1D *h_recoJetPt_matchedDr[NCentralityIndices];
+  TH1D *h_recoJetPt_unmatchedDr[NCentralityIndices];
+  // For every reco jet, the nearest gen jet regardless of whether it passes the
+  // cut: separates pure combinatorial jets (no gen jet anywhere near) from soft
+  // gen jets promoted upward by the underlying event (small dR, genPt << recoPt).
+  TH2D *h_recoPt_dRnearestGen[NCentralityIndices];
+  TH2D *h_recoPt_nearestGenPt[NCentralityIndices];
   TH1D *h_unmatchedGenJetPt[NCentralityIndices];
   // RooUnfoldResponse response_C4(NPtBins,ptMin,ptMax,"response_C4","response_C4");
   // RooUnfoldResponse response_C3(NPtBins,ptMin,ptMax,"response_C3","response_C3");
@@ -259,6 +281,11 @@ void PYTHIAHYDJET_scan_response(int group = 1){
       h_unmatchedRecoJetPt[i][4] = new TH1D(Form("h_unmatchedRecoJetPt_sJets_C%i",i),Form("unmatchedRecoJetPt, sJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
       h_unmatchedRecoJetPt[i][5] = new TH1D(Form("h_unmatchedRecoJetPt_gJets_C%i",i),Form("unmatchedRecoJetPt, gJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
       h_unmatchedRecoJetPt[i][6] = new TH1D(Form("h_unmatchedRecoJetPt_xJets_C%i",i),Form("unmatchedRecoJetPt, xJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+      h_recoJetPt_all[i]         = new TH1D(Form("h_recoJetPt_all_C%i",i),Form("all reco jets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+      h_recoJetPt_matchedDr[i]   = new TH1D(Form("h_recoJetPt_matchedDr_C%i",i),Form("reco jets with a gen jet within dR, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+      h_recoJetPt_unmatchedDr[i] = new TH1D(Form("h_recoJetPt_unmatchedDr_C%i",i),Form("reco jets with no gen jet within dR, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+      h_recoPt_dRnearestGen[i]   = new TH2D(Form("h_recoPt_dRnearestGen_C%i",i),Form("dR to nearest gen jet vs reco p_{T}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,100,0,1.0);
+      h_recoPt_nearestGenPt[i]   = new TH2D(Form("h_recoPt_nearestGenPt_C%i",i),Form("nearest gen jet p_{T} vs reco p_{T}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
       h_matchedRecoJetPt_genJetPt[i][0] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_allJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, allJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
       h_matchedRecoJetPt_genJetPt[i][1] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_bJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, bJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
       h_matchedRecoJetPt_genJetPt[i][2] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_cJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, cJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
@@ -280,6 +307,11 @@ void PYTHIAHYDJET_scan_response(int group = 1){
       h_unmatchedRecoJetPt[i][4] = new TH1D(Form("h_unmatchedRecoJetPt_sJets_C%i",i),Form("unmatchedRecoJetPt, sJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
       h_unmatchedRecoJetPt[i][5] = new TH1D(Form("h_unmatchedRecoJetPt_gJets_C%i",i),Form("unmatchedRecoJetPt, gJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
       h_unmatchedRecoJetPt[i][6] = new TH1D(Form("h_unmatchedRecoJetPt_xJets_C%i",i),Form("unmatchedRecoJetPt, xJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+      h_recoJetPt_all[i]         = new TH1D(Form("h_recoJetPt_all_C%i",i),Form("all reco jets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+      h_recoJetPt_matchedDr[i]   = new TH1D(Form("h_recoJetPt_matchedDr_C%i",i),Form("reco jets with a gen jet within dR, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+      h_recoJetPt_unmatchedDr[i] = new TH1D(Form("h_recoJetPt_unmatchedDr_C%i",i),Form("reco jets with no gen jet within dR, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+      h_recoPt_dRnearestGen[i]   = new TH2D(Form("h_recoPt_dRnearestGen_C%i",i),Form("dR to nearest gen jet vs reco p_{T}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,100,0,1.0);
+      h_recoPt_nearestGenPt[i]   = new TH2D(Form("h_recoPt_nearestGenPt_C%i",i),Form("nearest gen jet p_{T} vs reco p_{T}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
       h_matchedRecoJetPt_genJetPt[i][0] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_allJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, allJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
       h_matchedRecoJetPt_genJetPt[i][1] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_bJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, bJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
       h_matchedRecoJetPt_genJetPt[i][2] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_cJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, cJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
@@ -301,6 +333,11 @@ void PYTHIAHYDJET_scan_response(int group = 1){
     h_unmatchedRecoJetPt[i][4]->Sumw2();
     h_unmatchedRecoJetPt[i][5]->Sumw2();
     h_unmatchedRecoJetPt[i][6]->Sumw2();
+    h_recoJetPt_all[i]->Sumw2();
+    h_recoJetPt_matchedDr[i]->Sumw2();
+    h_recoJetPt_unmatchedDr[i]->Sumw2();
+    h_recoPt_dRnearestGen[i]->Sumw2();
+    h_recoPt_nearestGenPt[i]->Sumw2();
     h_matchedRecoJetPt_genJetPt[i][0]->Sumw2();
     h_matchedRecoJetPt_genJetPt[i][1]->Sumw2();
     h_matchedRecoJetPt_genJetPt[i][2]->Sumw2();
@@ -564,6 +601,10 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 
       bool hasGenJetMatch_i = false;
 
+      // nearest gen jet to this reco jet, by dR, regardless of any cut
+      double dRnearest_i   = 999.0;
+      double nearestGenPt_i = -1.0;
+
       for(int j = 0; j < em->ngj ; j++){
 
 	double genJetPt_j = em->genjetpt[j];
@@ -573,7 +614,37 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	if(refJetPt_i == genJetPt_j){
 	  hasGenJetMatch_i = true;
 	}
+
+	double dR_ij = getDr(recoJetEta_i, recoJetPhi_i, genJetEta_j, genJetPhi_j);
+	if(dR_ij < dRnearest_i){
+	  dRnearest_i   = dR_ij;
+	  nearestGenPt_i = genJetPt_j;
+	}
       }
+
+      // Reco-jet-indexed diagnostics: one loop, one weight, one condition, so
+      // all = matchedDr + unmatchedDr holds bin by bin.
+      bool hasGenJetMatchDr_i = (dRnearest_i < recoGenMatchDr);
+
+      h_recoJetPt_all[0]->Fill(recoJetPt_i,w);
+      h_recoJetPt_all[CentralityIndex]->Fill(recoJetPt_i,w);
+
+      if(hasGenJetMatchDr_i){
+	h_recoJetPt_matchedDr[0]->Fill(recoJetPt_i,w);
+	h_recoJetPt_matchedDr[CentralityIndex]->Fill(recoJetPt_i,w);
+      }
+      else{
+	h_recoJetPt_unmatchedDr[0]->Fill(recoJetPt_i,w);
+	h_recoJetPt_unmatchedDr[CentralityIndex]->Fill(recoJetPt_i,w);
+      }
+
+      // dR is capped at the histogram range so overflow does not hide the
+      // "no gen jet anywhere near" population; genPt = -1 lands in underflow
+      // when the event has no gen jets at all.
+      h_recoPt_dRnearestGen[0]->Fill(recoJetPt_i, TMath::Min(dRnearest_i,0.9999), w);
+      h_recoPt_dRnearestGen[CentralityIndex]->Fill(recoJetPt_i, TMath::Min(dRnearest_i,0.9999), w);
+      h_recoPt_nearestGenPt[0]->Fill(recoJetPt_i, nearestGenPt_i, w);
+      h_recoPt_nearestGenPt[CentralityIndex]->Fill(recoJetPt_i, nearestGenPt_i, w);
 
       if(!hasGenJetMatch_i){
 	h_unmatchedRecoJetPt[0][0]->Fill(recoJetPt_i,w);
@@ -931,6 +1002,11 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 
     h_unmatchedGenJetPt[j]->Write();
     h_unmatchedRecoJetPt[j][0]->Write();
+    h_recoJetPt_all[j]->Write();
+    h_recoJetPt_matchedDr[j]->Write();
+    h_recoJetPt_unmatchedDr[j]->Write();
+    h_recoPt_dRnearestGen[j]->Write();
+    h_recoPt_nearestGenPt[j]->Write();
     // h_unmatchedRecoJetPt[j][1]->Write();
     // h_unmatchedRecoJetPt[j][2]->Write();
     // h_unmatchedRecoJetPt[j][3]->Write();
