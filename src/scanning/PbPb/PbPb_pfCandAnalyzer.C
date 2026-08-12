@@ -191,7 +191,7 @@ TH1D     *h_fastJetPt_PFCs[NCentralityIndices];
 TH1D     *h_fastJetPt_PFCs_JEC[NCentralityIndices];
 TH1D     *h_nPFcand[NCentralityIndices];
 TH1D     *h_nPFcandCS[NCentralityIndices];
-TH1D     *h_nCandPFFastJet[NCentralityIndices];  // candidates actually handed to FastJet
+TH1D     *h_nPFcandFastJet[NCentralityIndices];  // candidates actually handed to FastJet
 TProfile2D *h_dPTEtaPhi_PF_PFCs[NCentralityIndices];
 TProfile2D *h_dPTEtaPhi_PF_PFCs_dPTAbove0[NCentralityIndices];
 TProfile2D *h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[NCentralityIndices];
@@ -496,7 +496,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, dPT), pT(PFCs) > 60, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_nPFcand[i]   = new TH1D(Form("h_nPFcand_C%i",i),  Form("N PF cands per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
 	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
-	h_nCandPFFastJet[i] = new TH1D(Form("h_nCandPFFastJet_C%i",i), Form("N PF cands clustered by FastJet, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
+	h_nPFcandFastJet[i] = new TH1D(Form("h_nPFcandFastJet_C%i",i), Form("N PF cands clustered by FastJet, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
 	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_randConeEtaPhi_geoCorr[i] = new TProfile2D(Form("h_randConeEtaPhi_geoCorr_C%i",i),Form("Mean random-cone p_{T} (w/ geometric correction) vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
@@ -582,7 +582,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 	h_nPFcand[i]   = new TH1D(Form("h_nPFcand_C%i",i),  Form("N PF cands per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
 	h_nPFcandCS[i] = new TH1D(Form("h_nPFcandCS_C%i",i), Form("N PFCS cands per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
-	h_nCandPFFastJet[i] = new TH1D(Form("h_nCandPFFastJet_C%i",i), Form("N PF cands clustered by FastJet, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
+	h_nPFcandFastJet[i] = new TH1D(Form("h_nPFcandFastJet_C%i",i), Form("N PF cands clustered by FastJet, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
 	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_randConeEtaPhi_geoCorr[i] = new TProfile2D(Form("h_randConeEtaPhi_geoCorr_C%i",i),Form("Mean random-cone p_{T} (w/ geometric correction) vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
@@ -656,7 +656,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
       h_nPFcand[i]->Sumw2();
       h_nPFcandCS[i]->Sumw2();
-      h_nCandPFFastJet[i]->Sumw2();
+      h_nPFcandFastJet[i]->Sumw2();
       h_randConeEtaPhi[i]->Sumw2();
       h_randConeEtaPhi_geoCorr[i]->Sumw2(); 
       h_dPTEtaPhi_PF_PFCs[i]->Sumw2();
@@ -1094,8 +1094,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
         // number drawn from the pool, which is meant to be NCandidatesToSample =
         // em->nPFpart as well -- comparing this against h_nPFcand is the check
         // that the mixed event is being built at the right multiplicity.
-        h_nCandPFFastJet[0]->Fill((int)fjInputs.size(), w);
-        h_nCandPFFastJet[CentralityIndex]->Fill((int)fjInputs.size(), w);
+        h_nPFcandFastJet[0]->Fill((int)fjInputs.size(), w);
+        h_nPFcandFastJet[CentralityIndex]->Fill((int)fjInputs.size(), w);
 
         fastjet::JetDefinition jetDef(fastjet::antikt_algorithm, dR_max_pfcand);
         fastjet::ClusterSequence cs(fjInputs, jetDef);
@@ -1839,7 +1839,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[i]->Write();
       h_nPFcand[i]->Write();
       h_nPFcandCS[i]->Write();
-      h_nCandPFFastJet[i]->Write();
+      h_nPFcandFastJet[i]->Write();
       h_randConeEtaPhi[i]->Write();
       h_randConeEtaPhi_geoCorr[i]->Write();
       h_dPTEtaPhi_PF_PFCs[i]->Write();
