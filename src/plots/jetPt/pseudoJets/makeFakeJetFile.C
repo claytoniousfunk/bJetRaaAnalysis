@@ -24,6 +24,13 @@
 // (50-80%), which over-subtracted by the same factor. Do not point this at a
 // hiBinReweight* file without forming the fake fraction per ultra-fine slice.
 
+// Which FastJet spectrum to use as the fake estimate.
+//   h_fastJetPt_PF_bkgSub_RC      : raw pT minus the random-cone UE
+//   h_fastJetPt_PF_JEC_bkgSub_RC  : the same, JEC applied
+// h_inclRecoJetPt in calculateRAA.C is JEC-corrected, so the JEC variant is
+// the like-for-like choice; the raw one places every fake at too low a pT.
+const char *fjHistBase = "h_fastJetPt_PF_JEC_bkgSub_RC";
+
 const char *fmixed_path =
   "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-11_ultraFineCentBins.root";
 
@@ -55,7 +62,7 @@ void makeFakeJetFile(){
 
     for(int si = sliceLo[ci]; si <= sliceHi[ci]; si++){
       TH1D *hFJ = nullptr, *hRC = nullptr, *hvz = nullptr;
-      fM->GetObject(Form("h_fastJetPt_PF_bkgSub_RC_C%d", si), hFJ);
+      fM->GetObject(Form("%s_C%d", fjHistBase, si), hFJ);
       fM->GetObject(Form("h_pseudoJetPt_C%d",             si), hRC);
       fM->GetObject(Form("h_vz_C%d",                      si), hvz);
       if(!hFJ || !hRC || !hvz){
