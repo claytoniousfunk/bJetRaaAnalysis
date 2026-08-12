@@ -5,6 +5,42 @@
 #include "RooUnfoldBayes.h"
 #endif
 
+// ---------------------------------------------------------------------------
+// Analysis switches. The defaults reproduce the nominal chain; flip them to
+// factorise where a given feature of the jets-per-Z ratio comes from.
+// ---------------------------------------------------------------------------
+
+// Subtract the mixed-event fake jets from the MinBias spectrum.
+bool doFakeJetSubtraction = true;
+
+// Unfold. When false the measured spectra are used directly, which isolates
+// what unfolding does to a feature already present at reco level.
+bool doUnfolding = true;
+
+// Use the MinBias spectra over the whole pT range instead of handing the high-pT
+// region to the Jet60/80/100 triggered samples. The MinBias spectrum still gets
+// the normalisation the stitch computes for it, so the per-Z scaling downstream
+// is unchanged and the ratio stays absolutely normalised -- only the source of
+// the high-pT points differs, and those run out of statistics quickly.
+bool useMinBiasOnly = true;
+
+// EXPERIMENTAL. Instead of taking the mixed-event fake rate at its own per-event
+// normalisation, rescale it so it accounts for ALL reco jets at pinFakePt. The
+// mixed-event shape is kept, its normalisation discarded. Since not every jet at
+// 20 GeV is really fake, this is an upper bound on the subtraction, not an
+// estimate of it.
+bool   pinFakesToData = false;
+double pinFakePt      = 22.5;   // centre of the 20-25 GeV bin, the first kept
+                                // after makeFakeJetFile.C zeroes below 20
+
+// Bayes iteration counts, at file scope so they can be scanned without editing
+// the function body. See the comment above the unfolding block for why 1.
+int N_iter_pp = 1;
+int N_iter_C4 = 1;
+int N_iter_C3 = 1;
+int N_iter_C2 = 1;
+int N_iter_C1 = 1;
+
 void normalizeToMatchHistogram(TH1D *h_ref, TH1D *h_mod){
 
   // h_ref = reference histogram
@@ -195,7 +231,7 @@ TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_fakeJets, TH1D *h_jet60, TH1D *h_jet8
   // double smallShift = 0.01;
 
   double jetMB_pTmin = 60.;
-  double jet60_pTmin = 100;
+  double jet60_pTmin = 150;
   double jet80_pTmin = 150;
   double jet100_pTmin = 200;
   double smallShift = 0.01;
@@ -213,10 +249,25 @@ TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_fakeJets, TH1D *h_jet60, TH1D *h_jet8
 
   // For PbPb, jet60_pTmin == jet80_pTmin (Jet60 sample not used), so the
   // [jet60_pTmin, jet80_pTmin] overlap range is empty and gives N_jetMB = 0.
-  // Normalize MinBias directly to Jet80 using the [100, 150] GeV window where
-  // both are fully efficient (Jet80 is ~100% efficient above ~90 GeV in PbPb).
-  double mbNormLo = 100.;
-  double mbNormHi = jet80_pTmin;
+  // Normalize MinBias directly to Jet80.
+  //
+  // The window used to sit at [100,150], on the claim that Jet80 is ~100%
+  // efficient above ~90 GeV.  It is not: the MinBias/Jet80 ratio varies by 2.5x
+  // across [100,150] in C1 (1.7x in C2, 1.4x in C3/C4), i.e. the window sat
+  // inside the trigger turn-on, and the turn-on is slowest in central events
+  // where the background is largest.  That made k too small for C1 in
+  // particular, scaled the whole sub-150 GeV region down by a
+  // centrality-dependent factor, and inverted the PbPb/pp ordering: at 108 GeV
+  // C1 came out BELOW C2 (0.71 vs 0.78) even though the raw per-event MinBias
+  // spectra, which involve no stitching at all, give C1 > C2 > C3 > C4.
+  //
+  // MinBias/Jet80 reaches its plateau around 130 GeV.  Normalizing over
+  // [130,170] restores the monotonic ordering and reproduces the shape seen in
+  // the stitching-free MinBias comparison: at 88 GeV that gives C1/C2 = 1.41,
+  // [130,170] gives 1.33, the old window gave 1.13.  The cost is the MinBias
+  // normalization statistics: 0.44% -> 0.96% in C1, 1.60% -> 3.20% in C4.
+  double mbNormLo = 130.;
+  double mbNormHi = 170.;
   double N_jetMB     = h_jetMB->Integral(h_jetMB->FindBin(mbNormLo + smallShift), h_jetMB->FindBin(mbNormHi - smallShift));
   double N_fakeJets  = h_fakeJets->Integral(h_fakeJets->FindBin(mbNormLo + smallShift), h_fakeJets->FindBin(mbNormHi - smallShift));
 
@@ -241,7 +292,20 @@ TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_fakeJets, TH1D *h_jet60, TH1D *h_jet8
   h_fakeJets_scaled->Scale(N_jet80_scaled_mbRange / N_jetMB);
     
   // subtract mixed-event FastJet fake jets from MinBias spectrum
-  //if(isPbPb) h_jetMB_scaled->Add(h_fakeJets_scaled,-1);
+  if(isPbPb && doFakeJetSubtraction) h_jetMB_scaled->Add(h_fakeJets_scaled,-1);
+
+  if(useMinBiasOnly){
+    // Return the MinBias spectrum over the whole pT range instead of handing the
+    // high-pT region to the triggered samples -- but keep the normalisation the
+    // stitch just computed for it. That factor is what puts MinBias into
+    // jet100-trigger units, so the per-Z scaling downstream stays valid; without
+    // it the ratio carries a stray 1/N_evt and is meaningless in absolute terms.
+    for(int i = 0; i < h_jetMB_scaled->GetSize(); i++){
+      h_return->SetBinContent(i, h_jetMB_scaled->GetBinContent(i));
+      h_return->SetBinError  (i, h_jetMB_scaled->GetBinError(i));
+    }
+    return h_return;
+  }
   
   for(int i = 0; i < h_jet60->GetSize(); i++){
     double pT = h_jet60->GetBinCenter(i);
@@ -272,8 +336,8 @@ TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_fakeJets, TH1D *h_jet60, TH1D *h_jet8
 void calculateRAA(){
 
   TFile *file_pp_HighEGJet_jet60 = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_HighEGJet_Jet60HLT_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_2026-3-10.root");
-  TFile *file_pp_HighEGJet_jet80 = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_HighEGJet_Jet80HLT_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_2026-3-10.root");
-  TFile *file_pp_HighEGJet_jet100 = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_HighEGJet_Jet100HLT_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-3-11.root");
+  TFile *file_pp_HighEGJet_jet80 = TFile::Open("/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/pp/pp_HighEGJet_Jet80HLT_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-7-27.root");
+  TFile *file_pp_HighEGJet_jet100 = TFile::Open("/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/pp/pp_HighEGJet_Jet100HLT_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-7-27.root");
   //TFile *file_pp_SingleMuon = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_SingleMuon_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-3-16.root");
   TFile *file_pp_SingleMuon = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/pp/latest/pp_SingleMuon_mu12_pTmu-15to999_tight_deltaR-40_mu12TriggerEfficiencyCorrection_jetTrkMaxFilter_WDecayFilter_2026-5-4.root");
   TFile *file_pp_MinBias = TFile::Open("/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/pp/pp_MinBias_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-7-6.root");
@@ -290,7 +354,7 @@ void calculateRAA(){
   TFile *file_PbPb_MinBias = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PbPb/latest/PbPb_MinBias_mu12_pTmu-15to999_tight_WDecayFilter_2026-4-8.root");
 
 
-  TFile *file_PYTHIA_response = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIA/latest/response/PYTHIA_DiJet_response_pThat-15_mu12_pTmu-15_tight_vzReweight_jetTrkMaxFilter_removeHYDJETjet0p35CutOnGen_2026-1-26.root");
+  TFile *file_PYTHIA_response = TFile::Open("/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PYTHIA/PYTHIA_DiJet_response_pThat-15_mu12_pTmu-15_tight_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-8-3.root");
   TFile *file_PH_response = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIAHYDJET/latest/response/PYTHIAHYDJET_response_DiJet_pThat-15_mu12_pTmu-15_tight_vzReweight_hiBinReweight_hiBinShift-10_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-4-6_evenEvents.root");
   
 
@@ -534,6 +598,29 @@ void calculateRAA(){
   h_C3_jetMB->Scale(1./h_vz_MinBias_C3->Integral());
   h_C2_jetMB->Scale(1./h_vz_MinBias_C2->Integral());
   h_C1_jetMB->Scale(1./h_vz_MinBias_C1->Integral());
+
+  // EXPERIMENTAL: replace the per-event normalisation of the fake spectrum with
+  // a pin to the data at pinFakePt -- i.e. assert that every reco jet in that
+  // lowest bin is fake, and rescale the whole mixed-event shape to match. This
+  // keeps the mixed-event SHAPE and throws away its normalisation, so it is an
+  // upper bound on the fake rate rather than a measurement of it.
+  if(pinFakesToData){
+    TH1D *mb[5] = {nullptr, h_C1_jetMB, h_C2_jetMB, h_C3_jetMB, h_C4_jetMB};
+    TH1D *fk[5] = {nullptr, h_fakeJets_C1, h_fakeJets_C2, h_fakeJets_C3, h_fakeJets_C4};
+    for(int ci = 1; ci <= 4; ci++){
+      int b = fk[ci]->FindBin(pinFakePt);
+      double f = fk[ci]->GetBinContent(b);
+      double d = mb[ci]->GetBinContent(mb[ci]->FindBin(pinFakePt));
+      if(f <= 0. || d <= 0.){
+        printf("pinFakesToData: C%d has no content at %.1f GeV (fake=%g data=%g) -- not pinned\n",
+               ci, pinFakePt, f, d);
+        continue;
+      }
+      printf("pinFakesToData: C%d  fake/evt=%.4e  data/evt=%.4e  scale=%.3f\n",
+             ci, f, d, d/f);
+      fk[ci]->Scale(d/f);
+    }
+  }
 
   ///////////////////////////////////////////////////////////////////////////////////////
   
@@ -913,6 +1000,9 @@ void calculateRAA(){
   // }
 
 
+  // useMinBiasOnly is handled inside stitchSamples: it returns the MinBias
+  // spectrum over the full pT range, still carrying the trigger-matched
+  // normalisation, so the per-Z scaling downstream is unaffected.
   h_pp = (TH1D*) stitchSamples(h_pp_jetMB,h_fakeJets_C4, h_pp_jet60,h_pp_jet80,h_pp_jet100,1,0); // pp hist will ignore fakeJet entry
   h_C4 = (TH1D*) stitchSamples(h_C4_jetMB,h_fakeJets_C4, h_C4_jet60,h_C4_jet80,h_C4_jet100,0,1);
   h_C3 = (TH1D*) stitchSamples(h_C3_jetMB,h_fakeJets_C3, h_C3_jet60,h_C3_jet80,h_C3_jet100,0,1);
@@ -1139,11 +1229,22 @@ void calculateRAA(){
   RooUnfoldResponse response_C1(h_meas_C1,h_truth_C1,h_response_C1,"response_C1","C1 response",0);
 
 
-  int N_iter_pp = 1;
-  int N_iter_C4 = 1;  // chi2 rises monotonically; optimal at iter 1
-  int N_iter_C3 = 1;  // chi2 rises monotonically; optimal at iter 1
-  int N_iter_C2 = 1;  // chi2 rises monotonically; optimal at iter 1
-  int N_iter_C1 = 1;  // chi2 rises monotonically; optimal at iter 1
+  //  Provisional: 1 iteration everywhere.  This is the stable choice, not a
+  //  measured optimum -- the iteration count is still open.
+  //
+  //  The old justification ("chi2 rises monotonically") came from the
+  //  split-sample closure test, where the prior is the truth up to the even/odd
+  //  split.  That leaves no bias for the iterations to remove, so MSE is
+  //  minimised at 1 by construction, whatever the data does.
+  //
+  //  The distorted-truth scan (src/unfoldTest/unfoldClosureTest.C, distortion =
+  //  "dataMC") gives pp 2, C4 2, C3 3, C2 4, C1 8, but those are an upper bound:
+  //  the distortion is fitted to the RECO-level data/MC ratio, which also
+  //  contains fakes, unmatched jets and the trigger stitching, so it overstates
+  //  how wrong the prior is.  Applying them drives the C1 ratio below 110 GeV to
+  //  ~0.02, i.e. over-unfolded.  Redo the distortion from unfolded_data/gen_MC
+  //  before trusting any of those numbers.
+  // (declared at file scope so they can be scanned from outside)
 
   RooUnfoldBayes unfold_pp(&response_pp, h_pp, N_iter_pp);
   RooUnfoldBayes unfold_C4(&response_C4, h_C4, N_iter_C4);
@@ -1153,17 +1254,24 @@ void calculateRAA(){
 
   TH1D *h_pp_unfold, *h_C4_unfold, *h_C3_unfold, *h_C2_unfold, *h_C1_unfold;
 
-  h_pp_unfold = (TH1D*) unfold_pp.Hunfold();
-  h_C4_unfold = (TH1D*) unfold_C4.Hunfold();
-  h_C3_unfold = (TH1D*) unfold_C3.Hunfold();
-  h_C2_unfold = (TH1D*) unfold_C2.Hunfold();
-  h_C1_unfold = (TH1D*) unfold_C1.Hunfold();
-
-  // h_pp_unfold = (TH1D*) h_pp->Clone("h_pp_unfold");
-  // h_C4_unfold = (TH1D*) h_C4->Clone("h_C4_unfold");
-  // h_C3_unfold = (TH1D*) h_C3->Clone("h_C3_unfold");
-  // h_C2_unfold = (TH1D*) h_C2->Clone("h_C2_unfold");
-  // h_C1_unfold = (TH1D*) h_C1->Clone("h_C1_unfold");
+  if(doUnfolding){
+    h_pp_unfold = (TH1D*) unfold_pp.Hunfold();
+    h_C4_unfold = (TH1D*) unfold_C4.Hunfold();
+    h_C3_unfold = (TH1D*) unfold_C3.Hunfold();
+    h_C2_unfold = (TH1D*) unfold_C2.Hunfold();
+    h_C1_unfold = (TH1D*) unfold_C1.Hunfold();
+  }
+  else{
+    // Deliberately NOT named h_*_unfold: those names are reused by the Rebin
+    // calls further down, and two objects of the same name in gDirectory make
+    // the later lookups ambiguous. Hunfold() returns its own names, so the
+    // unfolded path does not hit this.
+    h_pp_unfold = (TH1D*) h_pp->Clone("h_pp_noUnfold");
+    h_C4_unfold = (TH1D*) h_C4->Clone("h_C4_noUnfold");
+    h_C3_unfold = (TH1D*) h_C3->Clone("h_C3_noUnfold");
+    h_C2_unfold = (TH1D*) h_C2->Clone("h_C2_noUnfold");
+    h_C1_unfold = (TH1D*) h_C1->Clone("h_C1_noUnfold");
+  }
 
   stylizeHistograms(h_pp_unfold,h_C1_unfold,h_C2_unfold,h_C3_unfold,h_C4_unfold);
 
@@ -1212,9 +1320,13 @@ void calculateRAA(){
   // const int N_edge = 23;
   // double newAxis[N_edge] = {100,105,110,115,120,125,130,135,140,145,150,160,170,180,190,200,220,240,260,280,300,350,400};
 
-  const int N_edge = 32;
-  double newAxis[N_edge] = {60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,160,170,180,190,200,220,240,260,280,300,350,400,500};
+  // const int N_edge = 32;
+  // double newAxis[N_edge] = {60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,160,170,180,190,200,220,240,260,280,300,350,400,500};
 
+  const int N_edge = 21;
+  double newAxis[N_edge] = {60,65,70,75,80,85,90,95,100,110,120,130,140,150,160,180,200,240,280,350,500};
+
+  
   h_pp_unfold = (TH1D*) h_pp_unfold->Rebin(N_edge-1,"h_pp_unfold",newAxis);
   divideByBinwidth(h_pp_unfold); // pT normalization
   h_pp_unfold->Scale(1./3.2); // eta normalization
@@ -1561,6 +1673,11 @@ void calculateRAA(){
   r_C3_r->Write();
   r_C2_r->Write();
   r_C1_r->Write();
+  // also the fine-axis ratios, needed to see the shape below 80 GeV
+  r_C4->Write("r_C4_fine");
+  r_C3->Write("r_C3_fine");
+  r_C2->Write("r_C2_fine");
+  r_C1->Write("r_C1_fine");
   file_JetsPerZ_lightJets_rebinned->Close();
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
