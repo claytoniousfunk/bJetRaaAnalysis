@@ -1005,6 +1005,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 		h_pfPt[0]->Fill(pfPt_l, w);
 		h_pfPt[CentralityIndex]->Fill(pfPt_l, w);
 		pseudoJetPt_k += pfPt_l;
+		pseudoJetPt_geoCorr_k += pfPt_l * TMath::Cos(dR_kl);
 	      }
 	    }
 	  }
