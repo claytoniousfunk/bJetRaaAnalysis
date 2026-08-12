@@ -1,55 +1,154 @@
-import os
+#!/usr/bin/env python3
+"""Submit HYDJET_pfCandAnalyzer.C to condor, one input file per job.
+
+Mirrors src/scanning/PbPb/condor_PbPb_pfCandAnalyzer.py:
+
+  * the environment setup is written into each job script instead of relying on
+    `getenv = True`, so a job cannot silently inherit a shell without FastJet;
+  * it builds a standalone binary rather than compiling the macro with ACLiC,
+    which avoids the Delphes/FastJet symbol collision that segfaults the ACLiC
+    path on any LCG view shipping Delphes;
+  * auto_submit defaults to False, and njobs_max lets you queue a handful of
+    jobs first. Do a single-job trial before queueing the full list.
+
+Run from src/scanning/HYDJET/ (the analyzer resolves its input list relative to
+that directory).
+"""
+
 import math
+import os
 
-jobname = 'HYDJET_pfCandAnalyzer_sameEventPseudoJets_CS_fastJet'
+# ---------------------------------------------------------------------------
+# configuration
+# ---------------------------------------------------------------------------
 
+jobname = 'HYDJET_pfCandAnalyzer_fastJet'
+
+# input list -- must be the same one HYDJET_pfCandAnalyzer.C hardcodes as
+# inputFileList, because the job index is matched against `ifile` inside the
+# analyzer.
 dblist = '../../../fileNames/fileNames_MinBias_Hydjet_Drum5F_2018_5p02TeV_withTracksAndPFCandidates.txt'
 
-exe = 'run_pfCandAnalyzer.C'
-time_flavour = '"workday"'  # 8h
-nsplit = 1  # input files per condor job
+# How the analyzer is run.
+#
+#   True  (default): build a standalone binary once here, jobs run it directly.
+#                    No cling, so ROOT never autoloads Delphes and its embedded
+#                    FastJet cannot hijack fastjet::ClusterSequence (that
+#                    collision segfaults the ACLiC path). Also removes ~2000
+#                    redundant ACLiC compiles.
+#   False: legacy path -- each job compiles the macro with ACLiC via
+#          run_pfCandAnalyzer_condor.C. KNOWN BROKEN on any LCG view that ships
+#          Delphes: it segfaults in ClusterSequence's constructor. Kept only for
+#          use on a stack without Delphes.
+use_standalone_binary = True
 
-# -----------------------------------------------------------------------
+binary = 'pfCandAnalyzer_HYDJET'
+makefile = 'Makefile.pfCandAnalyzer'
+exe = 'run_pfCandAnalyzer_condor.C'   # used only when use_standalone_binary is False
 
-pwd = os.getenv('PWD')
-files = [l.strip() for l in open(dblist).readlines() if l.strip()]
+# Sourced at the top of every job script. Must put fastjet-config on PATH and
+# libfastjet on LD_LIBRARY_PATH. Replace with the view you use interactively --
+# `which fastjet-config` in a working shell will tell you which one that is.
+env_setup = 'source /cvmfs/sft.cern.ch/lcg/views/LCG_105/x86_64-el9-gcc13-opt/setup.sh'
+
+# The LCG views ship Delphes, which bundles its own FastJet build and claims the
+# fastjet:: namespace in its rootmap. ROOT's class autoloading can therefore
+# resolve fastjet::ClusterSequence into libDelphesDisplay.so instead of the
+# standalone libfastjet the macro was compiled against, which segfaults.
+# run_pfCandAnalyzer_condor.C preloads the real libfastjet to prevent this.
+# Set this True to also force it at the process level, which is airtight.
+force_fastjet_preload = False
+
+time_flavour = '"tomorrow"'   # 1 day; mixed-event running is slow, workday (8h) may not be enough
+request_memory = 3000         # MB; the 100-event PF candidate pool is ~30 MB, ROOT buffers dominate
+nsplit = 1                    # input files per condor job
+
+# The same/mixed event variants are chosen by doEventMixing in
+# headers/AnalysisSetup/pseudoJets.h, which is compile-time. To produce both:
+# flip the flag, rebuild, submit again. The output dataset name encodes
+# _mixedEventPseudoJets / _sameEventPseudoJets, so the two do not collide.
+auto_submit = False           # set True once a trial job has succeeded
+njobs_max = None              # e.g. 1 for a trial run; None = all files
+
+# ---------------------------------------------------------------------------
+
+here = os.path.dirname(os.path.abspath(__file__))
+
+dblist_path = dblist if os.path.isabs(dblist) else os.path.join(here, dblist)
+if not os.path.isfile(dblist_path):
+    raise SystemExit(f'ERROR: input list not found: {dblist_path}')
+if use_standalone_binary:
+    # Build once, now, in the submitting shell -- so a compile failure is seen
+    # here instead of 1993 times on the farm.
+    print(f'Building {binary} ...')
+    rc = os.system(f'cd {here} && make -f {makefile}')
+    if rc != 0:
+        raise SystemExit(f'ERROR: build failed (make -f {makefile} returned {rc})')
+    if not os.path.isfile(os.path.join(here, binary)):
+        raise SystemExit(f'ERROR: build reported success but {binary} is missing')
+    print(f'Built {os.path.join(here, binary)}\n')
+elif not os.path.isfile(os.path.join(here, exe)):
+    raise SystemExit(f'ERROR: executable macro not found: {os.path.join(here, exe)}')
+
+with open(dblist_path) as f:
+    files = [l.strip() for l in f if l.strip()]
+
 nfiles = len(files)
 njobs = int(math.ceil(float(nfiles) / nsplit))
+if njobs_max is not None:
+    njobs = min(njobs, njobs_max)
 
-os.makedirs(jobname, exist_ok=True)
-os.makedirs(f'{jobname}/log', exist_ok=True)
+jobdir = os.path.join(here, jobname)
+os.makedirs(os.path.join(jobdir, 'log'), exist_ok=True)
 
-# generate one script per job
+# one script per job
 for i in range(njobs):
     start = i * nsplit + 1
-    end   = min((i + 1) * nsplit, nfiles)
+    end = min((i + 1) * nsplit, nfiles)
 
-    script = f'#!/bin/bash\ncd {pwd}\n'
+    lines = ['#!/bin/bash', 'set -e', '', env_setup, '']
+    if force_fastjet_preload and not use_standalone_binary:
+        lines += ['export LD_PRELOAD="$(fastjet-config --prefix)/lib/libfastjet.so"', '']
+    lines += [f'cd {here}', '']
     for idx in range(start, end + 1):
-        script += f"root -l -b -q '{exe}({idx})'\n"
+        if use_standalone_binary:
+            lines.append(f'./{binary} {idx}')
+        else:
+            lines.append(f"root -l -b -q '{exe}({idx})'")
+    lines.append('')
 
-    script_path = f'{pwd}/{jobname}/script_{i}.sh'
+    script_path = os.path.join(jobdir, f'script_{i}.sh')
     with open(script_path, 'w') as f:
-        f.write(script)
+        f.write('\n'.join(lines))
     os.chmod(script_path, 0o755)
 
-# single submit file with one Queue statement
 sub = f"""Universe   = vanilla
-Executable = {pwd}/{jobname}/script_$(ProcId).sh
-Log        = {pwd}/{jobname}/log/job_$(ProcId).log
-Output     = {pwd}/{jobname}/log/job_$(ProcId).out
-Error      = {pwd}/{jobname}/log/job_$(ProcId).err
+Executable = {jobdir}/script_$(ProcId).sh
+Log        = {jobdir}/log/job_$(ProcId).log
+Output     = {jobdir}/log/job_$(ProcId).out
+Error      = {jobdir}/log/job_$(ProcId).err
 getenv     = True
+request_memory = {request_memory}
 x509userproxy = $ENV(X509_USER_PROXY)
 use_x509userproxy = True
 +JobFlavour = {time_flavour}
 Queue {njobs}
 """
 
-sub_path = f'{pwd}/{jobname}/condor_submit.cfg'
+sub_path = os.path.join(jobdir, 'condor_submit.cfg')
 with open(sub_path, 'w') as f:
     f.write(sub)
 
 print(f'Generated {njobs} jobs for {nfiles} input files (nsplit={nsplit})')
+if njobs_max is not None:
+    print(f'NOTE: njobs_max={njobs_max} -- only the first {njobs} of '
+          f'{int(math.ceil(float(nfiles) / nsplit))} jobs were generated')
 print(f'Submit file: {sub_path}')
-os.system(f'condor_submit {sub_path}')
+
+if auto_submit:
+    os.system(f'condor_submit {sub_path}')
+else:
+    print('\nauto_submit is False. Trial-run one job locally first:')
+    print(f'  {jobdir}/script_0.sh')
+    print('then submit with:')
+    print(f'  condor_submit {sub_path}')
