@@ -32,9 +32,13 @@ public :
   void loadHLT(const char* name);
   void loadBTagger();
   void loadBTaggerInputVariables();
+  // pfCsTree is only created by loadParticleFlowAnalyzer_PFCs(), which just the
+  // pfCandAnalyzer scans call. It is a separate tree rather than a friend of
+  // evtTree, so it needs its own GetEntry -- but every other consumer leaves it
+  // null, and dereferencing it there aborts the job on the first event.
   void getEvent(Long64_t j){
     evtTree->GetEntry(j);
-    pfCsTree->GetEntry(j);
+    if(pfCsTree) pfCsTree->GetEntry(j);
   };
   void loadTrack(const char* name);
   void loadGenParticle(const char* name);
