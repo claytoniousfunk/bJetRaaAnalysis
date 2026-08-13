@@ -90,6 +90,11 @@ TF1 *fitFxn_PbPb_HLT_C4, *fitFxn_PbPb_HLT_C3, *fitFxn_PbPb_HLT_C2, *fitFxn_PbPb_
 #include "../scan_jet_corrections.h"
 #include "../scan_muon_tag.h"
 
+// Raw-pT threshold for the h_inclRecoJetPt_rawPtCut family. Applied to the
+// UNCORRECTED jet pT (em->rawpt), before JEC, so it is independent of the
+// correction and of any JEU/JER variation applied afterwards.
+const double rawJetPtCut = 40.0;
+
 
 
 
@@ -126,6 +131,12 @@ TH1D *h_hiBin_inclRecoMuonTag_triggerOn;
 // ~~~~~~~~~ jet variables ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // ----------------------------------------- incl. reco jets --------------
 TH1D *h_inclRecoJetPt[NCentralityIndices];
+// Same as h_inclRecoJetPt, but only jets whose UNCORRECTED pT clears
+// rawJetPtCut. The x axis is still the JEC-corrected pT, so this is the nominal
+// spectrum with a raw-pT threshold applied -- not a spectrum of raw pT.
+// Intended to suppress combinatorial jets, which are built from the UE pedestal
+// and so sit at low raw pT while JEC can push them up into the signal region.
+TH1D *h_inclRecoJetPt_rawPtCut[NCentralityIndices];
 TH1D *h_inclRecoJetEta[NCentralityIndices];
 TH1D *h_inclRecoJetPhi[NCentralityIndices];
 TH2D *h_inclRecoJetPt_inclRecoJetEta[NCentralityIndices];
@@ -336,6 +347,7 @@ void PbPb_scan(int group = 1){
 	h_NMuTaggedJetPerEvent[i] = new TH1D(Form("h_NMuTaggedJetPerEvent_C%i",i),Form("Number of #it{#mu}-tagged jets per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),100,0,100);
 	// ----------------------------------------- incl. reco jets --------------   
 	h_inclRecoJetPt[i] = new TH1D(Form("h_inclRecoJetPt_C%i",i),Form("incl. reco p_{T}^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_inclRecoJetPt_rawPtCut[i] = new TH1D(Form("h_inclRecoJetPt_rawPtCut_C%i",i),Form("incl. reco p_{T}^{jet}, raw p_{T}^{jet} > %.0f GeV, hiBin %i - %i",rawJetPtCut,centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_inclRecoJetEta[i] = new TH1D(Form("h_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NEtaBins,etaMin,etaMax);
 	h_inclRecoJetPhi[i] = new TH1D(Form("h_inclRecoJetPhi_C%i",i),Form("incl. reco #phi^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPhiBins,phiMin,phiMax);
 	h_inclRecoJetPt_inclRecoJetEta[i] = new TH2D(Form("h_inclRecoJetPt_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet} vs. incl reco p_{T}^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,NEtaBins,etaMin,etaMax);
@@ -385,6 +397,7 @@ void PbPb_scan(int group = 1){
 	h_NMuTaggedJetPerEvent[i] = new TH1D(Form("h_NMuTaggedJetPerEvent_C%i",i),Form("Number of #it{#mu}-tagged jets per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),100,0,100);
 	// ----------------------------------------- incl. reco jets --------------   
 	h_inclRecoJetPt[i] = new TH1D(Form("h_inclRecoJetPt_C%i",i),Form("incl. reco p_{T}^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_inclRecoJetPt_rawPtCut[i] = new TH1D(Form("h_inclRecoJetPt_rawPtCut_C%i",i),Form("incl. reco p_{T}^{jet}, raw p_{T}^{jet} > %.0f GeV, hiBin %i - %i",rawJetPtCut,centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_inclRecoJetEta[i] = new TH1D(Form("h_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NEtaBins,etaMin,etaMax);
 	h_inclRecoJetPhi[i] = new TH1D(Form("h_inclRecoJetPhi_C%i",i),Form("incl. reco #phi^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPhiBins,phiMin,phiMax);
 	h_inclRecoJetPt_inclRecoJetEta[i] = new TH2D(Form("h_inclRecoJetPt_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet} vs. incl reco p_{T}^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,NEtaBins,etaMin,etaMax);
@@ -432,6 +445,7 @@ void PbPb_scan(int group = 1){
       h_vz_inclRecoMuonTag[i]->Sumw2();
       h_vz_inclRecoMuonTag_triggerOn[i]->Sumw2();
       h_inclRecoJetPt[i]->Sumw2();
+      h_inclRecoJetPt_rawPtCut[i]->Sumw2();
       h_inclRecoJetEta[i]->Sumw2();
       h_inclRecoJetPhi[i]->Sumw2();
       h_inclRecoJetPt_inclRecoJetEta[i]->Sumw2();
@@ -764,9 +778,10 @@ void PbPb_scan(int group = 1){
 
 	double x = JEC.GetCorrectedPT();  // use manual JEC
 	//double x = em->jetpt[i]; // use built-in JEC
+	double rawJetPt_i = em->rawpt[i]; // uncorrected pT, for the rawPtCut histograms
 	double y = em->jeteta[i]; // recoJetEta
 	double z = em->jetphi[i]; // recoJetPhi
-	double jetTrkMax_i = em->jetTrkMax[i]; 
+	double jetTrkMax_i = em->jetTrkMax[i];
 
 
 	// double sigma = 0.663*JER_fxn->Eval(x);
@@ -828,6 +843,13 @@ void PbPb_scan(int group = 1){
 	inclJetCounter++;
 	h_inclRecoJetPt[0]->Fill(x,w);
 	h_inclRecoJetPt[CentralityIndex]->Fill(x,w);
+
+	// Same jets, same weight, same x axis -- only the raw-pT threshold differs,
+	// so the two are directly divisible bin by bin.
+	if(rawJetPt_i > rawJetPtCut){
+	  h_inclRecoJetPt_rawPtCut[0]->Fill(x,w);
+	  h_inclRecoJetPt_rawPtCut[CentralityIndex]->Fill(x,w);
+	}
 
 	h_inclRecoJetEta[0]->Fill(y,w);
 	h_inclRecoJetEta[CentralityIndex]->Fill(y,w);
@@ -1173,6 +1195,7 @@ void PbPb_scan(int group = 1){
       h_dimuonMass_sameSign[i]->Write();
    
       h_inclRecoJetPt[i]->Write();
+      h_inclRecoJetPt_rawPtCut[i]->Write();
       h_inclRecoJetEta[i]->Write();
       h_inclRecoJetPhi[i]->Write();
       h_inclRecoJetPt_inclRecoJetEta[i]->Write();
