@@ -553,7 +553,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       if(i==0){
 	// ----------------------------------------- event histograms -----------------
 	// >> vz
-	h_vz[i] = new TH1D(Form("h_vz_C%i",i),Form("vz, events with inclRecoJet, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NVzBins,vzMin,vzMax);
+	h_vz[i] = new TH1D(Form("h_vz_C%i",i),Form("vz, inclusive events, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NVzBins,vzMin,vzMax);
 	h_vz_inclGenMuonTag[i] = new TH1D(Form("h_vz_inclGenMuonTag_C%i",i),Form("vz, events with inclRecoJet-inclGenMuonTag, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NVzBins,vzMin,vzMax);
 	h_vz_inclRecoMuonTag[i] = new TH1D(Form("h_vz_inclRecoMuonTag_C%i",i),Form("vz, events with inclRecoJet-inclRecoMuonTag, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NVzBins,vzMin,vzMax);
 	h_vz_matchedRecoMuonTag[i] = new TH1D(Form("h_vz_matchedRecoMuonTag_C%i",i),Form("vz, events with inclRecoJet-matchedRecoMuonTag, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NVzBins,vzMin,vzMax);
@@ -722,7 +722,7 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       }
       else{
 	// ----------------------------------------- event histograms -----------------
-	h_vz[i] = new TH1D(Form("h_vz_C%i",i),Form("vz, events with inclRecoJet, hiBin %i - %i",centEdges[i-1],centEdges[i]),NVzBins,vzMin,vzMax);
+	h_vz[i] = new TH1D(Form("h_vz_C%i",i),Form("vz, inclusive events, hiBin %i - %i",centEdges[i-1],centEdges[i]),NVzBins,vzMin,vzMax);
 	h_vz_inclGenMuonTag[i] = new TH1D(Form("h_vz_inclGenMuonTag_C%i",i),Form("vz, events with inclRecoJet-inclGenMuonTag, hiBin %i - %i",centEdges[i-1],centEdges[i]),NVzBins,vzMin,vzMax);
 	h_vz_inclRecoMuonTag[i] = new TH1D(Form("h_vz_inclRecoMuonTag_C%i",i),Form("vz, events with inclRecoJet-inclRecoMuonTag, hiBin %i - %i",centEdges[i-1],centEdges[i]),NVzBins,vzMin,vzMax);
 	h_vz_matchedRecoMuonTag[i] = new TH1D(Form("h_vz_matchedRecoMuonTag_C%i",i),Form("vz, events with inclRecoJet-matchedRecoMuonTag, hiBin %i - %i",centEdges[i-1],centEdges[i]),NVzBins,vzMin,vzMax);
