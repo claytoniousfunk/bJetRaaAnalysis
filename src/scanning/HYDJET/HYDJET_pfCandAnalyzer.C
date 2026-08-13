@@ -1311,11 +1311,6 @@ void HYDJET_pfCandAnalyzer(int group = 1){
     }
     if(doConstituentSubtraction) em->loadParticleFlowAnalyzer("pfcandAnalyzerCS");
     else                         em->loadParticleFlowAnalyzer("pfcandAnalyzer");
-    TTree* pfTreeStd_raw = (TTree*) f->Get("pfcandAnalyzer/pfTree");
-    TTree* pfTreeCS_raw  = (TTree*) f->Get("pfcandAnalyzerCS/pfTree");
-    int nPFcand_std = 0, nPFcand_cs = 0;
-    if(pfTreeStd_raw) pfTreeStd_raw->SetBranchAddress("nPFpart", &nPFcand_std);
-    if(pfTreeCS_raw)  pfTreeCS_raw ->SetBranchAddress("nPFpart", &nPFcand_cs);
 
     // define event filters
     em->regEventFilter(NeventFilters, eventFilters);
@@ -1396,8 +1391,6 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       if(evi == 0) cout << "Processing events..." << endl;
 
       em->getEvent(evi); // load event info from eventMap
-      if(pfTreeStd_raw) pfTreeStd_raw->GetEntry(evi);
-      if(pfTreeCS_raw)  pfTreeCS_raw ->GetEntry(evi);
 
       if((100*evi / NEvents) % 5 == 0 && (100*evi / NEvents) > evi_frac){
 
@@ -1484,10 +1477,10 @@ void HYDJET_pfCandAnalyzer(int group = 1){
       
       h_hiBin->Fill(hiBin_shifted,w);
 
-      h_nPFcand[0]->Fill(nPFcand_std, w);
-      h_nPFcand[CentralityIndex]->Fill(nPFcand_std, w);
-      h_nPFcandCS[0]->Fill(nPFcand_cs, w);
-      h_nPFcandCS[CentralityIndex]->Fill(nPFcand_cs, w);
+      h_nPFcand[0]->Fill(em->nPFpart, w);
+      h_nPFcand[CentralityIndex]->Fill(em->nPFpart, w);
+      h_nPFcandCS[0]->Fill(em->nPFCspart, w);
+      h_nPFcandCS[CentralityIndex]->Fill(em->nPFCspart, w);
 
       int matchFlag[10] = {0,0,0,0,0,0,0,0,0,0};
       int matchFlagR[10] = {0,0,0,0,0,0,0,0,0,0};
