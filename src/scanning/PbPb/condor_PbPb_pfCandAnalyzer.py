@@ -49,7 +49,11 @@ exe = 'run_pfCandAnalyzer_condor.C'   # used only when use_standalone_binary is 
 # Sourced at the top of every job script. Must put fastjet-config on PATH and
 # libfastjet on LD_LIBRARY_PATH. Replace with the view you use interactively --
 # `which fastjet-config` in a working shell will tell you which one that is.
-env_setup = 'source /cvmfs/sft.cern.ch/lcg/views/LCG_105/x86_64-el9-gcc13-opt/setup.sh'
+# Must match the view the binary was built against -- LCG_106 (ROOT 6.32.02),
+# which is what ~/.bashrc sources. A mismatched view puts two ROOT installations
+# in one process and segfaults in TCling's constructor. See the HYDJET copy of
+# this script for the full note.
+env_setup = 'source /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/setup.sh'
 
 # The LCG views ship Delphes, which bundles its own FastJet build and claims the
 # fastjet:: namespace in its rootmap. ROOT's class autoloading can therefore
@@ -123,7 +127,10 @@ Executable = {jobdir}/script_$(ProcId).sh
 Log        = {jobdir}/log/job_$(ProcId).log
 Output     = {jobdir}/log/job_$(ProcId).out
 Error      = {jobdir}/log/job_$(ProcId).err
-getenv     = True
+# Deliberately False: env_setup is sourced at the top of every job script and is
+# meant to be the whole environment. With getenv = True the job inherits the
+# submitting shell too and layers the view on top of it.
+getenv     = False
 request_memory = {request_memory}
 x509userproxy = $ENV(X509_USER_PROXY)
 use_x509userproxy = True
