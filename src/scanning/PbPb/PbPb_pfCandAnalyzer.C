@@ -205,6 +205,11 @@ const int    NRC_EtaBins = 32;   // -1.6 to 1.6, width 0.1
 const int    NRC_PhiBins = 64;   // -pi to pi,   width ~0.098
 TProfile2D  *h_randConeEtaPhi[NCentralityIndices];
 TProfile2D  *h_randConeEtaPhi_geoCorr[NCentralityIndices];
+// Same-event RC, restricted to events passing the signal jet-pT selection
+// (see doSignalSelectedRC in pseudoJets.h). Only ever filled when
+// !doEventMixing; stay empty (and unwritten) otherwise.
+TH1D        *h_pseudoJetPt_sigSel[NCentralityIndices];
+TProfile2D  *h_randConeEtaPhi_sigSel[NCentralityIndices];
 
 TH1D        *h_fastJetPt_PF_bkgSub_RC[NCentralityIndices];
 TH1D        *h_fastJetPt_PF_JEC_bkgSub_RC[NCentralityIndices];
@@ -499,6 +504,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_nPFcandFastJet[i] = new TH1D(Form("h_nPFcandFastJet_C%i",i), Form("N PF cands clustered by FastJet, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),10000,0,10000);
 	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_randConeEtaPhi_geoCorr[i] = new TProfile2D(Form("h_randConeEtaPhi_geoCorr_C%i",i),Form("Mean random-cone p_{T} (w/ geometric correction) vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_pseudoJetPt_sigSel[i] = new TH1D(Form("h_pseudoJetPt_sigSel_C%i",i),Form("PseudoJet pT, signal-selected same-event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_randConeEtaPhi_sigSel[i] = new TProfile2D(Form("h_randConeEtaPhi_sigSel_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), signal-selected same-event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs_dPTAbove0[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_dPTAbove0_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), #Delta p_{T} > 0, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} (p_{T}^{PFCs} > 60 GeV)  vs (#eta,#phi), #Delta p_{T} > 0, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
@@ -585,6 +592,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_nPFcandFastJet[i] = new TH1D(Form("h_nPFcandFastJet_C%i",i), Form("N PF cands clustered by FastJet, hiBin %i - %i",centEdges[i-1],centEdges[i]),10000,0,10000);
 	h_randConeEtaPhi[i] = new TProfile2D(Form("h_randConeEtaPhi_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_randConeEtaPhi_geoCorr[i] = new TProfile2D(Form("h_randConeEtaPhi_geoCorr_C%i",i),Form("Mean random-cone p_{T} (w/ geometric correction) vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_pseudoJetPt_sigSel[i] = new TH1D(Form("h_pseudoJetPt_sigSel_C%i",i),Form("PseudoJet pT, signal-selected same-event, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_randConeEtaPhi_sigSel[i] = new TProfile2D(Form("h_randConeEtaPhi_sigSel_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), signal-selected same-event, hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs_dPTAbove0[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_dPTAbove0_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), #Delta p_{T} > 0, hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} (p_{T}^{PFCs} > 60 GeV)  vs (#eta,#phi), #Delta p_{T} > 0, hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
@@ -658,7 +667,9 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_nPFcandCS[i]->Sumw2();
       h_nPFcandFastJet[i]->Sumw2();
       h_randConeEtaPhi[i]->Sumw2();
-      h_randConeEtaPhi_geoCorr[i]->Sumw2(); 
+      h_randConeEtaPhi_geoCorr[i]->Sumw2();
+      h_pseudoJetPt_sigSel[i]->Sumw2();
+      h_randConeEtaPhi_sigSel[i]->Sumw2();
       h_dPTEtaPhi_PF_PFCs[i]->Sumw2();
       h_dPTEtaPhi_PF_PFCs_dPTAbove0[i]->Sumw2();
       h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[i]->Sumw2();
@@ -957,8 +968,30 @@ void PbPb_pfCandAnalyzer(int group = 1){
       }
       else{};
 
-    
-   
+      // Does this event pass the signal jet-pT selection? Computed here, ahead
+      // of the RECO JET LOOP further down, because the RC block right below
+      // needs it. Only meaningful same-event (doEventMixing pulls candidates
+      // from OTHER events, so "does THIS event have a jet" does not apply to
+      // what is being mixed in). See doSignalSelectedRC in pseudoJets.h.
+      bool eventHasSignalJet = false;
+      if(doSignalSelectedRC && !doEventMixing){
+	for(int i = 0; i < em->njet; i++){
+	  double jetPt_i;
+	  if(signalJetPtCutIsRaw){
+	    jetPt_i = em->rawpt[i];
+	  }
+	  else{
+	    JEC.SetJetPT(em->rawpt[i]);
+	    JEC.SetJetEta(em->jeteta[i]);
+	    JEC.SetJetPhi(em->jetphi[i]);
+	    jetPt_i = JEC.GetCorrectedPT();
+	  }
+	  if(jetPt_i > signalJetPtCut){ eventHasSignalJet = true; break; }
+	}
+      }
+
+
+
       ///// PF Candidate Analyzer / Pseudo-Jet Calculator / FastJet Clustering
 
       int NCandidatesToSample = em->nPFpart;
@@ -1042,7 +1075,14 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_randConeEtaPhi_geoCorr[0]->Fill(randEta_k, randPhi_k, pseudoJetPt_geoCorr_k, w);
 	h_randConeEtaPhi_geoCorr[CentralityIndex]->Fill(randEta_k, randPhi_k, pseudoJetPt_geoCorr_k, w);
 
-	
+	if(eventHasSignalJet){
+	  h_pseudoJetPt_sigSel[0]->Fill(pseudoJetPt_k, w);
+	  h_pseudoJetPt_sigSel[CentralityIndex]->Fill(pseudoJetPt_k, w);
+	  h_randConeEtaPhi_sigSel[0]->Fill(randEta_k, randPhi_k, pseudoJetPt_k, w);
+	  h_randConeEtaPhi_sigSel[CentralityIndex]->Fill(randEta_k, randPhi_k, pseudoJetPt_k, w);
+	}
+
+
 
 	
       }
@@ -1842,6 +1882,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_nPFcandFastJet[i]->Write();
       h_randConeEtaPhi[i]->Write();
       h_randConeEtaPhi_geoCorr[i]->Write();
+      h_pseudoJetPt_sigSel[i]->Write();
+      h_randConeEtaPhi_sigSel[i]->Write();
       h_dPTEtaPhi_PF_PFCs[i]->Write();
       h_dPTEtaPhi_PF_PFCs_dPTAbove0[i]->Write();
       h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[i]->Write();
