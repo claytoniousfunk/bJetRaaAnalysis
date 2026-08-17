@@ -227,6 +227,9 @@ TH1D        *h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[NCentralityIndices]
 TH1D        *h_fastJetPt_PF_bkgSub_dPT[NCentralityIndices];
 TH1D        *h_fastJetPt_PF_JEC_bkgSub_dPT[NCentralityIndices];
 
+TH1D        *h_fastJetPt_PF_bkgSub_dPT_geoCorr[NCentralityIndices];
+TH1D        *h_fastJetPt_PF_JEC_bkgSub_dPT_geoCorr[NCentralityIndices];
+
 TH1D        *h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[NCentralityIndices];
 TH1D        *h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[NCentralityIndices];
 
@@ -238,6 +241,7 @@ TH1D        *h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[NCentralityIndices];
 TProfile2D  *h_RC_map[NCentralityIndices];
 TProfile2D  *h_RC_geoCorr_map[NCentralityIndices];
 TProfile2D  *h_dPT_map[NCentralityIndices];
+TProfile2D  *h_dPT_geoCorr_map[NCentralityIndices];
 TProfile2D  *h_dPT_dPTAbove0_map[NCentralityIndices];
 TProfile2D  *h_dPT_PFCsPTAbove60_map[NCentralityIndices];
 
@@ -365,12 +369,13 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 
     // Load random-cone UE maps (used for RC-subtracted fastJet pT)
-    TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_RCGeoCorrMapBkgSub_2026-8-6_ultraFineCentBins.root"); 
+    TFile *f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-17_ultraFineCentBins.root");
     for(int i = 0; i < NCentralityIndices; i++){
 
       f_RC_maps->GetObject(Form("h_randConeEtaPhi_C%i",i), h_RC_map[i]);
       f_RC_maps->GetObject(Form("h_randConeEtaPhi_geoCorr_C%i",i), h_RC_geoCorr_map[i]);
       f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_C%i",i), h_dPT_map[i]);
+      f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_geoCorr_C%i",i), h_dPT_geoCorr_map[i]);
       f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_dPTAbove0_C%i",i), h_dPT_dPTAbove0_map[i]);
       f_RC_maps->GetObject(Form("h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60_C%i",i), h_dPT_PFCsPTAbove60_map[i]);
 				
@@ -385,6 +390,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       if(h_RC_map[i]) h_RC_map[i]->SetDirectory(nullptr);
       if(h_RC_geoCorr_map[i]) h_RC_geoCorr_map[i]->SetDirectory(nullptr);
       if(h_dPT_map[i]) h_dPT_map[i]->SetDirectory(nullptr);
+      if(h_dPT_geoCorr_map[i]) h_dPT_geoCorr_map[i]->SetDirectory(nullptr);
       if(h_dPT_dPTAbove0_map[i]) h_dPT_dPTAbove0_map[i]->SetDirectory(nullptr);
       if(h_dPT_PFCsPTAbove60_map[i]) h_dPT_PFCsPTAbove60_map[i]->SetDirectory(nullptr);
       
@@ -499,6 +505,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, random-cone, geometry correction, #eta-reflect), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_bkgSub_dPT[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, dPT), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_JEC_bkgSub_dPT[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, dPT), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_dPT_geoCorr[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_geoCorr_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, dPT, geometry correction), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_dPT_geoCorr[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_geoCorr_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, dPT, geometry correction), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_dPTAbove0_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, dPT), dPT > 0, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, dPT), dPT > 0, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, dPT), pT(PFCs) > 60, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
@@ -584,6 +592,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, random-cone, geometry correction, #eta-reflect), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_bkgSub_dPT[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, dPT), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_JEC_bkgSub_dPT[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, dPT), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_bkgSub_dPT_geoCorr[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_geoCorr_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, dPT, geometry correction), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_PF_JEC_bkgSub_dPT_geoCorr[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_geoCorr_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, dPT, geometry correction), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_dPTAbove0_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, dPT), dPT > 0, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[i] = new TH1D(Form("h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0_C%i",i),Form("FastJet anti-kT pT (PF, JEC, bkg sub, dPT), dPT > 0, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, dPT), pT(PFCs) > 60, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
@@ -664,6 +674,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[i]->Sumw2();
       h_fastJetPt_PF_bkgSub_dPT[i]->Sumw2();
       h_fastJetPt_PF_JEC_bkgSub_dPT[i]->Sumw2();
+      h_fastJetPt_PF_bkgSub_dPT_geoCorr[i]->Sumw2();
+      h_fastJetPt_PF_JEC_bkgSub_dPT_geoCorr[i]->Sumw2();
       h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[i]->Sumw2();
       h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[i]->Sumw2();
       h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[i]->Sumw2();
@@ -1187,6 +1199,13 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 	    double dPTMeanPt = h_dPT_map[CentralityIndex]->GetBinContent(h_dPT_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
 
+	    // h_dPT_geoCorr_map is only present in maps files regenerated after the
+	    // geoCorr dPT map was added to this analyzer -- guard against an
+	    // older maps file that predates it (GetObject leaves the pointer
+	    // null rather than throwing), instead of segfaulting on every event.
+	    double dPTMeanPt_geoCorr = h_dPT_geoCorr_map[CentralityIndex] ?
+	      h_dPT_geoCorr_map[CentralityIndex]->GetBinContent(h_dPT_geoCorr_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std())) : 0.;
+
 	    double dPTMeanPt_dPTAbove0 = h_dPT_dPTAbove0_map[CentralityIndex]->GetBinContent(h_dPT_dPTAbove0_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
 
 	    double dPTMeanPt_PFCsPTAbove60 = h_dPT_PFCsPTAbove60_map[CentralityIndex]->GetBinContent(h_dPT_PFCsPTAbove60_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
@@ -1197,6 +1216,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    double fastJetPt_rcSub_geoCorr = jet.pt() - rcMeanPt_geoCorr;
 	    double fastJetPt_rcSub_geoCorr_etaReflect = jet.pt() - rcMeanPt_geoCorr_etaReflect;
 	    double fastJetPt_dPTSub = jet.pt() - dPTMeanPt;
+	    double fastJetPt_dPTSub_geoCorr = jet.pt() - dPTMeanPt_geoCorr;
 	    double fastJetPt_dPTSub_dPTAbove0 = jet.pt() - dPTMeanPt_dPTAbove0;
 	    double fastJetPt_dPTSub_PFCsPTAbove60 = jet.pt() - dPTMeanPt_PFCsPTAbove60;
 
@@ -1214,6 +1234,9 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 	    JEC.SetJetPT(fastJetPt_dPTSub);
 	    double fastJetPt_JEC_dPTSub = JEC.GetCorrectedPT();
+
+	    JEC.SetJetPT(fastJetPt_dPTSub_geoCorr);
+	    double fastJetPt_JEC_dPTSub_geoCorr = JEC.GetCorrectedPT();
 
 	    JEC.SetJetPT(fastJetPt_dPTSub_dPTAbove0);
 	    double fastJetPt_JEC_dPTSub_dPTAbove0 = JEC.GetCorrectedPT();
@@ -1251,6 +1274,14 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 	      h_fastJetPt_PF_JEC_bkgSub_dPT[0]->Fill(fastJetPt_JEC_dPTSub,w);
 	      h_fastJetPt_PF_JEC_bkgSub_dPT[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub,w);
+	    }
+
+	    if(h_dPT_geoCorr_map[CentralityIndex] && fastJetPt_JEC_dPTSub_geoCorr > 20.){
+	      h_fastJetPt_PF_bkgSub_dPT_geoCorr[0]->Fill(fastJetPt_dPTSub_geoCorr,w);
+	      h_fastJetPt_PF_bkgSub_dPT_geoCorr[CentralityIndex]->Fill(fastJetPt_dPTSub_geoCorr,w);
+
+	      h_fastJetPt_PF_JEC_bkgSub_dPT_geoCorr[0]->Fill(fastJetPt_JEC_dPTSub_geoCorr,w);
+	      h_fastJetPt_PF_JEC_bkgSub_dPT_geoCorr[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_geoCorr,w);
 	    }
 
 	    if(fastJetPt_JEC_dPTSub_dPTAbove0 > 20.){
@@ -1883,6 +1914,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[i]->Write();
       h_fastJetPt_PF_bkgSub_dPT[i]->Write();
       h_fastJetPt_PF_JEC_bkgSub_dPT[i]->Write();
+      h_fastJetPt_PF_bkgSub_dPT_geoCorr[i]->Write();
+      h_fastJetPt_PF_JEC_bkgSub_dPT_geoCorr[i]->Write();
       h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[i]->Write();
       h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[i]->Write();
       h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[i]->Write();
