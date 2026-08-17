@@ -193,6 +193,10 @@ TH1D     *h_nPFcand[NCentralityIndices];
 TH1D     *h_nPFcandCS[NCentralityIndices];
 TH1D     *h_nPFcandFastJet[NCentralityIndices];  // candidates actually handed to FastJet
 TProfile2D *h_dPTEtaPhi_PF_PFCs[NCentralityIndices];
+// Same as h_dPTEtaPhi_PF_PFCs, but the per-jet-pair dPT is weighted by
+// cos(dR_min) between the matched PF and PFCs jets, mirroring the RC map's
+// geoCorr treatment (pseudoJetPt_geoCorr_k = pfPt_l*cos(dR)).
+TProfile2D *h_dPTEtaPhi_PF_PFCs_geoCorr[NCentralityIndices];
 TProfile2D *h_dPTEtaPhi_PF_PFCs_dPTAbove0[NCentralityIndices];
 TProfile2D *h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[NCentralityIndices];
 TH1D       *h_dRmin_PF_PFCs[NCentralityIndices];
@@ -507,6 +511,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_pseudoJetPt_sigSel[i] = new TH1D(Form("h_pseudoJetPt_sigSel_C%i",i),Form("PseudoJet pT, signal-selected same-event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_randConeEtaPhi_sigSel[i] = new TProfile2D(Form("h_randConeEtaPhi_sigSel_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), signal-selected same-event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_dPTEtaPhi_PF_PFCs_geoCorr[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_geoCorr_C%i",i),Form("(p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)}) #times cos(#Delta R) vs (#eta,#phi), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs_dPTAbove0[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_dPTAbove0_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), #Delta p_{T} > 0, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} (p_{T}^{PFCs} > 60 GeV)  vs (#eta,#phi), #Delta p_{T} > 0, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dRmin_PF_PFCs[i] = new TH1D(Form("h_dRmin_PF_PFCs_C%i",i), Form("min #Delta r[fastJet(PF),fastJet(PFCs)], hiBin %i-%i",centEdges[0],centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax);
@@ -595,6 +600,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_pseudoJetPt_sigSel[i] = new TH1D(Form("h_pseudoJetPt_sigSel_C%i",i),Form("PseudoJet pT, signal-selected same-event, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_randConeEtaPhi_sigSel[i] = new TProfile2D(Form("h_randConeEtaPhi_sigSel_C%i",i),Form("Mean random-cone p_{T} vs (#eta,#phi), signal-selected same-event, hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
+	h_dPTEtaPhi_PF_PFCs_geoCorr[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_geoCorr_C%i",i),Form("(p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)}) #times cos(#Delta R) vs (#eta,#phi), hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs_dPTAbove0[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_dPTAbove0_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} vs (#eta,#phi), #Delta p_{T} > 0, hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[i] = new TProfile2D(Form("h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60_C%i",i),Form("p_{T}^{fastJet(PF)} - p_{T}^{fastJet(PFCs)} (p_{T}^{PFCs} > 60 GeV)  vs (#eta,#phi), #Delta p_{T} > 0, hiBin %i - %i",centEdges[i-1],centEdges[i]),NRC_EtaBins,etaMin,etaMax,NRC_PhiBins,phiMin,phiMax);
 	h_dRmin_PF_PFCs[i] = new TH1D(Form("h_dRmin_PF_PFCs_C%i",i), Form("min #Delta r[fastJet(PF),fastJet(PFCs)], hiBin %i-%i",centEdges[i-1],centEdges[i]),NdRBins,dRBinMin,dRBinMax);
@@ -671,6 +677,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_pseudoJetPt_sigSel[i]->Sumw2();
       h_randConeEtaPhi_sigSel[i]->Sumw2();
       h_dPTEtaPhi_PF_PFCs[i]->Sumw2();
+      h_dPTEtaPhi_PF_PFCs_geoCorr[i]->Sumw2();
       h_dPTEtaPhi_PF_PFCs_dPTAbove0[i]->Sumw2();
       h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[i]->Sumw2();
       h_dRmin_PF_PFCs[i]->Sumw2();
@@ -1338,6 +1345,9 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  h_dRmin_PF_PFCs[CentralityIndex]->Fill(dR_min,w);
 	  h_dPTEtaPhi_PF_PFCs[0]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
 	  h_dPTEtaPhi_PF_PFCs[CentralityIndex]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
+	  double dPT_geoCorr = dPT * TMath::Cos(dR_min);
+	  h_dPTEtaPhi_PF_PFCs_geoCorr[0]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT_geoCorr);
+	  h_dPTEtaPhi_PF_PFCs_geoCorr[CentralityIndex]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT_geoCorr);
 	  if(dPT > 0){
 	    h_dPTEtaPhi_PF_PFCs_dPTAbove0[0]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
 	    h_dPTEtaPhi_PF_PFCs_dPTAbove0[CentralityIndex]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
@@ -1885,6 +1895,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_pseudoJetPt_sigSel[i]->Write();
       h_randConeEtaPhi_sigSel[i]->Write();
       h_dPTEtaPhi_PF_PFCs[i]->Write();
+      h_dPTEtaPhi_PF_PFCs_geoCorr[i]->Write();
       h_dPTEtaPhi_PF_PFCs_dPTAbove0[i]->Write();
       h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[i]->Write();
       h_dRmin_PF_PFCs[i]->Write();
