@@ -174,9 +174,16 @@ TH2D *h_jetTrkMaxFractionRaw_rawJetPt[NCentralityIndices];
 // than reuse the pp curves.
 //
 // PbPb has only three jet paths (HICsAK4PFJet60/80/100Eta1p5), so the
-// bootstrap chain is 60 -> 80 -> 100 and there is no lower rung below 60.
-// Jet60 therefore has NO bootstrap reference and can only be measured with
-// the absolute method, i.e. only from an unbiased MinBias sample.
+// bootstrap chain is 60 -> 80 -> 100 with no lower rung below 60. That is not
+// a limitation: MinBias IS the reference for the absolute method, and it is
+// the better one -- unbiased with respect to jet content by construction,
+// whereas a lower-threshold jet trigger is only a valid reference on its own
+// plateau. Bootstrap exists purely as a statistics fallback for where MinBias
+// runs out, which for PbPb it does not: counting the existing MinBias scan
+// (8.3M events, Part1) gives roughly 2.1M / 391k / 77k jets in the Jet60 /
+// Jet80 / Jet100 turn-on windows, and even the thinnest case (50-80% Jet100)
+// has ~1400. Treat bootstrap here as a cross-check on the absolute result,
+// not as the primary measurement.
 //
 //   ABSOLUTE   eff(JetX)      = h_leadJetPt_jetX_C / h_leadJetPt_all_C
 //   BOOTSTRAP  eff(JetB|JetA) = h_leadJetPt_jetA_and_jetB_C / h_leadJetPt_jetA_C
