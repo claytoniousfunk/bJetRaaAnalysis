@@ -450,12 +450,12 @@ void pp_scan(TString inputFile, TString outputFile){
     h_leadRawJetPt_jet80->Sumw2();
     h_leadRawJetPt_jet100->Sumw2();
 
-    h_prescale_jet15 = new TH1D("h_prescale_jet15","Jet15 prescale when fired", 200,0,200);
-    h_prescale_jet30 = new TH1D("h_prescale_jet30","Jet30 prescale when fired", 200,0,200);
-    h_prescale_jet40 = new TH1D("h_prescale_jet40","Jet40 prescale when fired", 200,0,200);
-    h_prescale_jet60 = new TH1D("h_prescale_jet60","Jet60 prescale when fired", 200,0,200);
-    h_prescale_jet80 = new TH1D("h_prescale_jet80","Jet80 prescale when fired", 200,0,200);
-    h_prescale_jet100= new TH1D("h_prescale_jet100","Jet100 prescale when fired",200,0,200);
+    h_prescale_jet15 = new TH1D("h_prescale_jet15","Jet15 prescale when fired", 2000,0,2000);
+    h_prescale_jet30 = new TH1D("h_prescale_jet30","Jet30 prescale when fired", 2000,0,2000);
+    h_prescale_jet40 = new TH1D("h_prescale_jet40","Jet40 prescale when fired", 2000,0,2000);
+    h_prescale_jet60 = new TH1D("h_prescale_jet60","Jet60 prescale when fired", 2000,0,2000);
+    h_prescale_jet80 = new TH1D("h_prescale_jet80","Jet80 prescale when fired", 2000,0,2000);
+    h_prescale_jet100= new TH1D("h_prescale_jet100","Jet100 prescale when fired",2000,0,2000);
 
     h_nEventsNoJetTrigSel = new TH1D("h_nEventsNoJetTrigSel","0 = no jet-trigger selection applied, 1 = biased",2,0,2);
     // ----------------------------------------- incl. reco jets --------------
