@@ -164,6 +164,49 @@ TH2D *h_jetTrkMaxFraction_jetPt[NCentralityIndices];
 // definitional issue rather than a source of centrality bias.
 TH2D *h_jetTrkMaxFractionRaw_rawJetPt[NCentralityIndices];
 
+// ---------------- PbPb jet trigger efficiency, per centrality -------------
+//
+// PbPb twin of the pp machinery added in bd910fbd, with the essential
+// difference that everything is indexed by centrality: the turn-on is
+// expected to move with centrality, since the trigger fires on an online
+// jet sitting on a very different underlying event in 0-10% than 50-80%.
+// That centrality dependence is the whole reason to measure it here rather
+// than reuse the pp curves.
+//
+// PbPb has only three jet paths (HICsAK4PFJet60/80/100Eta1p5), so the
+// bootstrap chain is 60 -> 80 -> 100 and there is no lower rung below 60.
+// Jet60 therefore has NO bootstrap reference and can only be measured with
+// the absolute method, i.e. only from an unbiased MinBias sample.
+//
+//   ABSOLUTE   eff(JetX)      = h_leadJetPt_jetX_C / h_leadJetPt_all_C
+//   BOOTSTRAP  eff(JetB|JetA) = h_leadJetPt_jetA_and_jetB_C / h_leadJetPt_jetA_C
+//
+// Same caveats as pp: applyJetNNTrigger is a hard `continue`, so with one
+// enabled the denominator silently becomes the triggered sample and every
+// absolute efficiency comes out flat at 1. h_nEventsNoJetTrigSel records
+// whether the run was actually unbiased. Prescales scale the plateau to
+// 1/prescale without distorting the turn-on shape, so h_prescale_jetNN is
+// kept to check the normalisation rather than assume it.
+TH1D *h_leadJetPt_all[NCentralityIndices];
+TH1D *h_leadJetPt_jet60[NCentralityIndices];
+TH1D *h_leadJetPt_jet80[NCentralityIndices];
+TH1D *h_leadJetPt_jet100[NCentralityIndices];
+TH1D *h_leadJetPt_jet60_and_jet80[NCentralityIndices];
+TH1D *h_leadJetPt_jet80_and_jet100[NCentralityIndices];
+
+TH1D *h_leadRawJetPt_all[NCentralityIndices];
+TH1D *h_leadRawJetPt_jet60[NCentralityIndices];
+TH1D *h_leadRawJetPt_jet80[NCentralityIndices];
+TH1D *h_leadRawJetPt_jet100[NCentralityIndices];
+
+TH1D *h_prescale_jet60[NCentralityIndices];
+TH1D *h_prescale_jet80[NCentralityIndices];
+TH1D *h_prescale_jet100[NCentralityIndices];
+
+// 2 bins: [0] = no jet-trigger selection applied (denominator usable),
+// [1] = one applied (denominator biased).
+TH1D *h_nEventsNoJetTrigSel;
+
 TH1D *h_inclRecoJetEta[NCentralityIndices];
 TH1D *h_inclRecoJetPhi[NCentralityIndices];
 TH2D *h_inclRecoJetPt_inclRecoJetEta[NCentralityIndices];
@@ -320,6 +363,7 @@ void PbPb_scan(int group = 1){
     h_eventsAfterSelection = new TH1D("h_eventsAfterSelection","events before selection",2,0,1);
     h_NEvents = new TH1D("h_NEvents","Number of events (L3Mu5 trigger)",100,0,10000);
     h_hiBin = new TH1D("h_hiBin","hiBin, inclusive events",200,0,200);
+    h_nEventsNoJetTrigSel = new TH1D("h_nEventsNoJetTrigSel","0 = no jet-trigger selection applied, 1 = biased",2,0,2);
     h_hiBin_triggerOn = new TH1D("h_hiBin_triggerOn","hiBin, events with triggerOn",200,0,200);
     h_hiBin_jet60 = new TH1D("h_hiBin_jet60","hiBin, events with jet60",200,0,200);
     h_hiBin_jet80 = new TH1D("h_hiBin_jet80","hiBin, events with jet80",200,0,200);
@@ -335,6 +379,7 @@ void PbPb_scan(int group = 1){
     h_eventsAfterSelection->Sumw2();
     h_NEvents->Sumw2();
     h_hiBin->Sumw2();
+    h_nEventsNoJetTrigSel->Sumw2();
     h_hiBin_triggerOn->Sumw2();
     h_hiBin_jet60->Sumw2();
     h_hiBin_jet80->Sumw2();
@@ -380,6 +425,20 @@ void PbPb_scan(int group = 1){
 	h_inclRecoJetPt_postTrkMaxFilter[i] = new TH1D(Form("h_inclRecoJetPt_postTrkMaxFilter_C%i",i),Form("incl. reco p_{T}^{jet}, after trkMax filter, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_jetTrkMaxFraction_jetPt[i] = new TH2D(Form("h_jetTrkMaxFraction_jetPt_C%i",i),Form("jetTrkMax/p_{T}^{jet} vs p_{T}^{jet}, before trkMax filter, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,110,0.0,1.1);
 	h_jetTrkMaxFractionRaw_rawJetPt[i] = new TH2D(Form("h_jetTrkMaxFractionRaw_rawJetPt_C%i",i),Form("jetTrkMax/raw p_{T}^{jet} vs raw p_{T}^{jet}, before trkMax filter, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,110,0.0,1.1);
+	h_leadJetPt_all[i]              = new TH1D(Form("h_leadJetPt_all_C%i",i),Form("leading jet p_{T}, no trigger requirement, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_leadJetPt_jet60[i]            = new TH1D(Form("h_leadJetPt_jet60_C%i",i),Form("leading jet p_{T}, Jet60 fired, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_leadJetPt_jet80[i]            = new TH1D(Form("h_leadJetPt_jet80_C%i",i),Form("leading jet p_{T}, Jet80 fired, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_leadJetPt_jet100[i]           = new TH1D(Form("h_leadJetPt_jet100_C%i",i),Form("leading jet p_{T}, Jet100 fired, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_leadJetPt_jet60_and_jet80[i]  = new TH1D(Form("h_leadJetPt_jet60_and_jet80_C%i",i),Form("leading jet p_{T}, Jet60 && Jet80 fired, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_leadJetPt_jet80_and_jet100[i] = new TH1D(Form("h_leadJetPt_jet80_and_jet100_C%i",i),Form("leading jet p_{T}, Jet80 && Jet100 fired, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_leadRawJetPt_all[i]           = new TH1D(Form("h_leadRawJetPt_all_C%i",i),Form("leading jet raw p_{T}, no trigger requirement, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_leadRawJetPt_jet60[i]         = new TH1D(Form("h_leadRawJetPt_jet60_C%i",i),Form("leading jet raw p_{T}, Jet60 fired, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_leadRawJetPt_jet80[i]         = new TH1D(Form("h_leadRawJetPt_jet80_C%i",i),Form("leading jet raw p_{T}, Jet80 fired, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_leadRawJetPt_jet100[i]        = new TH1D(Form("h_leadRawJetPt_jet100_C%i",i),Form("leading jet raw p_{T}, Jet100 fired, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_prescale_jet60[i]             = new TH1D(Form("h_prescale_jet60_C%i",i),Form("Jet60 prescale when fired, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),2000,0,2000);
+	h_prescale_jet80[i]             = new TH1D(Form("h_prescale_jet80_C%i",i),Form("Jet80 prescale when fired, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),2000,0,2000);
+	h_prescale_jet100[i]            = new TH1D(Form("h_prescale_jet100_C%i",i),Form("Jet100 prescale when fired, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),2000,0,2000);
+
 	h_inclRecoJetEta[i] = new TH1D(Form("h_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NEtaBins,etaMin,etaMax);
 	h_inclRecoJetPhi[i] = new TH1D(Form("h_inclRecoJetPhi_C%i",i),Form("incl. reco #phi^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPhiBins,phiMin,phiMax);
 	h_inclRecoJetPt_inclRecoJetEta[i] = new TH2D(Form("h_inclRecoJetPt_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet} vs. incl reco p_{T}^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,NEtaBins,etaMin,etaMax);
@@ -435,6 +494,20 @@ void PbPb_scan(int group = 1){
 	h_inclRecoJetPt_postTrkMaxFilter[i] = new TH1D(Form("h_inclRecoJetPt_postTrkMaxFilter_C%i",i),Form("incl. reco p_{T}^{jet}, after trkMax filter, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_jetTrkMaxFraction_jetPt[i] = new TH2D(Form("h_jetTrkMaxFraction_jetPt_C%i",i),Form("jetTrkMax/p_{T}^{jet} vs p_{T}^{jet}, before trkMax filter, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,110,0.0,1.1);
 	h_jetTrkMaxFractionRaw_rawJetPt[i] = new TH2D(Form("h_jetTrkMaxFractionRaw_rawJetPt_C%i",i),Form("jetTrkMax/raw p_{T}^{jet} vs raw p_{T}^{jet}, before trkMax filter, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,110,0.0,1.1);
+	h_leadJetPt_all[i]              = new TH1D(Form("h_leadJetPt_all_C%i",i),Form("leading jet p_{T}, no trigger requirement, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_leadJetPt_jet60[i]            = new TH1D(Form("h_leadJetPt_jet60_C%i",i),Form("leading jet p_{T}, Jet60 fired, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_leadJetPt_jet80[i]            = new TH1D(Form("h_leadJetPt_jet80_C%i",i),Form("leading jet p_{T}, Jet80 fired, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_leadJetPt_jet100[i]           = new TH1D(Form("h_leadJetPt_jet100_C%i",i),Form("leading jet p_{T}, Jet100 fired, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_leadJetPt_jet60_and_jet80[i]  = new TH1D(Form("h_leadJetPt_jet60_and_jet80_C%i",i),Form("leading jet p_{T}, Jet60 && Jet80 fired, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_leadJetPt_jet80_and_jet100[i] = new TH1D(Form("h_leadJetPt_jet80_and_jet100_C%i",i),Form("leading jet p_{T}, Jet80 && Jet100 fired, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_leadRawJetPt_all[i]           = new TH1D(Form("h_leadRawJetPt_all_C%i",i),Form("leading jet raw p_{T}, no trigger requirement, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_leadRawJetPt_jet60[i]         = new TH1D(Form("h_leadRawJetPt_jet60_C%i",i),Form("leading jet raw p_{T}, Jet60 fired, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_leadRawJetPt_jet80[i]         = new TH1D(Form("h_leadRawJetPt_jet80_C%i",i),Form("leading jet raw p_{T}, Jet80 fired, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_leadRawJetPt_jet100[i]        = new TH1D(Form("h_leadRawJetPt_jet100_C%i",i),Form("leading jet raw p_{T}, Jet100 fired, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_prescale_jet60[i]             = new TH1D(Form("h_prescale_jet60_C%i",i),Form("Jet60 prescale when fired, hiBin %i - %i",centEdges[i-1],centEdges[i]),2000,0,2000);
+	h_prescale_jet80[i]             = new TH1D(Form("h_prescale_jet80_C%i",i),Form("Jet80 prescale when fired, hiBin %i - %i",centEdges[i-1],centEdges[i]),2000,0,2000);
+	h_prescale_jet100[i]            = new TH1D(Form("h_prescale_jet100_C%i",i),Form("Jet100 prescale when fired, hiBin %i - %i",centEdges[i-1],centEdges[i]),2000,0,2000);
+
 	h_inclRecoJetEta[i] = new TH1D(Form("h_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NEtaBins,etaMin,etaMax);
 	h_inclRecoJetPhi[i] = new TH1D(Form("h_inclRecoJetPhi_C%i",i),Form("incl. reco #phi^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPhiBins,phiMin,phiMax);
 	h_inclRecoJetPt_inclRecoJetEta[i] = new TH2D(Form("h_inclRecoJetPt_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet} vs. incl reco p_{T}^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,NEtaBins,etaMin,etaMax);
@@ -488,6 +561,16 @@ void PbPb_scan(int group = 1){
       h_inclRecoJetPt_postTrkMaxFilter[i]->Sumw2();
       h_jetTrkMaxFraction_jetPt[i]->Sumw2();
       h_jetTrkMaxFractionRaw_rawJetPt[i]->Sumw2();
+      h_leadJetPt_all[i]->Sumw2();
+      h_leadJetPt_jet60[i]->Sumw2();
+      h_leadJetPt_jet80[i]->Sumw2();
+      h_leadJetPt_jet100[i]->Sumw2();
+      h_leadJetPt_jet60_and_jet80[i]->Sumw2();
+      h_leadJetPt_jet80_and_jet100[i]->Sumw2();
+      h_leadRawJetPt_all[i]->Sumw2();
+      h_leadRawJetPt_jet60[i]->Sumw2();
+      h_leadRawJetPt_jet80[i]->Sumw2();
+      h_leadRawJetPt_jet100[i]->Sumw2();
       h_inclRecoJetEta[i]->Sumw2();
       h_inclRecoJetPhi[i]->Sumw2();
       h_inclRecoJetPt_inclRecoJetEta[i]->Sumw2();
@@ -805,6 +888,9 @@ void PbPb_scan(int group = 1){
       // }
 
       double leadingRecoJetPt = 0.0;
+      // raw pT OF THE corrected-pT leading jet, so both trigger-efficiency
+      // axes describe the same jet.
+      double leadingRawJetPtOfLeader = 0.0;
       // RECO JET LOOP
       for(int i = 0; i < em->njet ; i++){
 
@@ -880,7 +966,10 @@ void PbPb_scan(int group = 1){
 	// jet kinematic cuts
 	if(TMath::Abs(y) > etaMax || x < jetPtCut) continue;
 
-	if(x > leadingRecoJetPt) leadingRecoJetPt = x;
+	if(x > leadingRecoJetPt){
+	  leadingRecoJetPt = x;
+	  leadingRawJetPtOfLeader = rawJetPt_i;
+	}
 
 	eventHasGoodJet = true;
 
@@ -1039,6 +1128,54 @@ void PbPb_scan(int group = 1){
 
     
     
+      // ---- jet trigger efficiency, per centrality ----
+      if(eventHasGoodJet){
+	bool anyJetTrigSelApplied = (applyJet60Trigger || applyJet80Trigger || applyJet100Trigger);
+	h_nEventsNoJetTrigSel->Fill(anyJetTrigSelApplied ? 1 : 0, w);
+
+	bool f60  = (em->HLT_HICsAK4PFJet60Eta1p5_v1  == 1);
+	bool f80  = (em->HLT_HICsAK4PFJet80Eta1p5_v1  == 1);
+	bool f100 = (em->HLT_HICsAK4PFJet100Eta1p5_v1 == 1);
+
+	h_leadJetPt_all[0]->Fill(leadingRecoJetPt,w);
+	h_leadJetPt_all[CentralityIndex]->Fill(leadingRecoJetPt,w);
+	h_leadRawJetPt_all[0]->Fill(leadingRawJetPtOfLeader,w);
+	h_leadRawJetPt_all[CentralityIndex]->Fill(leadingRawJetPtOfLeader,w);
+
+	if(f60){
+	  h_leadJetPt_jet60[0]->Fill(leadingRecoJetPt,w);
+	  h_leadJetPt_jet60[CentralityIndex]->Fill(leadingRecoJetPt,w);
+	  h_leadRawJetPt_jet60[0]->Fill(leadingRawJetPtOfLeader,w);
+	  h_leadRawJetPt_jet60[CentralityIndex]->Fill(leadingRawJetPtOfLeader,w);
+	  h_prescale_jet60[0]->Fill(em->HLT_HICsAK4PFJet60Eta1p5_v1_Prescl);
+	  h_prescale_jet60[CentralityIndex]->Fill(em->HLT_HICsAK4PFJet60Eta1p5_v1_Prescl);
+	}
+	if(f80){
+	  h_leadJetPt_jet80[0]->Fill(leadingRecoJetPt,w);
+	  h_leadJetPt_jet80[CentralityIndex]->Fill(leadingRecoJetPt,w);
+	  h_leadRawJetPt_jet80[0]->Fill(leadingRawJetPtOfLeader,w);
+	  h_leadRawJetPt_jet80[CentralityIndex]->Fill(leadingRawJetPtOfLeader,w);
+	  h_prescale_jet80[0]->Fill(em->HLT_HICsAK4PFJet80Eta1p5_v1_Prescl);
+	  h_prescale_jet80[CentralityIndex]->Fill(em->HLT_HICsAK4PFJet80Eta1p5_v1_Prescl);
+	}
+	if(f100){
+	  h_leadJetPt_jet100[0]->Fill(leadingRecoJetPt,w);
+	  h_leadJetPt_jet100[CentralityIndex]->Fill(leadingRecoJetPt,w);
+	  h_leadRawJetPt_jet100[0]->Fill(leadingRawJetPtOfLeader,w);
+	  h_leadRawJetPt_jet100[CentralityIndex]->Fill(leadingRawJetPtOfLeader,w);
+	  h_prescale_jet100[0]->Fill(em->HLT_HICsAK4PFJet100Eta1p5_v1_Prescl);
+	  h_prescale_jet100[CentralityIndex]->Fill(em->HLT_HICsAK4PFJet100Eta1p5_v1_Prescl);
+	}
+	if(f60 && f80){
+	  h_leadJetPt_jet60_and_jet80[0]->Fill(leadingRecoJetPt,w);
+	  h_leadJetPt_jet60_and_jet80[CentralityIndex]->Fill(leadingRecoJetPt,w);
+	}
+	if(f80 && f100){
+	  h_leadJetPt_jet80_and_jet100[0]->Fill(leadingRecoJetPt,w);
+	  h_leadJetPt_jet80_and_jet100[CentralityIndex]->Fill(leadingRecoJetPt,w);
+	}
+      }
+
       if(eventHasGoodJet && leadingRecoJetPt > 80){
 
 	if(em->HLT_HICsAK4PFJet100Eta1p5_v1 == 1 && leadingRecoJetPt > 130){
@@ -1232,6 +1369,7 @@ void PbPb_scan(int group = 1){
     h_eventsAfterSelection->Write();
     h_NEvents->Write();
     h_hiBin->Write();
+    h_nEventsNoJetTrigSel->Write();
     h_hiBin_triggerOn->Write();
     h_hiBin_jet60->Write();
     h_hiBin_jet80->Write();
@@ -1266,6 +1404,19 @@ void PbPb_scan(int group = 1){
       h_inclRecoJetPt_postTrkMaxFilter[i]->Write();
       h_jetTrkMaxFraction_jetPt[i]->Write();
       h_jetTrkMaxFractionRaw_rawJetPt[i]->Write();
+      h_leadJetPt_all[i]->Write();
+      h_leadJetPt_jet60[i]->Write();
+      h_leadJetPt_jet80[i]->Write();
+      h_leadJetPt_jet100[i]->Write();
+      h_leadJetPt_jet60_and_jet80[i]->Write();
+      h_leadJetPt_jet80_and_jet100[i]->Write();
+      h_leadRawJetPt_all[i]->Write();
+      h_leadRawJetPt_jet60[i]->Write();
+      h_leadRawJetPt_jet80[i]->Write();
+      h_leadRawJetPt_jet100[i]->Write();
+      h_prescale_jet60[i]->Write();
+      h_prescale_jet80[i]->Write();
+      h_prescale_jet100[i]->Write();
       h_inclRecoJetEta[i]->Write();
       h_inclRecoJetPhi[i]->Write();
       h_inclRecoJetPt_inclRecoJetEta[i]->Write();
