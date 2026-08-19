@@ -129,9 +129,96 @@ TH1D *h_leadJetPt_jet40;
 TH1D *h_leadJetPt_jet60;
 TH1D *h_leadJetPt_jet80;
 TH1D *h_leadJetPt_jet100;
+
+// ---------------- pp jet trigger efficiency ------------------------------
+//
+// The h_leadJetPt_jetXX histograms above are already the NUMERATORS: leading
+// offline jet pT, filled once per event when that HLT bit fired.  What was
+// missing is a denominator, so no efficiency could be formed.  Two methods
+// are supported here.
+//
+// 1. ABSOLUTE, against an unbiased sample.  eff(JetX) =
+//      h_leadJetPt_jetX / h_leadJetPt_all
+//    Only valid when the sample carries no jet-trigger requirement, i.e. run
+//    on MinBias with EVERY applyJetNNTrigger = false.  config_pp.h currently
+//    ships applyJet80Trigger = true, and that cut is a hard `continue`, so
+//    leaving it on silently makes the denominator the Jet80 sample and the
+//    "efficiency" comes out flat at 1 by construction.  h_nEventsNoJetTrigSel
+//    below records whether the run was actually unbiased.
+//
+// 2. BOOTSTRAP / reference-trigger, for where MinBias runs out of statistics.
+//      eff(JetB | JetA) = h_leadJetPt_jetA_and_jetB / h_leadJetPt_jetA
+//    valid on the plateau of the lower-threshold trigger JetA.  Chained
+//    15 -> 30 -> 40 -> 60 -> 80 -> 100 so each step overlaps the previous
+//    one's plateau.
+//
+// PRESCALES: these HLT paths are prescaled, and a prescale draw is random and
+// independent of jet pT, so it scales the measured efficiency by a constant
+// 1/prescale without distorting the turn-on SHAPE.  The plateau therefore
+// sits at 1/prescale, not 1, and must be normalised to 1 by hand.  The
+// h_prescale_jetXX histograms record the prescale values actually seen so
+// that normalisation can be checked rather than assumed.
+//
+// pT REFERENCE: leadingRecoJetPt is JEC-corrected, which is the right axis
+// because the efficiency gets applied to the corrected analysis spectrum.
+// The raw-pT twin is filled alongside as a cross-check, using the raw pT OF
+// THE SAME JET (the corrected-pT leader), not a separately-found raw leader.
+TH1D *h_leadJetPt_all;
+TH1D *h_leadJetPt_jet15_and_jet30;
+TH1D *h_leadJetPt_jet30_and_jet40;
+TH1D *h_leadJetPt_jet40_and_jet60;
+TH1D *h_leadJetPt_jet60_and_jet80;
+TH1D *h_leadJetPt_jet80_and_jet100;
+
+TH1D *h_leadRawJetPt_all;
+TH1D *h_leadRawJetPt_jet15;
+TH1D *h_leadRawJetPt_jet30;
+TH1D *h_leadRawJetPt_jet40;
+TH1D *h_leadRawJetPt_jet60;
+TH1D *h_leadRawJetPt_jet80;
+TH1D *h_leadRawJetPt_jet100;
+
+TH1D *h_prescale_jet15;
+TH1D *h_prescale_jet30;
+TH1D *h_prescale_jet40;
+TH1D *h_prescale_jet60;
+TH1D *h_prescale_jet80;
+TH1D *h_prescale_jet100;
+
+// 2 bins: [0] = runs with no jet-trigger selection applied (denominator
+// usable), [1] = runs with one applied (denominator biased). Lets a
+// downstream macro refuse to compute an absolute efficiency from a bad file.
+TH1D *h_nEventsNoJetTrigSel;
 // ~~~~~~~~~ jet variables ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // ----------------------------------------- incl. reco jets --------------
 TH1D *h_inclRecoJetPt;
+// Genuine raw-pT spectrum: x axis is em->rawpt, not JEC-corrected. Added to
+// match PbPb_scan.C's h_inclRawJetPt, for a raw-pT-consistent PbPb/pp
+// comparison against a raw-axis fake-jet estimate.
+TH1D *h_inclRawJetPt;
+
+// jetTrkMax filter diagnostics, mirroring PbPb_scan.C. Filled immediately
+// BEFORE and immediately AFTER the passesJetTrkMaxFilter block with nothing
+// in between, so post/pre is that one cut's rejection rate measured inside a
+// single scan rather than by pairing two scans taken with the flag flipped.
+// Needed on the pp side too because the filter is currently ON for every pp
+// input to calculateRAA.C but OFF for PbPb MinBias and PbPb Jet60, so the
+// bias on the PbPb/pp ratio depends on both sides.
+// Both filled regardless of doJetTrkMaxFilter: with the flag off they are
+// identical by construction, a null check on the bookkeeping.
+TH1D *h_inclRecoJetPt_preTrkMaxFilter;
+TH1D *h_inclRecoJetPt_postTrkMaxFilter;
+// trkMax/jetPt vs jetPt, filled pre-filter, so the 0.01 / 0.98 cut positions
+// can be seen against the actual distribution.
+TH2D *h_jetTrkMaxFraction_jetPt;
+// Same quantity against RAW pT, so one scan settles whether the cut should be
+// trkMax/rawPt or trkMax/correctedPt. Measured JEC factor <corr>/<raw> is
+// 1.154-1.189 across centrality, so the corrected-pT reference currently in
+// use makes the nominal 0.01 lower cut behave like ~0.0115-0.0119 on the raw
+// fraction. That factor is nearly centrality-flat (3% spread), so it is a
+// definitional issue rather than a source of centrality bias.
+TH2D *h_jetTrkMaxFractionRaw_rawJetPt;
+
 TH1D *h_muTaggedRecoJetPt;
 TH1D *h_muTaggedRecoJetPt_triggerOn;
 TH1D *h_inclRecoJetEta;
@@ -333,8 +420,51 @@ void pp_scan(TString inputFile, TString outputFile){
     h_leadJetPt_jet60 ->Sumw2();
     h_leadJetPt_jet80 ->Sumw2();
     h_leadJetPt_jet100->Sumw2();
+
+    // ---- jet trigger efficiency: denominators, bootstrap pairs, raw twin ----
+    h_leadJetPt_all = new TH1D("h_leadJetPt_all","leading jet p_{T}, no trigger requirement",NPtBins,ptMin,ptMax);
+    h_leadJetPt_jet15_and_jet30  = new TH1D("h_leadJetPt_jet15_and_jet30", "leading jet p_{T}, Jet15 && Jet30 fired", NPtBins,ptMin,ptMax);
+    h_leadJetPt_jet30_and_jet40  = new TH1D("h_leadJetPt_jet30_and_jet40", "leading jet p_{T}, Jet30 && Jet40 fired", NPtBins,ptMin,ptMax);
+    h_leadJetPt_jet40_and_jet60  = new TH1D("h_leadJetPt_jet40_and_jet60", "leading jet p_{T}, Jet40 && Jet60 fired", NPtBins,ptMin,ptMax);
+    h_leadJetPt_jet60_and_jet80  = new TH1D("h_leadJetPt_jet60_and_jet80", "leading jet p_{T}, Jet60 && Jet80 fired", NPtBins,ptMin,ptMax);
+    h_leadJetPt_jet80_and_jet100 = new TH1D("h_leadJetPt_jet80_and_jet100","leading jet p_{T}, Jet80 && Jet100 fired",NPtBins,ptMin,ptMax);
+    h_leadJetPt_all             ->Sumw2();
+    h_leadJetPt_jet15_and_jet30 ->Sumw2();
+    h_leadJetPt_jet30_and_jet40 ->Sumw2();
+    h_leadJetPt_jet40_and_jet60 ->Sumw2();
+    h_leadJetPt_jet60_and_jet80 ->Sumw2();
+    h_leadJetPt_jet80_and_jet100->Sumw2();
+
+    h_leadRawJetPt_all   = new TH1D("h_leadRawJetPt_all",  "leading jet raw p_{T}, no trigger requirement",NPtBins,ptMin,ptMax);
+    h_leadRawJetPt_jet15 = new TH1D("h_leadRawJetPt_jet15","leading jet raw p_{T}, Jet15 fired", NPtBins,ptMin,ptMax);
+    h_leadRawJetPt_jet30 = new TH1D("h_leadRawJetPt_jet30","leading jet raw p_{T}, Jet30 fired", NPtBins,ptMin,ptMax);
+    h_leadRawJetPt_jet40 = new TH1D("h_leadRawJetPt_jet40","leading jet raw p_{T}, Jet40 fired", NPtBins,ptMin,ptMax);
+    h_leadRawJetPt_jet60 = new TH1D("h_leadRawJetPt_jet60","leading jet raw p_{T}, Jet60 fired", NPtBins,ptMin,ptMax);
+    h_leadRawJetPt_jet80 = new TH1D("h_leadRawJetPt_jet80","leading jet raw p_{T}, Jet80 fired", NPtBins,ptMin,ptMax);
+    h_leadRawJetPt_jet100= new TH1D("h_leadRawJetPt_jet100","leading jet raw p_{T}, Jet100 fired",NPtBins,ptMin,ptMax);
+    h_leadRawJetPt_all  ->Sumw2();
+    h_leadRawJetPt_jet15->Sumw2();
+    h_leadRawJetPt_jet30->Sumw2();
+    h_leadRawJetPt_jet40->Sumw2();
+    h_leadRawJetPt_jet60->Sumw2();
+    h_leadRawJetPt_jet80->Sumw2();
+    h_leadRawJetPt_jet100->Sumw2();
+
+    h_prescale_jet15 = new TH1D("h_prescale_jet15","Jet15 prescale when fired", 200,0,200);
+    h_prescale_jet30 = new TH1D("h_prescale_jet30","Jet30 prescale when fired", 200,0,200);
+    h_prescale_jet40 = new TH1D("h_prescale_jet40","Jet40 prescale when fired", 200,0,200);
+    h_prescale_jet60 = new TH1D("h_prescale_jet60","Jet60 prescale when fired", 200,0,200);
+    h_prescale_jet80 = new TH1D("h_prescale_jet80","Jet80 prescale when fired", 200,0,200);
+    h_prescale_jet100= new TH1D("h_prescale_jet100","Jet100 prescale when fired",200,0,200);
+
+    h_nEventsNoJetTrigSel = new TH1D("h_nEventsNoJetTrigSel","0 = no jet-trigger selection applied, 1 = biased",2,0,2);
     // ----------------------------------------- incl. reco jets --------------
     h_inclRecoJetPt = new TH1D("h_inclRecoJetPt","incl. reco p_{T}^{jet}",NPtBins,ptMin,ptMax);
+    h_inclRawJetPt = new TH1D("h_inclRawJetPt","incl. raw p_{T}^{jet}",NPtBins,ptMin,ptMax);
+    h_inclRecoJetPt_preTrkMaxFilter = new TH1D("h_inclRecoJetPt_preTrkMaxFilter","incl. reco p_{T}^{jet}, before trkMax filter",NPtBins,ptMin,ptMax);
+    h_inclRecoJetPt_postTrkMaxFilter = new TH1D("h_inclRecoJetPt_postTrkMaxFilter","incl. reco p_{T}^{jet}, after trkMax filter",NPtBins,ptMin,ptMax);
+    h_jetTrkMaxFraction_jetPt = new TH2D("h_jetTrkMaxFraction_jetPt","jetTrkMax/p_{T}^{jet} vs p_{T}^{jet}, before trkMax filter",NPtBins,ptMin,ptMax,110,0.0,1.1);
+    h_jetTrkMaxFractionRaw_rawJetPt = new TH2D("h_jetTrkMaxFractionRaw_rawJetPt","jetTrkMax/raw p_{T}^{jet} vs raw p_{T}^{jet}, before trkMax filter",NPtBins,ptMin,ptMax,110,0.0,1.1);
     h_muTaggedRecoJetPt = new TH1D("h_muTaggedRecoJetPt","#mu-tagged reco p_{T}^{jet}",NPtBins,ptMin,ptMax);
     h_muTaggedRecoJetPt_triggerOn = new TH1D("h_muTaggedRecoJetPt_triggerOn","#mu-tagged reco p_{T}^{jet}, trigger ON",NPtBins,ptMin,ptMax);
     h_inclRecoJetEta = new TH1D("h_inclRecoJetEta","incl. reco #eta^{jet}",NEtaBins,etaMin,etaMax);
@@ -394,6 +524,11 @@ void pp_scan(TString inputFile, TString outputFile){
     h_vz_inclRecoMuonTag_triggerOn->Sumw2();
 
     h_inclRecoJetPt->Sumw2();
+    h_inclRawJetPt->Sumw2();
+    h_inclRecoJetPt_preTrkMaxFilter->Sumw2();
+    h_inclRecoJetPt_postTrkMaxFilter->Sumw2();
+    h_jetTrkMaxFraction_jetPt->Sumw2();
+    h_jetTrkMaxFractionRaw_rawJetPt->Sumw2();
     h_muTaggedRecoJetPt->Sumw2();
     h_muTaggedRecoJetPt_triggerOn->Sumw2();
     h_inclRecoJetEta->Sumw2();
@@ -639,6 +774,9 @@ void pp_scan(TString inputFile, TString outputFile){
 
 
       double leadingRecoJetPt = 0.0;
+      // raw pT OF THE corrected-pT leading jet (not an independently-found
+      // raw leader), so the two trigger-efficiency axes describe one jet.
+      double leadingRawJetPtOfLeader = 0.0;
       //cout << "event " << evi << endl;
       // RECO JET LOOP
       for(int i = 0; i < em->njet ; i++){
@@ -651,6 +789,7 @@ void pp_scan(TString inputFile, TString outputFile){
 
 	//double x = em->rawpt[i];  // use manual JEC
 	double x = JEC.GetCorrectedPT();  // use manual JEC
+	double rawJetPt_i = em->rawpt[i]; // uncorrected pT, for h_inclRawJetPt
 	//double x = em->jetpt[i]; // use built-in JEC
 	double y = em->jeteta[i]; // recoJetEta
 	double z = em->jetphi[i]; // recoJetPhi
@@ -660,10 +799,18 @@ void pp_scan(TString inputFile, TString outputFile){
 	double inJetMuPhi_i = em->muphi[i];
 	double inJetMuPtRel_i = em->muptrel[i];
 
+	// trkMax filter diagnostics: pre/post pair with NOTHING between them
+	// except the filter itself. See the declarations above.
+	h_inclRecoJetPt_preTrkMaxFilter->Fill(x,w);
+	if(x > 0.) h_jetTrkMaxFraction_jetPt->Fill(x, jetTrkMax_i/x, w);
+	if(rawJetPt_i > 0.) h_jetTrkMaxFractionRaw_rawJetPt->Fill(rawJetPt_i, jetTrkMax_i/rawJetPt_i, w);
+
 	if(doJetTrkMaxFilter){
 	  if(!passesJetTrkMaxFilter(jetTrkMax_i,x)) continue;
 	}
-     
+
+	h_inclRecoJetPt_postTrkMaxFilter->Fill(x,w);
+
 	if(doEtaPhiMask){
 	  if(etaPhiMask(y,z)) continue;
 	}
@@ -690,7 +837,10 @@ void pp_scan(TString inputFile, TString outputFile){
 	if(TMath::Abs(y) > etaMax || x < jetPtCut) continue;
 
 	eventHasGoodJet = true;
-	if(x > leadingRecoJetPt) leadingRecoJetPt = x;
+	if(x > leadingRecoJetPt){
+	  leadingRecoJetPt = x;
+	  leadingRawJetPtOfLeader = rawJetPt_i;
+	}
 
 	int jetPtIndex = getJetPtBin(x);
 
@@ -705,6 +855,7 @@ void pp_scan(TString inputFile, TString outputFile){
       
 	// Fill the jet/event histograms
 	h_inclRecoJetPt->Fill(x,w);
+	h_inclRawJetPt->Fill(rawJetPt_i,w);
 	if(inJetMuPt_i > 14. && fabs(inJetMuEta_i) < 2.){
 	  h_muTaggedRecoJetPt->Fill(x,w);
 	  if(evtTriggerDecision) h_muTaggedRecoJetPt_triggerOn->Fill(x,w);	  
@@ -759,6 +910,42 @@ void pp_scan(TString inputFile, TString outputFile){
 	if(em->HLT_HIAK4PFJet60_v1  == 1) h_leadJetPt_jet60 ->Fill(leadingRecoJetPt,w);
 	if(em->HLT_HIAK4PFJet80_v1  == 1) h_leadJetPt_jet80 ->Fill(leadingRecoJetPt,w);
 	if(em->HLT_HIAK4PFJet100_v1 == 1) h_leadJetPt_jet100->Fill(leadingRecoJetPt,w);
+
+	// ---- jet trigger efficiency ----
+	// Unbiased denominator. Only meaningful if NO applyJetNNTrigger is set
+	// -- those are hard `continue`s upstream, so with one enabled this
+	// becomes the triggered sample and every efficiency comes out ~1.
+	bool anyJetTrigSelApplied = (applyJet15Trigger || applyJet30Trigger ||
+	                             applyJet40Trigger || applyJet60Trigger ||
+	                             applyJet80Trigger || applyJet100Trigger);
+	h_nEventsNoJetTrigSel->Fill(anyJetTrigSelApplied ? 1 : 0, w);
+
+	h_leadJetPt_all   ->Fill(leadingRecoJetPt,w);
+	h_leadRawJetPt_all->Fill(leadingRawJetPtOfLeader,w);
+
+	if(em->HLT_HIAK4PFJet15_v1  == 1) h_leadRawJetPt_jet15 ->Fill(leadingRawJetPtOfLeader,w);
+	if(em->HLT_HIAK4PFJet30_v1  == 1) h_leadRawJetPt_jet30 ->Fill(leadingRawJetPtOfLeader,w);
+	if(em->HLT_HIAK4PFJet40_v1  == 1) h_leadRawJetPt_jet40 ->Fill(leadingRawJetPtOfLeader,w);
+	if(em->HLT_HIAK4PFJet60_v1  == 1) h_leadRawJetPt_jet60 ->Fill(leadingRawJetPtOfLeader,w);
+	if(em->HLT_HIAK4PFJet80_v1  == 1) h_leadRawJetPt_jet80 ->Fill(leadingRawJetPtOfLeader,w);
+	if(em->HLT_HIAK4PFJet100_v1 == 1) h_leadRawJetPt_jet100->Fill(leadingRawJetPtOfLeader,w);
+
+	// Bootstrap pairs: numerator for eff(JetB | JetA). Denominator is the
+	// existing single-trigger h_leadJetPt_jetA.
+	if(em->HLT_HIAK4PFJet15_v1 == 1 && em->HLT_HIAK4PFJet30_v1  == 1) h_leadJetPt_jet15_and_jet30 ->Fill(leadingRecoJetPt,w);
+	if(em->HLT_HIAK4PFJet30_v1 == 1 && em->HLT_HIAK4PFJet40_v1  == 1) h_leadJetPt_jet30_and_jet40 ->Fill(leadingRecoJetPt,w);
+	if(em->HLT_HIAK4PFJet40_v1 == 1 && em->HLT_HIAK4PFJet60_v1  == 1) h_leadJetPt_jet40_and_jet60 ->Fill(leadingRecoJetPt,w);
+	if(em->HLT_HIAK4PFJet60_v1 == 1 && em->HLT_HIAK4PFJet80_v1  == 1) h_leadJetPt_jet60_and_jet80 ->Fill(leadingRecoJetPt,w);
+	if(em->HLT_HIAK4PFJet80_v1 == 1 && em->HLT_HIAK4PFJet100_v1 == 1) h_leadJetPt_jet80_and_jet100->Fill(leadingRecoJetPt,w);
+
+	// Prescale values actually seen, so the plateau normalisation (which
+	// sits at 1/prescale, not 1) can be checked rather than assumed.
+	if(em->HLT_HIAK4PFJet15_v1  == 1) h_prescale_jet15 ->Fill(em->HLT_HIAK4PFJet15_v1_Prescl);
+	if(em->HLT_HIAK4PFJet30_v1  == 1) h_prescale_jet30 ->Fill(em->HLT_HIAK4PFJet30_v1_Prescl);
+	if(em->HLT_HIAK4PFJet40_v1  == 1) h_prescale_jet40 ->Fill(em->HLT_HIAK4PFJet40_v1_Prescl);
+	if(em->HLT_HIAK4PFJet60_v1  == 1) h_prescale_jet60 ->Fill(em->HLT_HIAK4PFJet60_v1_Prescl);
+	if(em->HLT_HIAK4PFJet80_v1  == 1) h_prescale_jet80 ->Fill(em->HLT_HIAK4PFJet80_v1_Prescl);
+	if(em->HLT_HIAK4PFJet100_v1 == 1) h_prescale_jet100->Fill(em->HLT_HIAK4PFJet100_v1_Prescl);
       }
 
       if(eventHasGoodJet && leadingRecoJetPt > 80){
@@ -954,6 +1141,11 @@ void pp_scan(TString inputFile, TString outputFile){
     h_vz_inclRecoMuonTag_triggerOn->Write();
    
     h_inclRecoJetPt->Write();
+    h_inclRawJetPt->Write();
+    h_inclRecoJetPt_preTrkMaxFilter->Write();
+    h_inclRecoJetPt_postTrkMaxFilter->Write();
+    h_jetTrkMaxFraction_jetPt->Write();
+    h_jetTrkMaxFractionRaw_rawJetPt->Write();
     h_muTaggedRecoJetPt->Write();
     h_muTaggedRecoJetPt_triggerOn->Write();
     h_inclRecoJetEta->Write();
@@ -984,6 +1176,30 @@ void pp_scan(TString inputFile, TString outputFile){
     h_leadJetPt_jet60 ->Write();
     h_leadJetPt_jet80 ->Write();
     h_leadJetPt_jet100->Write();
+
+    h_leadJetPt_all             ->Write();
+    h_leadJetPt_jet15_and_jet30 ->Write();
+    h_leadJetPt_jet30_and_jet40 ->Write();
+    h_leadJetPt_jet40_and_jet60 ->Write();
+    h_leadJetPt_jet60_and_jet80 ->Write();
+    h_leadJetPt_jet80_and_jet100->Write();
+
+    h_leadRawJetPt_all  ->Write();
+    h_leadRawJetPt_jet15->Write();
+    h_leadRawJetPt_jet30->Write();
+    h_leadRawJetPt_jet40->Write();
+    h_leadRawJetPt_jet60->Write();
+    h_leadRawJetPt_jet80->Write();
+    h_leadRawJetPt_jet100->Write();
+
+    h_prescale_jet15->Write();
+    h_prescale_jet30->Write();
+    h_prescale_jet40->Write();
+    h_prescale_jet60->Write();
+    h_prescale_jet80->Write();
+    h_prescale_jet100->Write();
+
+    h_nEventsNoJetTrigSel->Write();
 
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn->Write();
     h_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Write();

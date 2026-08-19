@@ -137,6 +137,33 @@ TH1D *h_inclRecoJetPt[NCentralityIndices];
 // Intended to suppress combinatorial jets, which are built from the UE pedestal
 // and so sit at low raw pT while JEC can push them up into the signal region.
 TH1D *h_inclRecoJetPt_rawPtCut[NCentralityIndices];
+// Genuine raw-pT spectrum: x axis is em->rawpt itself, not JEC-corrected. Lets
+// a fake-jet estimate that is also raw-axis (e.g. h_fastJetPt_PF_bkgSub_RC from
+// PbPb_pfCandAnalyzer.C's mixed-event scan) be subtracted bin-by-bin without
+// the axis mismatch h_inclRecoJetPt_rawPtCut has -- that one selects on raw pT
+// but still fills the corrected pT axis.
+TH1D *h_inclRawJetPt[NCentralityIndices];
+
+// jetTrkMax filter diagnostics. Filled immediately BEFORE and immediately
+// AFTER the passesJetTrkMaxFilter block, with nothing else in between, so
+// post/pre isolates that one cut -- unlike comparing two separate scans taken
+// with the flag flipped, where dataset coverage and code state also differ
+// (that comparison produced pass fractions above 1, which a filter cannot do).
+// Both are filled regardless of doJetTrkMaxFilter: with the flag off the two
+// are identical by construction, which is itself a useful null check.
+TH1D *h_inclRecoJetPt_preTrkMaxFilter[NCentralityIndices];
+TH1D *h_inclRecoJetPt_postTrkMaxFilter[NCentralityIndices];
+// trkMax/jetPt vs jetPt, filled pre-filter, so the cut positions (0.01, 0.98)
+// can be seen against the actual distribution per centrality.
+TH2D *h_jetTrkMaxFraction_jetPt[NCentralityIndices];
+// Same quantity against RAW pT, so one scan settles whether the cut should be
+// trkMax/rawPt or trkMax/correctedPt. Measured JEC factor <corr>/<raw> is
+// 1.154-1.189 across centrality, so the corrected-pT reference currently in
+// use makes the nominal 0.01 lower cut behave like ~0.0115-0.0119 on the raw
+// fraction. That factor is nearly centrality-flat (3% spread), so it is a
+// definitional issue rather than a source of centrality bias.
+TH2D *h_jetTrkMaxFractionRaw_rawJetPt[NCentralityIndices];
+
 TH1D *h_inclRecoJetEta[NCentralityIndices];
 TH1D *h_inclRecoJetPhi[NCentralityIndices];
 TH2D *h_inclRecoJetPt_inclRecoJetEta[NCentralityIndices];
@@ -348,6 +375,11 @@ void PbPb_scan(int group = 1){
 	// ----------------------------------------- incl. reco jets --------------   
 	h_inclRecoJetPt[i] = new TH1D(Form("h_inclRecoJetPt_C%i",i),Form("incl. reco p_{T}^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_inclRecoJetPt_rawPtCut[i] = new TH1D(Form("h_inclRecoJetPt_rawPtCut_C%i",i),Form("incl. reco p_{T}^{jet}, raw p_{T}^{jet} > %.0f GeV, hiBin %i - %i",rawJetPtCut,centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_inclRawJetPt[i] = new TH1D(Form("h_inclRawJetPt_C%i",i),Form("incl. raw p_{T}^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_inclRecoJetPt_preTrkMaxFilter[i] = new TH1D(Form("h_inclRecoJetPt_preTrkMaxFilter_C%i",i),Form("incl. reco p_{T}^{jet}, before trkMax filter, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_inclRecoJetPt_postTrkMaxFilter[i] = new TH1D(Form("h_inclRecoJetPt_postTrkMaxFilter_C%i",i),Form("incl. reco p_{T}^{jet}, after trkMax filter, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_jetTrkMaxFraction_jetPt[i] = new TH2D(Form("h_jetTrkMaxFraction_jetPt_C%i",i),Form("jetTrkMax/p_{T}^{jet} vs p_{T}^{jet}, before trkMax filter, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,110,0.0,1.1);
+	h_jetTrkMaxFractionRaw_rawJetPt[i] = new TH2D(Form("h_jetTrkMaxFractionRaw_rawJetPt_C%i",i),Form("jetTrkMax/raw p_{T}^{jet} vs raw p_{T}^{jet}, before trkMax filter, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,110,0.0,1.1);
 	h_inclRecoJetEta[i] = new TH1D(Form("h_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NEtaBins,etaMin,etaMax);
 	h_inclRecoJetPhi[i] = new TH1D(Form("h_inclRecoJetPhi_C%i",i),Form("incl. reco #phi^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPhiBins,phiMin,phiMax);
 	h_inclRecoJetPt_inclRecoJetEta[i] = new TH2D(Form("h_inclRecoJetPt_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet} vs. incl reco p_{T}^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,NEtaBins,etaMin,etaMax);
@@ -398,6 +430,11 @@ void PbPb_scan(int group = 1){
 	// ----------------------------------------- incl. reco jets --------------   
 	h_inclRecoJetPt[i] = new TH1D(Form("h_inclRecoJetPt_C%i",i),Form("incl. reco p_{T}^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_inclRecoJetPt_rawPtCut[i] = new TH1D(Form("h_inclRecoJetPt_rawPtCut_C%i",i),Form("incl. reco p_{T}^{jet}, raw p_{T}^{jet} > %.0f GeV, hiBin %i - %i",rawJetPtCut,centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_inclRawJetPt[i] = new TH1D(Form("h_inclRawJetPt_C%i",i),Form("incl. raw p_{T}^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_inclRecoJetPt_preTrkMaxFilter[i] = new TH1D(Form("h_inclRecoJetPt_preTrkMaxFilter_C%i",i),Form("incl. reco p_{T}^{jet}, before trkMax filter, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_inclRecoJetPt_postTrkMaxFilter[i] = new TH1D(Form("h_inclRecoJetPt_postTrkMaxFilter_C%i",i),Form("incl. reco p_{T}^{jet}, after trkMax filter, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_jetTrkMaxFraction_jetPt[i] = new TH2D(Form("h_jetTrkMaxFraction_jetPt_C%i",i),Form("jetTrkMax/p_{T}^{jet} vs p_{T}^{jet}, before trkMax filter, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,110,0.0,1.1);
+	h_jetTrkMaxFractionRaw_rawJetPt[i] = new TH2D(Form("h_jetTrkMaxFractionRaw_rawJetPt_C%i",i),Form("jetTrkMax/raw p_{T}^{jet} vs raw p_{T}^{jet}, before trkMax filter, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,110,0.0,1.1);
 	h_inclRecoJetEta[i] = new TH1D(Form("h_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NEtaBins,etaMin,etaMax);
 	h_inclRecoJetPhi[i] = new TH1D(Form("h_inclRecoJetPhi_C%i",i),Form("incl. reco #phi^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPhiBins,phiMin,phiMax);
 	h_inclRecoJetPt_inclRecoJetEta[i] = new TH2D(Form("h_inclRecoJetPt_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet} vs. incl reco p_{T}^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,NEtaBins,etaMin,etaMax);
@@ -446,6 +483,11 @@ void PbPb_scan(int group = 1){
       h_vz_inclRecoMuonTag_triggerOn[i]->Sumw2();
       h_inclRecoJetPt[i]->Sumw2();
       h_inclRecoJetPt_rawPtCut[i]->Sumw2();
+      h_inclRawJetPt[i]->Sumw2();
+      h_inclRecoJetPt_preTrkMaxFilter[i]->Sumw2();
+      h_inclRecoJetPt_postTrkMaxFilter[i]->Sumw2();
+      h_jetTrkMaxFraction_jetPt[i]->Sumw2();
+      h_jetTrkMaxFractionRaw_rawJetPt[i]->Sumw2();
       h_inclRecoJetEta[i]->Sumw2();
       h_inclRecoJetPhi[i]->Sumw2();
       h_inclRecoJetPt_inclRecoJetEta[i]->Sumw2();
@@ -791,9 +833,29 @@ void PbPb_scan(int group = 1){
 	//cout << "smear = " << smear << endl;
       
 	//x = x*smear;
+
+	// trkMax filter diagnostics: pre/post pair with NOTHING between them
+	// except the filter itself, so post/pre is the rejection rate for this
+	// one cut, measured inside a single scan. Filled whether or not the
+	// filter is enabled -- with it off the two are identical, which is a
+	// null check on the bookkeeping.
+	h_inclRecoJetPt_preTrkMaxFilter[0]->Fill(x,w);
+	h_inclRecoJetPt_preTrkMaxFilter[CentralityIndex]->Fill(x,w);
+	if(x > 0.){
+	  h_jetTrkMaxFraction_jetPt[0]->Fill(x, jetTrkMax_i/x, w);
+	  h_jetTrkMaxFraction_jetPt[CentralityIndex]->Fill(x, jetTrkMax_i/x, w);
+	}
+	if(rawJetPt_i > 0.){
+	  h_jetTrkMaxFractionRaw_rawJetPt[0]->Fill(rawJetPt_i, jetTrkMax_i/rawJetPt_i, w);
+	  h_jetTrkMaxFractionRaw_rawJetPt[CentralityIndex]->Fill(rawJetPt_i, jetTrkMax_i/rawJetPt_i, w);
+	}
+
 	if(doJetTrkMaxFilter){
 	  if(!passesJetTrkMaxFilter(jetTrkMax_i,x)) continue;
-	}      
+	}
+
+	h_inclRecoJetPt_postTrkMaxFilter[0]->Fill(x,w);
+	h_inclRecoJetPt_postTrkMaxFilter[CentralityIndex]->Fill(x,w);
 
 
 	//cout << "rawPt = " << em->rawpt[i] << "  |  jetPt = " << em->jetpt[i] << "  |  corrPt = " << x << endl;
@@ -850,6 +912,9 @@ void PbPb_scan(int group = 1){
 	  h_inclRecoJetPt_rawPtCut[0]->Fill(x,w);
 	  h_inclRecoJetPt_rawPtCut[CentralityIndex]->Fill(x,w);
 	}
+
+	h_inclRawJetPt[0]->Fill(rawJetPt_i,w);
+	h_inclRawJetPt[CentralityIndex]->Fill(rawJetPt_i,w);
 
 	h_inclRecoJetEta[0]->Fill(y,w);
 	h_inclRecoJetEta[CentralityIndex]->Fill(y,w);
@@ -1196,6 +1261,11 @@ void PbPb_scan(int group = 1){
    
       h_inclRecoJetPt[i]->Write();
       h_inclRecoJetPt_rawPtCut[i]->Write();
+      h_inclRawJetPt[i]->Write();
+      h_inclRecoJetPt_preTrkMaxFilter[i]->Write();
+      h_inclRecoJetPt_postTrkMaxFilter[i]->Write();
+      h_jetTrkMaxFraction_jetPt[i]->Write();
+      h_jetTrkMaxFractionRaw_rawJetPt[i]->Write();
       h_inclRecoJetEta[i]->Write();
       h_inclRecoJetPhi[i]->Write();
       h_inclRecoJetPt_inclRecoJetEta[i]->Write();
