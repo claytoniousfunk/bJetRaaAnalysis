@@ -215,78 +215,114 @@ void plotJetTriggerEfficiency_pp(const char *inputFile = defaultInput)
   }
   printf("\nStitch guidance: use each trigger only above its 99%% point.\n");
 
-  // ---------------- draw ----------------
+  // ---------------- draw: one trigger per panel ----------------
+  // One curve per panel rather than all six overlaid: with 6 triggers x 2
+  // methods the combined view was unreadable, and the absolute-vs-bootstrap
+  // comparison -- the single most useful check here -- was impossible to see.
+  // Each panel also gets its own x-range scaled to that trigger's threshold,
+  // which zooms past the high-pT tail where MinBias runs out and the points
+  // carry enormous errors. Nothing is discarded; the fits still use the full
+  // range, only the view is cropped.
   int col[NTrig];
   for(int t = 0; t < NTrig; t++) col[t] = TColor::GetColor(trigHex[t]);
 
-  TCanvas *c = new TCanvas("cTrigEff", "", 1350, 660);
-  c->Divide(2, 1, 0.001, 0.001);
+  TCanvas *c = new TCanvas("cTrigEff", "", 1500, 900);
+  c->Divide(3, 2, 0.001, 0.001);
 
-  for(int pad = 0; pad < 2; pad++){
-    c->cd(pad + 1);
-    gPad->SetLeftMargin(0.13); gPad->SetRightMargin(0.04);
-    gPad->SetTopMargin(0.13);  gPad->SetBottomMargin(0.14);
+  for(int t = 0; t < NTrig; t++){
+    c->cd(t + 1);
+    gPad->SetLeftMargin(0.15); gPad->SetRightMargin(0.04);
+    gPad->SetTopMargin(0.10);  gPad->SetBottomMargin(0.15);
 
-    TH1F *fr = gPad->DrawFrame(plotPtMin, 0., plotPtMax, 1.25);
+    double xhi = TMath::Min(plotPtMax, 2.2 * trigThresh[t] + 30.);
+    TH1F *fr = gPad->DrawFrame(0., 0., xhi, 1.32);
     fr->GetXaxis()->SetTitle(useRawPt ? "leading jet raw p_{T} [GeV]" : "leading jet p_{T} [GeV]");
-    fr->GetYaxis()->SetTitle("trigger efficiency (plateau normalized to 1)");
-    fr->GetXaxis()->SetTitleSize(0.047); fr->GetXaxis()->SetLabelSize(0.041);
-    fr->GetYaxis()->SetTitleSize(0.047); fr->GetYaxis()->SetLabelSize(0.041);
-    fr->GetYaxis()->SetTitleOffset(1.30);
+    fr->GetYaxis()->SetTitle("efficiency (plateau normalized)");
+    fr->GetXaxis()->SetTitleSize(0.055); fr->GetXaxis()->SetLabelSize(0.048);
+    fr->GetYaxis()->SetTitleSize(0.055); fr->GetYaxis()->SetLabelSize(0.048);
+    fr->GetYaxis()->SetTitleOffset(1.25);
 
-    for(double yl : {0.95, 0.99, 1.00}){
-      TLine *l = new TLine(plotPtMin, yl, plotPtMax, yl);
-      l->SetLineStyle(yl==1.00 ? 2 : 3); l->SetLineColor(yl==1.00 ? kGray+2 : kGray+1);
+    for(double yl : {0.99, 1.00}){
+      TLine *l = new TLine(0., yl, xhi, yl);
+      l->SetLineStyle(yl == 1.00 ? 2 : 3);
+      l->SetLineColor(yl == 1.00 ? kGray+2 : kGray+1);
       l->Draw();
     }
 
-    TLegend *leg = new TLegend(0.44, 0.13, 0.965, 0.45);
-    leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.034);
+    bool drewAbs = false, drewBoot = false;
+    TH1D *nAbs = nullptr, *nBoot = nullptr;
 
-    bool drewAny = false;
-    for(int t = 0; t < NTrig; t++){
-      TH1D *e = (pad == 0) ? effAbs[t]  : effBoot[t];
-      TF1  *g = (pad == 0) ? fitAbs[t]  : fitBoot[t];
-      if(!e || !g) continue;
-      double pl = g->GetParameter(0);
-      if(pl <= 0.) continue;
-
-      // normalize a copy so the drawn curve has its plateau at 1
-      TH1D *en = (TH1D*) e->Clone(Form("norm_%d_%d", pad, t));
-      en->SetDirectory(nullptr);
-      en->Scale(1./pl);
-      en->SetLineColor(col[t]); en->SetMarkerColor(col[t]);
-      en->SetMarkerStyle(trigMark[t]); en->SetMarkerSize(0.9); en->SetLineWidth(2);
-      en->GetXaxis()->SetRangeUser(plotPtMin, plotPtMax);
-      en->Draw("ep same");
-
-      TF1 *gn = new TF1(Form("gn_%d_%d", pad, t), turnOn, g->GetXmin(), g->GetXmax(), 3);
-      gn->SetParameters(1.0, g->GetParameter(1), g->GetParameter(2));
-      gn->SetLineColor(col[t]); gn->SetLineWidth(2); gn->SetLineStyle(1);
-      gn->Draw("l same");
-
-      double p99v = (pad == 0) ? p99[t] : p99Boot[t];
-      leg->AddEntry(en, Form("%s  (99%% @ %.0f GeV)", trigLabel[t], p99v), "lp");
-      drewAny = true;
+    // absolute: filled, in the trigger colour
+    if(effAbs[t] && fitAbs[t] && fitAbs[t]->GetParameter(0) > 0.){
+      nAbs = (TH1D*) effAbs[t]->Clone(Form("nA_%d", t));
+      nAbs->SetDirectory(nullptr);
+      nAbs->Scale(1./fitAbs[t]->GetParameter(0));
+      nAbs->SetLineColor(col[t]); nAbs->SetMarkerColor(col[t]);
+      nAbs->SetMarkerStyle(20); nAbs->SetMarkerSize(1.0); nAbs->SetLineWidth(2);
+      nAbs->GetXaxis()->SetRangeUser(0., xhi);
+      nAbs->Draw("ep same");
+      TF1 *gA = new TF1(Form("gA_%d", t), turnOn, fitAbs[t]->GetXmin(), fitAbs[t]->GetXmax(), 3);
+      gA->SetParameters(1.0, fitAbs[t]->GetParameter(1), fitAbs[t]->GetParameter(2));
+      gA->SetLineColor(col[t]); gA->SetLineWidth(3); gA->Draw("l same");
+      drewAbs = true;
     }
-    if(drewAny) leg->Draw();
 
-    TLatex lt; lt.SetNDC(); lt.SetTextSize(0.044); lt.SetTextFont(62);
-    lt.DrawLatex(0.16, 0.915, pad == 0 ? "absolute (MinBias denominator)" : "bootstrap (lower-threshold reference)");
-
-    if(pad == 0 && !absoluteUsable){
-      TLatex wr; wr.SetNDC(); wr.SetTextSize(0.038); wr.SetTextColor(kRed+1);
-      wr.DrawLatex(0.17, 0.60, "#splitline{DISABLED: scan applied a jet-trigger}{selection, denominator is biased}");
+    // bootstrap: open black, so it reads as the cross-check
+    if(effBoot[t] && fitBoot[t] && fitBoot[t]->GetParameter(0) > 0.){
+      nBoot = (TH1D*) effBoot[t]->Clone(Form("nB_%d", t));
+      nBoot->SetDirectory(nullptr);
+      nBoot->Scale(1./fitBoot[t]->GetParameter(0));
+      nBoot->SetLineColor(kBlack); nBoot->SetMarkerColor(kBlack);
+      nBoot->SetMarkerStyle(24); nBoot->SetMarkerSize(1.0); nBoot->SetLineWidth(2);
+      nBoot->GetXaxis()->SetRangeUser(0., xhi);
+      nBoot->Draw("ep same");
+      TF1 *gB = new TF1(Form("gB_%d", t), turnOn, fitBoot[t]->GetXmin(), fitBoot[t]->GetXmax(), 3);
+      gB->SetParameters(1.0, fitBoot[t]->GetParameter(1), fitBoot[t]->GetParameter(2));
+      gB->SetLineColor(kBlack); gB->SetLineWidth(2); gB->SetLineStyle(2); gB->Draw("l same");
+      drewBoot = true;
     }
-    if(!drewAny && pad == 1){
-      TLatex wr; wr.SetNDC(); wr.SetTextSize(0.038); wr.SetTextColor(kRed+1);
-      wr.DrawLatex(0.20, 0.60, "no bootstrap pairs available");
+
+    // 99% marker from the absolute fit -- the number the stitch needs
+    if(drewAbs && p99[t] > 0. && p99[t] < xhi){
+      TLine *v = new TLine(p99[t], 0., p99[t], 1.05);
+      v->SetLineColor(col[t]); v->SetLineStyle(2); v->SetLineWidth(2); v->Draw();
+    }
+
+    TLatex tl; tl.SetNDC(); tl.SetTextFont(62); tl.SetTextSize(0.070);
+    tl.DrawLatex(0.19, 0.855, trigLabel[t]);
+
+    TLatex info; info.SetNDC(); info.SetTextSize(0.046);
+    double y = 0.40;
+    if(drewAbs){
+      info.SetTextColor(col[t]);
+      info.DrawLatex(0.52, y, Form("abs 99%% = %.0f GeV", p99[t])); y -= 0.075;
+      info.DrawLatex(0.52, y, Form("50%% = %.0f GeV", mu[t]));      y -= 0.075;
+    }
+    if(drewBoot){
+      info.SetTextColor(kBlack);
+      info.DrawLatex(0.52, y, Form("boot 99%% = %.0f GeV", p99Boot[t])); y -= 0.075;
+    }
+    if(!drewAbs && !drewBoot){
+      info.SetTextColor(kGray+2);
+      info.DrawLatex(0.35, 0.55, "insufficient statistics");
+    }
+
+    // plateau x prescale: the reliability flag. Should be ~1 if prescaling is
+    // the only thing suppressing the plateau.
+    if(drewAbs && meanPrescale[t] > 0.){
+      double pp = plateau[t] * meanPrescale[t];
+      bool ok = (pp > 0.8 && pp < 1.25);
+      TLatex fl; fl.SetNDC(); fl.SetTextSize(0.044);
+      fl.SetTextColor(ok ? kGreen+3 : kRed+1);
+      fl.DrawLatex(0.19, 0.775, Form("%s  plat#times presc = %.2f",
+                                     ok ? "OK" : "SUSPECT", pp));
     }
   }
 
   c->cd(0);
-  TLatex lat; lat.SetNDC(); lat.SetTextSize(0.028);
-  lat.DrawLatex(0.03, 0.982, "pp jet trigger efficiency, MinBias sample");
+  TLatex lat; lat.SetNDC(); lat.SetTextSize(0.017);
+  lat.DrawLatex(0.03, 0.992,
+    "pp jet trigger efficiency, MinBias   |   filled = absolute (MinBias ref.)   |   open = bootstrap (lower-threshold ref.)");
 
   TString out = TString(outDir) + outName;
   c->SaveAs(out);
