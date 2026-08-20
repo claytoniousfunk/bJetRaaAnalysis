@@ -1,52 +1,35 @@
-// PbPb/pp jet pT shape comparison -- data (MinBias, no stitching, no
-// unfolding, no per-event or per-Z normalization) vs the equivalent MC
-// (PYTHIA+HYDJET/PYTHIA), one panel per coarse PbPb centrality class.
+// PbPb/pp jet pT shape ratio, MinBias only, in FINE (5%) centrality slices.
 //
-// Each curve (data PbPb per class, data pp, MC PbPb+HYDJET per class, MC pp)
-// is independently scaled so its own integral above ptNormMin matches --
-// every curve is forced to 1 up there by construction. This sidesteps
-// needing a common, trustworthy absolute normalization across four different
-// samples (two data, two MC) and asks only "do the shapes agree," which a
-// high-pT-normalized ratio answers directly: flat at 1 above ptNormMin,
-// deviations below it are shape differences, not a residual normalization
-// mismatch.
+// Converted from the coarse 4-class data-vs-MC version (preserved in git at
+// commit 373909f9) to answer the smoothness question directly: Olga's
+// objection is that the coarse 10-30% class looks identical to 0-10%, and the
+// cleanest test is whether the ratio evolves smoothly when the same data is
+// sliced 5% at a time instead of merged into four wide classes.
 //
-// MC inclusive reco jet pT: matched-only (projected off the 2D
-// matchedRecoJetPt-vs-genJetPt response histogram onto its reco-pT axis).
+// *** DATA ONLY -- THE MC CANNOT FOLLOW ***
+// The PYTHIA+HYDJET response file carries only four centrality classes
+// (h_matchedRecoJetPt_genJetPt_allJets_C1..C4, checked directly), so there is
+// no fine-grained MC counterpart. The data-vs-MC comparison therefore stays
+// in the coarse version rather than being approximated here.
 //
-// An earlier version of this plot also added each sample's "unmatched" reco
-// jets (no gen-level partner) to better match what a data spectrum -- which
-// has no truth information to filter on -- actually is. That version used
-// PYTHIAHYDJET_response_..._2026-7-28_{even,odd}Events.root for the PbPb+
-// HYDJET side, which turned out to have doPThatWeight=false baked in at scan
-// time (headers/config/config_PYTHIAHYDJET.h) -- a genuinely unweighted
-// sample masquerading as a physical spectrum, which produced a nonsensical
-// ratio (confirmed by tracing the w_pthat assignment in
-// PYTHIAHYDJET_scan_response.C). The replacement file below is confirmed
-// pThat-weighted, but is older and was not built with an "unmatched" reco-
-// jet histogram at all -- so this version uses matched-only jets for BOTH
-// MC curves. Using unmatched-inclusive for pp but matched-only for PbPb+
-// HYDJET would reintroduce exactly the kind of construction asymmetry that
-// caused the previous problem, so pp was switched to matched-only too rather
-// than left inconsistent with PbPb+HYDJET.
+// NORMALISATION, AND WHY 150 RATHER THAN 200 GeV.
+// Each curve is scaled so its own integral above ptNormMin is 1, so the ratio
+// asks purely about SHAPE. The coarse version used 200 GeV, which is where
+// the ratio has genuinely flattened. Per 5% slice, however, the raw jet
+// counts above 200 GeV run from 268 (0-5%) down to 1 (75-80%) -- the
+// peripheral slices cannot support a normalisation there at all, and since
+// every curve is divided by that integral, a handful of jets would rescale a
+// whole curve arbitrarily. Above 150 GeV the same counts run 1042 down to 6,
+// which carries most slices.
 //
-// MC sample provenance (as of 2026-08-18):
-//   pp   : PYTHIA_DiJet_response_..._2026-8-3.root (bJetRaaAnalysis) --
-//          combined file; checked against its own evenEvents/oddEvents split
-//          and confirmed to be their exact sum, so used directly.
-//   PbPb : bJetMuonTaggingAnalysis/.../PYTHIAHYDJET_response_DiJet_pThat-15_
-//          ..._doPThatCorrelationFilter_2026-3-23.root -- read-only source
-//          repo (bJetMuonTaggingAnalysis is never modified from here); single
-//          file, no even/odd split, no unmatched-jet histogram. Axis is
-//          20-500 GeV / 96 bins (still 5 GeV/bin, just starting at 20 instead
-//          of 0 like the other MC file) -- confirmed compatible with ptEdge
-//          below, which already starts at 20.
-// Both files carry genuine per-event cross-section weights (bin content !=
-// raw entry count in both); no additional reweighting applied here.
-//
-// Centrality indexing for the MC files: C0 = combined (unused here), C1-C4 =
-// 0-10/10-30/30-50/50-80%, same order as the data side's sliceLo/sliceHi/
-// classLabel convention.
+// The cost is real and worth stating: at 100-160 GeV the coarse ratio has not
+// fully flattened (0-10% still sits around 1.17 at 150-160), so normalising
+// at 150 slightly suppresses the most central curves relative to a 200 GeV
+// normalisation. That is a common multiplicative shift per curve, not a
+// distortion of its shape, and it does not move the peak POSITION or the
+// slice-to-slice ORDERING, which is what this plot is for. Set ptNormMin
+// back to 200 to check the effect; slices too thin to normalise are skipped
+// with a warning rather than drawn.
 //
 // Usage: root -l -b -q 'plotJetPt_minBiasOnly_PbPbOverPP.C'
 // Run from: src/plots/jetPt/
@@ -55,67 +38,68 @@ const char *pbpbFile =
   "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_2026-8-13_ultraFineCentBins.root";
 const char *ppFile =
   "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/pp/pp_MinBias_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-7-6.root";
-const char *ppHistName = "h_inclRecoJetPt";
 
-const char *mcPPFile =
-  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PYTHIA/PYTHIA_DiJet_response_pThat-15_mu12_pTmu-15_tight_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-8-3.root";
-const char *mcPbPbFile =
-  "/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIAHYDJET/latest/response/PYTHIAHYDJET_response_DiJet_pThat-15_mu12_pTmu-15_tight_vzReweight_hiBinReweight_hiBinShift-10_leadingXjetDumpFilter_jetTrkMaxFilter_doPThatCorrelationFilter_2026-3-23.root";
+// JEC-corrected pT on both sides, as requested.
+const char *pbpbHistBase = "h_inclRecoJetPt";
+const char *ppHistName   = "h_inclRecoJetPt";
 
 const char *outDir  = "../../../figures/jetPt/";
-const char *outName = "jetPt_minBiasOnly_PbPbOverPP.pdf";
+const char *outName = "jetPt_minBiasOnly_PbPbOverPP_fineCent.pdf";
 
-// PbPb coarse class -> [first, last] ultra-fine slice index (data side) /
-// _C{1-4} suffix (MC side), same convention as makeFakeJetFile.C:
-//   C1 = 0-10%  : slices  1- 2      C3 = 30-50% : slices  7-10
-//   C2 = 10-30% : slices  3- 6      C4 = 50-80% : slices 11-16
-const int   NClass = 4;
-const int   sliceLo[NClass] = { 1,  3,  7, 11};
-const int   sliceHi[NClass] = { 2,  6, 10, 16};
-const char *classLabel[NClass] = { "0-10%", "10-30%", "30-50%", "50-80%" };
+const int    NSlice   = 16;
+const double centStep = 5.0;
 
-// Both curves in a pair are scaled so their integral above this threshold matches.
-const double ptNormMin = 200.;
+const double ptNormMin   = 150.;  // see header for why not 200
+const int    minNormJets = 25;    // skip a slice with fewer raw jets than this
+                                  // above ptNormMin -- its normalisation would
+                                  // be dominated by a handful of counts
 
-const double plotPtMin = 30., plotPtMax = 500.;
+const double plotPtMin = 30., plotPtMax = 300.;
+const double ratioMin  = 0.,  ratioMax  = 11.;
+const double dblMin    = 0.3, dblMax    = 1.9;   // slice/previous-slice panel
 
-// Variable-width binning: 5 GeV steps from 20 GeV (the analysis jetPtCut, where
-// both spectra turn on) up to 100 GeV, then the same coarse edges calculateRAA.C
-// uses above 100 GeV, where raw statistics run thin. Reused for MC too so both
-// sides bin identically.
-const int    NEdge = 29;
+// Probe point for the printed smoothness table. Olga: "at 50, this is
+// horrendous."
+const double probePt = 52.5;
+
+const int    NEdge = 24;
 double       ptEdge[NEdge] = {
   20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,
-  110,120,130,140,150,160,180,200,240,280,350,500
+  110,120,140,160,200,250,300
 };
 
-const char *dataHex = "#0072B2", *mcHex = "#D55E00";
-const int   dataMark = 20, mcMark = 21;
+// Centrality is an ordered continuous variable, so it gets a perceptually
+// uniform gradient rather than 16 categorical hues.
+//
+// The bottom PALFRACLO of Viridis is near-black and consecutive slices there
+// are indistinguishable, which is exactly where the most central slices sit
+// -- the region the plot is about. Sampling starts above it so 0-5% opens at
+// a clearly blue tone and successive central slices separate visibly. Costs
+// a little of the total range; buys back the discrimination that matters.
+const double PALFRACLO = 0.22;
+static void sliceColours(int *col)
+{
+  TColor::InitializeColors();
+  gStyle->SetPalette(kViridis);
+  TArrayI pal = TColor::GetPalette();
+  int n = pal.GetSize();
+  for(int i = 0; i < NSlice; i++){
+    double frac = PALFRACLO + (1.0 - PALFRACLO) * i / (NSlice - 1);
+    col[i] = pal[(int)(frac * (n - 1))];
+  }
+}
 
-static TH1D* buildShape(TH1D *raw, const char *name)
+static TH1D* buildShape(TH1D *raw, const char *name, double &rawAboveNorm)
 {
   TH1D *h = (TH1D*) raw->Rebin(NEdge-1, name, ptEdge);
   h->SetDirectory(nullptr);
   int b0 = h->FindBin(ptNormMin);
+  rawAboveNorm = raw->Integral(raw->FindBin(ptNormMin + 1e-6), raw->GetNbinsX()+1);
   double norm = h->Integral(b0, h->GetNbinsX()+1);
-  if(norm <= 0.){ printf("ERROR: %s has zero integral above %.0f GeV\n", name, ptNormMin); return nullptr; }
+  if(norm <= 0.) return nullptr;
   h->Scale(1./norm);
-  h->Scale(1., "width");  // genuine dN/dpT; cancels in any ratio of same-binned curves
+  h->Scale(1., "width");   // genuine dN/dpT; cancels in a same-binned ratio
   return h;
-}
-
-// Matched-only reco-level jet pT: projected off the 2D recoPt-vs-genPt
-// response onto its reco-pT axis. See the file header for why this doesn't
-// also add each sample's "unmatched" component.
-static TH1D* buildMatchedRecoPt(TFile *f, const char *suffix, const char *name)
-{
-  TH2D *matched2D = nullptr;
-  f->GetObject(Form("h_matchedRecoJetPt_genJetPt_allJets%s", suffix), matched2D);
-  if(!matched2D){ printf("ERROR: missing matched2D hist for suffix '%s'\n", suffix); return nullptr; }
-
-  TH1D *matched1D = (TH1D*) matched2D->ProjectionX(name);
-  matched1D->SetDirectory(nullptr);
-  return matched1D;
 }
 
 void plotJetPt_minBiasOnly_PbPbOverPP()
@@ -128,131 +112,184 @@ void plotJetPt_minBiasOnly_PbPbOverPP()
   if(!fP || fP->IsZombie()){ printf("ERROR: cannot open %s\n", pbpbFile); return; }
   if(!fp || fp->IsZombie()){ printf("ERROR: cannot open %s\n", ppFile);   return; }
 
-  TFile *fMCpp   = TFile::Open(mcPPFile);
-  TFile *fMCpbpb = TFile::Open(mcPbPbFile);
-  if(!fMCpp || fMCpp->IsZombie()){ printf("ERROR: cannot open %s\n", mcPPFile); return; }
-  if(!fMCpbpb || fMCpbpb->IsZombie()){ printf("ERROR: cannot open %s\n", mcPbPbFile); return; }
-
-  // --- data pp reference ---
+  // ---- pp reference ----
   TH1D *hpp0 = nullptr;
   fp->GetObject(ppHistName, hpp0);
-  if(!hpp0){ printf("ERROR: %s not found in %s\n", ppHistName, ppFile); return; }
-  TH1D *hpp = buildShape(hpp0, "hpp");
-  if(!hpp) return;
+  if(!hpp0){ printf("ERROR: %s not found in pp file\n", ppHistName); return; }
+  double ppAbove = 0.;
+  TH1D *hpp = buildShape(hpp0, "hpp", ppAbove);
+  if(!hpp){ printf("ERROR: pp has zero integral above %.0f GeV\n", ptNormMin); return; }
+  printf("pp reference: %.0f raw jets above %.0f GeV\n\n", ppAbove, ptNormMin);
 
-  // --- MC pp reference ---
-  TH1D *mcPPraw = buildMatchedRecoPt(fMCpp, "", "mcPPraw");
-  if(!mcPPraw) return;
-  TH1D *hMCpp = buildShape(mcPPraw, "hMCpp");
-  if(!hMCpp) return;
+  int col[NSlice];
+  sliceColours(col);
 
-  TH1D *hPbPb[NClass], *hRatio[NClass];
-  TH1D *hMCPbPb[NClass], *hMCRatio[NClass];
-  for(int ci = 0; ci < NClass; ci++){
-    // --- data PbPb, this class ---
-    TH1D *sum = nullptr;
-    bool ok = true;
-    for(int si = sliceLo[ci]; si <= sliceHi[ci]; si++){
-      TH1D *h = nullptr;
-      fP->GetObject(Form("h_inclRecoJetPt_C%d", si), h);
-      if(!h){ printf("ERROR: h_inclRecoJetPt_C%d not found\n", si); ok = false; break; }
-      if(!sum){ sum = (TH1D*) h->Clone(Form("rawSum_%d", ci)); sum->SetDirectory(nullptr); }
-      else sum->Add(h);
+  TH1D *hRatio[NSlice], *hShape[NSlice], *hDouble[NSlice];
+  bool  useSlice[NSlice];
+  double probeVal[NSlice], peakVal[NSlice], peakPt[NSlice];
+  int    prevOf[NSlice];              // previous AVAILABLE slice, for the double ratio
+  for(int i = 0; i < NSlice; i++){ hShape[i]=nullptr; hDouble[i]=nullptr; prevOf[i]=-1; }
+
+  printf("%-9s %12s %12s %12s %12s\n",
+         "cent", "raw>norm", "ratio@50", "peak", "peak pT");
+  for(int si = 1; si <= NSlice; si++){
+    int i = si - 1;
+    useSlice[i] = false;
+    probeVal[i] = peakVal[i] = peakPt[i] = -1.;
+
+    TH1D *raw = nullptr;
+    fP->GetObject(Form("%s_C%d", pbpbHistBase, si), raw);
+    if(!raw){ printf("WARNING: %s_C%d missing\n", pbpbHistBase, si); continue; }
+
+    double aboveNorm = 0.;
+    TH1D *shaped = buildShape(raw, Form("hPbPb_C%d", si), aboveNorm);
+    if(!shaped || aboveNorm < minNormJets){
+      printf("%3.0f-%-5.0f %12.0f   SKIPPED (fewer than %d raw jets above %.0f GeV;\n"
+             "                            its normalisation would be noise)\n",
+             (si-1)*centStep, si*centStep, aboveNorm, minNormJets, ptNormMin);
+      continue;
     }
-    if(!ok) return;
-    hPbPb[ci] = buildShape(sum, Form("hPbPb_C%d", ci));
-    if(!hPbPb[ci]) return;
-    hRatio[ci] = (TH1D*) hPbPb[ci]->Clone(Form("hRatio_C%d", ci));
-    hRatio[ci]->Divide(hpp);
 
-    // --- MC PbPb+HYDJET, this class ---
-    TString suffix = Form("_C%d", ci+1);
-    TH1D *mcRaw = buildMatchedRecoPt(fMCpbpb, suffix.Data(), Form("mcPbPb_C%d", ci));
-    if(!mcRaw) return;
-    hMCPbPb[ci] = buildShape(mcRaw, Form("hMCPbPb_C%d", ci));
-    if(!hMCPbPb[ci]) return;
-    hMCRatio[ci] = (TH1D*) hMCPbPb[ci]->Clone(Form("hMCRatio_C%d", ci));
-    hMCRatio[ci]->Divide(hMCpp);
+    hShape[i] = shaped;
+    hRatio[i] = (TH1D*) shaped->Clone(Form("hRatio_C%d", si));
+    hRatio[i]->SetDirectory(nullptr);
+    hRatio[i]->Divide(hpp);
+    useSlice[i] = true;
+
+    probeVal[i] = hRatio[i]->GetBinContent(hRatio[i]->FindBin(probePt));
+    for(int b = 1; b <= hRatio[i]->GetNbinsX(); b++){
+      double lo = hRatio[i]->GetXaxis()->GetBinLowEdge(b);
+      if(lo < plotPtMin || lo >= 120.) continue;   // low-pT bump region only
+      double v = hRatio[i]->GetBinContent(b);
+      if(v > peakVal[i]){ peakVal[i] = v; peakPt[i] = hRatio[i]->GetXaxis()->GetBinCenter(b); }
+    }
+    printf("%3.0f-%-5.0f %12.0f %12.2f %12.2f %12.0f\n",
+           (si-1)*centStep, si*centStep, aboveNorm, probeVal[i], peakVal[i], peakPt[i]);
   }
 
-  printf("\n%-12s", "pT [GeV]");
-  for(int ci = 0; ci < NClass; ci++) printf(" %14s %14s", Form("%s data", classLabel[ci]), Form("%s MC", classLabel[ci]));
-  printf("\n");
-  for(int b = 1; b <= hpp->GetNbinsX(); b++){
-    double lo = hpp->GetXaxis()->GetBinLowEdge(b);
-    if(lo < plotPtMin || lo >= plotPtMax) continue;
-    printf("%4.0f-%-6.0f", lo, hpp->GetXaxis()->GetBinUpEdge(b));
-    for(int ci = 0; ci < NClass; ci++)
-      printf(" %8.3f+-%.3f %8.3f+-%.3f",
-             hRatio[ci]->GetBinContent(b), hRatio[ci]->GetBinError(b),
-             hMCRatio[ci]->GetBinContent(b), hMCRatio[ci]->GetBinError(b));
-    printf("\n");
+  // ---- slice-to-slice double ratio ----
+  // R_i / R_(i-1) = (PbPb_i/pp) / (PbPb_(i-1)/pp) = PbPb_i / PbPb_(i-1):
+  // the pp reference cancels EXACTLY, so this evolution is independent of pp
+  // and of its statistics. Computed from the shaped PbPb spectra directly
+  // rather than by dividing the two ratios, so the errors do not double-count
+  // the (cancelled) pp uncertainty. Adjacent centrality slices are disjoint
+  // event samples, hence statistically independent.
+  //
+  // Chained on the previous AVAILABLE slice, so a skipped slice bridges rather
+  // than breaking the chain; the label says which pair each curve is.
+  int lastGood = -1;
+  printf("\n%-16s %12s %12s\n", "slice pair", "double@50", "meaning");
+  for(int i = 0; i < NSlice; i++){
+    if(!useSlice[i]) continue;
+    if(lastGood >= 0){
+      prevOf[i] = lastGood;
+      hDouble[i] = (TH1D*) hShape[i]->Clone(Form("hDouble_%d", i));
+      hDouble[i]->SetDirectory(nullptr);
+      hDouble[i]->Divide(hShape[lastGood]);
+      double d = hDouble[i]->GetBinContent(hDouble[i]->FindBin(probePt));
+      printf("%3.0f-%-3.0f / %3.0f-%-3.0f %12.3f %12s\n",
+             i*centStep, (i+1)*centStep, lastGood*centStep, (lastGood+1)*centStep,
+             d, d > 1.0 ? "still rising" : "falling");
+    }
+    lastGood = i;
   }
 
-  int colData = TColor::GetColor(dataHex), colMC = TColor::GetColor(mcHex);
-
-  double ratioMin[NClass], ratioMax[NClass];
-  for(int ci = 0; ci < NClass; ci++){
-    ratioMin[ci] = 1e300; ratioMax[ci] = -1e300;
-    for(int b = 1; b <= hRatio[ci]->GetNbinsX(); b++){
-      double lo = hRatio[ci]->GetXaxis()->GetBinLowEdge(b);
+  // warn rather than silently clip
+  for(int i = 0; i < NSlice; i++){
+    if(!useSlice[i]) continue;
+    for(int b = 1; b <= hRatio[i]->GetNbinsX(); b++){
+      double lo = hRatio[i]->GetXaxis()->GetBinLowEdge(b);
       if(lo < plotPtMin || lo >= plotPtMax) continue;
-      for(double v : {hRatio[ci]->GetBinContent(b), hMCRatio[ci]->GetBinContent(b)}){
-        if(v == 0.) continue;
-        if(v < ratioMin[ci]) ratioMin[ci] = v;
-        if(v > ratioMax[ci]) ratioMax[ci] = v;
-      }
-    }
-    double pad = (ratioMax[ci] - ratioMin[ci]) * 0.15;
-    ratioMin[ci] = TMath::Max(0., ratioMin[ci] - pad);
-    ratioMax[ci] += pad;
-  }
-
-  TCanvas *c = new TCanvas("cMinBiasRatio_dataVsMC", "", 1200, 1000);
-  c->Divide(2, 2, 0.001, 0.001);
-
-  for(int ci = 0; ci < NClass; ci++){
-    c->cd(ci + 1);
-    gPad->SetLeftMargin(0.16); gPad->SetRightMargin(0.04);
-    gPad->SetTopMargin(0.09);  gPad->SetBottomMargin(0.14);
-
-    hRatio[ci]->SetLineColor(colData); hRatio[ci]->SetMarkerColor(colData);
-    hRatio[ci]->SetMarkerStyle(dataMark); hRatio[ci]->SetMarkerSize(1.0);
-    hRatio[ci]->SetLineWidth(2);
-    hRatio[ci]->SetTitle("");
-    hRatio[ci]->GetXaxis()->SetTitle("p_{T}^{jet} [GeV]");
-    hRatio[ci]->GetYaxis()->SetTitle("PbPb / pp");
-    hRatio[ci]->GetXaxis()->SetTitleSize(0.048); hRatio[ci]->GetXaxis()->SetLabelSize(0.042);
-    hRatio[ci]->GetYaxis()->SetTitleSize(0.048); hRatio[ci]->GetYaxis()->SetLabelSize(0.042);
-    hRatio[ci]->GetYaxis()->SetTitleOffset(1.45);
-    hRatio[ci]->GetXaxis()->SetRangeUser(plotPtMin, plotPtMax);
-    hRatio[ci]->SetMinimum(ratioMin[ci]); hRatio[ci]->SetMaximum(ratioMax[ci]);
-    hRatio[ci]->Draw("ep");
-
-    hMCRatio[ci]->SetLineColor(colMC); hMCRatio[ci]->SetMarkerColor(colMC);
-    hMCRatio[ci]->SetMarkerStyle(mcMark); hMCRatio[ci]->SetMarkerSize(1.0);
-    hMCRatio[ci]->SetLineWidth(2);
-    hMCRatio[ci]->Draw("ep same");
-
-    TLine *one = new TLine(plotPtMin, 1., plotPtMax, 1.);
-    one->SetLineStyle(2); one->SetLineColor(kGray+1); one->Draw();
-
-    TLatex clat; clat.SetNDC(); clat.SetTextSize(0.052); clat.SetTextFont(62);
-    clat.SetTextAlign(13);
-    clat.DrawLatex(0.16 + 0.03, 1. - 0.09 - 0.03, Form("PbPb %s", classLabel[ci]));
-
-    if(ci == 0){
-      TLegend *leg = new TLegend(0.38, 0.68, 0.94, 0.85);
-      leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.032);
-      leg->AddEntry(hRatio[ci],   "data (PbPb/pp)",            "lp");
-      leg->AddEntry(hMCRatio[ci], "MC (PYTHIA+HYDJET/PYTHIA)", "lp");
-      leg->Draw();
+      double v = hRatio[i]->GetBinContent(b);
+      if(v != 0. && (v > ratioMax || v < ratioMin))
+        printf("NOTE: slice %d at %.0f-%.0f is %.2f, outside display range [%.1f,%.1f]\n",
+               i+1, lo, hRatio[i]->GetXaxis()->GetBinUpEdge(b), v, ratioMin, ratioMax);
     }
   }
 
-  c->cd(0);
-  TLatex lat; lat.SetNDC(); lat.SetTextSize(0.020);
-  lat.DrawLatex(0.06, 0.985, "MinBias only, shape only -- each curve normalized above 200 GeV");
+  const double lm = 0.13, rm = 0.19, tm = 0.09, bm = 0.28, split = 0.40;
+  TCanvas *c = new TCanvas("cPbPbOverPPfine", "", 950, 900);
+
+  // ================= top: PbPb/pp per slice =================
+  TPad *pUp = new TPad("pUp", "", 0, split, 1, 1);
+  pUp->SetLeftMargin(lm); pUp->SetRightMargin(rm);
+  pUp->SetTopMargin(tm);  pUp->SetBottomMargin(0.);
+  pUp->Draw(); pUp->cd();
+
+  TH1F *fr = pUp->DrawFrame(plotPtMin, ratioMin, plotPtMax, ratioMax);
+  fr->GetYaxis()->SetTitle("PbPb / pp  (shape-normalized)");
+  fr->GetYaxis()->SetTitleSize(0.055); fr->GetYaxis()->SetLabelSize(0.048);
+  fr->GetYaxis()->SetTitleOffset(1.10);
+  fr->GetXaxis()->SetLabelSize(0.);
+
+  TLine *one = new TLine(plotPtMin, 1., plotPtMax, 1.);
+  one->SetLineStyle(2); one->SetLineColor(kGray+2); one->Draw();
+  TLine *nl = new TLine(ptNormMin, ratioMin, ptNormMin, ratioMax);
+  nl->SetLineStyle(3); nl->SetLineColor(kGray+1); nl->Draw();
+  TLatex nt; nt.SetTextSize(0.034); nt.SetTextColor(kGray+2); nt.SetTextAngle(90);
+  nt.DrawLatex(ptNormMin + 5., ratioMax*0.42, Form("normalized above %.0f", ptNormMin));
+
+  for(int i = 0; i < NSlice; i++){
+    if(!useSlice[i]) continue;
+    hRatio[i]->SetLineColor(col[i]); hRatio[i]->SetMarkerColor(col[i]);
+    hRatio[i]->SetMarkerStyle(20); hRatio[i]->SetMarkerSize(0.8);
+    hRatio[i]->SetLineWidth(2);
+    hRatio[i]->GetXaxis()->SetRangeUser(plotPtMin, plotPtMax);
+    hRatio[i]->Draw("ep same");
+  }
+
+  // ================= bottom: slice-to-slice double ratio =================
+  c->cd();
+  TPad *pDn = new TPad("pDn", "", 0, 0, 1, split);
+  pDn->SetLeftMargin(lm); pDn->SetRightMargin(rm);
+  pDn->SetTopMargin(0.);  pDn->SetBottomMargin(bm);
+  pDn->Draw(); pDn->cd();
+
+  const double sc = (1.-split)/split;
+  TH1F *fr2 = pDn->DrawFrame(plotPtMin, dblMin, plotPtMax, dblMax);
+  fr2->GetXaxis()->SetTitle("p_{T}^{jet} [GeV]  (JEC-corrected)");
+  fr2->GetYaxis()->SetTitle("slice / previous slice");
+  fr2->GetXaxis()->SetTitleSize(0.055*sc); fr2->GetXaxis()->SetLabelSize(0.048*sc);
+  fr2->GetYaxis()->SetTitleSize(0.055*sc); fr2->GetYaxis()->SetLabelSize(0.048*sc);
+  fr2->GetYaxis()->SetTitleOffset(1.10/sc);
+  fr2->GetYaxis()->SetNdivisions(505);
+
+  TLine *one2 = new TLine(plotPtMin, 1., plotPtMax, 1.);
+  one2->SetLineStyle(2); one2->SetLineColor(kGray+2); one2->Draw();
+
+  for(int i = 0; i < NSlice; i++){
+    if(!hDouble[i]) continue;
+    hDouble[i]->SetLineColor(col[i]); hDouble[i]->SetMarkerColor(col[i]);
+    hDouble[i]->SetMarkerStyle(20); hDouble[i]->SetMarkerSize(0.8);
+    hDouble[i]->SetLineWidth(2);
+    hDouble[i]->GetXaxis()->SetRangeUser(plotPtMin, plotPtMax);
+    hDouble[i]->Draw("ep same");
+  }
+
+  TLatex dl; dl.SetNDC(); dl.SetTextSize(0.048*sc*0.7); dl.SetTextColor(kGray+3);
+  dl.DrawLatex(lm + 0.02, 0.90, "above 1 = ratio still rising with centrality");
+
+  // ================= centrality colour bar, spanning both pads =========
+  c->cd();
+  double gx0 = 1. - rm + 0.030, gx1 = gx0 + 0.035;
+  double gy0 = 0.95, gy1 = 0.12;
+  for(int i = 0; i < NSlice; i++){
+    double y0 = gy0 - (gy0-gy1) * i     / NSlice;
+    double y1 = gy0 - (gy0-gy1) * (i+1) / NSlice;
+    TPave *box = new TPave(gx0, y1, gx1, y0, 0, "NDC");
+    box->SetFillColor(col[i]); box->SetLineWidth(0); box->Draw();
+  }
+  TPave *bord = new TPave(gx0, gy1, gx1, gy0, 0, "NDC");
+  bord->SetFillStyle(0); bord->SetLineColor(kBlack); bord->SetLineWidth(1); bord->Draw();
+  TLatex gl; gl.SetNDC(); gl.SetTextSize(0.022); gl.SetTextAlign(12);
+  gl.DrawLatex(gx1 + 0.010, gy0, "0%");
+  gl.DrawLatex(gx1 + 0.010, (gy0+gy1)/2., "40%");
+  gl.DrawLatex(gx1 + 0.010, gy1, "80%");
+  TLatex gt; gt.SetNDC(); gt.SetTextSize(0.024); gt.SetTextAngle(90); gt.SetTextAlign(22);
+  gt.DrawLatex(gx1 + 0.072, (gy0+gy1)/2., "centrality");
+
+  TLatex lat; lat.SetNDC(); lat.SetTextSize(0.026);
+  lat.DrawLatex(0.04, 0.972, "PbPb / pp jet p_{T} shape, MinBias only, 5% centrality slices");
 
   TString out = TString(outDir) + outName;
   c->SaveAs(out);
