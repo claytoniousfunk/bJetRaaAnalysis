@@ -34,9 +34,9 @@ bool apply_JEU_shift_up = false;
 bool apply_JEU_shift_down = false;
 // select dataset
 bool doSingleMuonSample = false;
-bool doMinBiasSample = true;
+bool doMinBiasSample = false;
 bool doHardProbesSample = false;
-bool doNoRhoModificationSample = false;
+bool doNoRhoModificationSample = true;
 bool doWithRhoModificationSample = false;
 // reweight functions (for bkg subtraction)
 bool doHiBinReweightToHardProbesJet80 = false;
