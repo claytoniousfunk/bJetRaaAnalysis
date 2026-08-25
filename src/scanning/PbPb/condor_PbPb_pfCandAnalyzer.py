@@ -22,7 +22,7 @@ import os
 # configuration
 # ---------------------------------------------------------------------------
 
-jobname = 'PbPb_pfCandAnalyzer_noRhoModification_caloJets'
+jobname = 'PbPb_pfCandAnalyzer_noRhoModification_flowJets'
 
 # input list -- must be the same one PbPb_pfCandAnalyzer.C selects via its
 # doMinBiasSample / doHardProbesSample / doSingleMuonSample flags, because the
