@@ -36,7 +36,7 @@ bool apply_JEU_shift_down = false;
 bool doSingleMuonSample = false;
 bool doMinBiasSample = false;
 bool doHardProbesSample = false;
-bool doNoRhoModificationSample = true;
-bool doWithRhoModificationSample = false;
+bool doNoRhoModificationSample = false;
+bool doWithRhoModificationSample = true;
 // reweight functions (for bkg subtraction)
 bool doHiBinReweightToHardProbesJet80 = false;
