@@ -3,6 +3,8 @@
 TString configureOutputDatasetName(bool doSingleMuonSample,
 				   bool doMinBiasSample,
 				   bool doHardProbesSample,
+				   bool doNoRhoModificationSample,
+				   bool doWithRhoModificationSample,
 				   bool applyMinBiasTrigger,
 				   bool applyJet60Trigger,
 				   bool applyJet80Trigger,
@@ -34,6 +36,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   if(doSingleMuonSample) datasetIndicator = "_SingleMuon";
   else if(doMinBiasSample) datasetIndicator = "_MinBias_Part1";
   else if(doHardProbesSample) datasetIndicator = "_HardProbes";
+  else if(doNoRhoModificationSample) datasetIndicator = "_noRhoModification";
+  else if(doWithRhoModificationSample) datasetIndicator = "_withRhoModification";
   else{};
   result.Append(datasetIndicator);
 

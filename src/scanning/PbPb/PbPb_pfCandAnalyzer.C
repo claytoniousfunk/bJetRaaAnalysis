@@ -277,6 +277,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
   if(doSingleMuonSample) inputFileList = "../../../fileNames/fileNames_HISingleMuon_HIRun2018A-04Apr2019-v1.txt";
   else if(doMinBiasSample) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt";
   else if(doHardProbesSample) inputFileList = "../../../fileNames/fileNames_HIHardProbes_HIRun2018A-04Apr2019-v1_103X_dataRun2_Prompt_fixEcalADCToGeV_v1.txt";
+  else if(doNoRhoModificationSample) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_noRhoModulation.txt";
+  else if(doWithRhoModificationSample) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withRhoModulation.txt";
   else{};
 
   std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
@@ -316,6 +318,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
     outputDatasetName = configureOutputDatasetName(doSingleMuonSample,
 						   doMinBiasSample,
 						   doHardProbesSample,
+						   doNoRhoModificationSample,
+						   doWithRhoModificationSample,
 						   applyMinBiasTrigger,
 						   applyJet60Trigger,
 						   applyJet80Trigger,
