@@ -1465,11 +1465,6 @@ void PbPb_pfCandAnalyzer(int group = 1){
       // }
 
 
-      // CALO JET PT
-      for(int i = 0; i < 
-
-      
-
       double leadingRecoJetPt = 0.0;
       // RECO JET LOOP
       for(int i = 0; i < em->njet ; i++){
