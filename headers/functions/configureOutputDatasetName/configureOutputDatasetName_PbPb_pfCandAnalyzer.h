@@ -27,7 +27,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
 				   bool doEventMixing,
 				   bool skipSingleConstituentJets,
 				   bool doHiBinReweightToHardProbesJet80,
-				   bool useCaloJetsOverride)
+				   bool useCaloJetsOverride,
+				   bool useFlowJetsOverride)
 {
 
   TString result = "output";
@@ -43,6 +44,7 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   result.Append(datasetIndicator);
 
   if(useCaloJetsOverride) result.Append("_caloJets");
+  if(useFlowJetsOverride) result.Append("_flowJets");
 
   // general information
   if(applyMinBiasTrigger) result.Append("_MinBiasHLT");

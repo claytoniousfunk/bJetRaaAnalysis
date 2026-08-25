@@ -41,3 +41,4 @@ bool doWithRhoModificationSample = false;
 // reweight functions (for bkg subtraction)
 bool doHiBinReweightToHardProbesJet80 = false;
 bool useCaloJetsOverride = false; // overrides typical PF jet collection with caloJets
+bool useFlowJetsOverride = true;

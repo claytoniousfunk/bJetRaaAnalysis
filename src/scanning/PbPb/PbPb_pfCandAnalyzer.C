@@ -342,7 +342,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 						   doEventMixing,
 						   skipSingleConstituentJets,
 						   doHiBinReweightToHardProbesJet80,
-						   useCaloJetsOverride);
+						   useCaloJetsOverride,
+						   useFlowJetsOverride);
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
@@ -772,6 +773,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
     em->init();
     cout << "	Loading jet..." << endl;
     if(useCaloJetsOverride) em->loadJet("akPu4CaloJetAnalyzer/t");
+    else if(useFlowJetsOverride) em->loadJet("akFlowPuCs4PFJetAnalyzer/t");
     else em->loadJet("akCs4PFJetAnalyzer/t");
     cout << "	Loading muon..." << endl;
     em->loadMuon("ggHiNtuplizerGED/EventTree");
