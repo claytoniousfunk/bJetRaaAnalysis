@@ -341,7 +341,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 						   pseudoJetCandPt_min,
 						   doEventMixing,
 						   skipSingleConstituentJets,
-						   doHiBinReweightToHardProbesJet80);
+						   doHiBinReweightToHardProbesJet80,
+						   useCaloJetsOverride);
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
