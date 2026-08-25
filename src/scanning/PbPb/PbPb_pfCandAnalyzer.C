@@ -770,7 +770,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
     cout << "	Initializing variables ... " << endl;
     em->init();
     cout << "	Loading jet..." << endl;
-    em->loadJet("akCs4PFJetAnalyzer/t");
+    if(useCaloJetsOverride) em->loadJet("akPu4CaloJetAnalyzer/t");
+    else em->loadJet("akCs4PFJetAnalyzer/t");
     cout << "	Loading muon..." << endl;
     em->loadMuon("ggHiNtuplizerGED/EventTree");
     cout << "	Loading muon triggers..." << endl;
@@ -1461,6 +1462,12 @@ void PbPb_pfCandAnalyzer(int group = 1){
       //   else if(CentralityIndex == 1) w_trig = w / fitFxn_PbPb_HLT_C1->Eval(leadingMuonPt);
       //   else{};
       // }
+
+
+      // CALO JET PT
+      for(int i = 0; i < 
+
+      
 
       double leadingRecoJetPt = 0.0;
       // RECO JET LOOP
