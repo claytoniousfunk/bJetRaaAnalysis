@@ -5,7 +5,7 @@
 #define CENT_ULTRAFINE 2
 #define CENT_PERIPH90  3
 
-#define CENT_SCHEME CENT_NOMINAL
+#define CENT_SCHEME CENT_ULTRAFINE
 
 #include "../../headers/AnalysisSetup/common.h"
 
