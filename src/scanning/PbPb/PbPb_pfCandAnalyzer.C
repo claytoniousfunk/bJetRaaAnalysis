@@ -244,6 +244,8 @@ TH1D        *h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[NCentralityIndices];
 TH1D        *h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[NCentralityIndices];
 TH1D        *h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[NCentralityIndices];
 
+TH2D *h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[NCentralityIndices];
+
 
 // RC eta/phi maps loaded from external file at run time
 TProfile2D  *h_RC_map[NCentralityIndices];
@@ -510,6 +512,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_mupt_jetpt[i] = new TH2D(Form("h_mupt_jetpt_C%i",i),Form("jetPt vs. muPt, hiBin %i - %i", centEdges[0], centEdges[NCentralityIndices-1]),NMuPtBins,muPtMin,muPtMax,NPtBins,ptMin,ptMax);
 	h_muptrel_jetpt[i] = new TH2D(Form("h_muptrel_jetpt_C%i",i),Form("jetPt vs. muRelPt, hiBin %i - %i", centEdges[0], centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	// muon-based 2d histograms
+	h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[i] = new TH2D(Form("h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC_C%i",i),Form("fastJet muon #it{p}_{T}^{rel} vs fastJet #it{p}_{T}, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{p}_{T}^{rel} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_mupt_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{p}_{T} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NMuPtBins,muPtMin,muPtMax,NPtBins,ptMin,ptMax);
 	h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_mueta_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{#eta} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NTrkEtaBins,trkEtaMin,trkEtaMax,NPtBins,ptMin,ptMax);
@@ -597,6 +600,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_mupt_jetpt[i] = new TH2D(Form("h_mupt_jetpt_C%i",i),Form("jetPt vs. muPt, hiBin %i - %i", centEdges[i-1], centEdges[i]),NMuPtBins,muPtMin,muPtMax,NPtBins,ptMin,ptMax);
 	h_muptrel_jetpt[i] = new TH2D(Form("h_muptrel_jetpt_C%i",i),Form("jetPt vs. muRelPt, hiBin %i - %i", centEdges[i-1], centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	// muon-based 2d histograms
+	h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[i] = new TH2D(Form("h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC_C%i",i),Form("fastJet muon #it{p}_{T}^{rel} vs fastJet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{p}_{T}^{rel} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_mupt_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{p}_{T} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NMuPtBins,muPtMin,muPtMax,NPtBins,ptMin,ptMax);
 	h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_mueta_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{#eta} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NTrkEtaBins,trkEtaMin,trkEtaMax,NPtBins,ptMin,ptMax);
@@ -720,6 +724,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[i]->Sumw2();
       h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[i]->Sumw2();
       h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[i]->Sumw2();
+
+      h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[i]->Sumw2();
 
       h_nPFcand[i]->Sumw2();
       h_nPFcandCS[i]->Sumw2();
@@ -1221,7 +1227,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    if(!c.has_user_info<CandInfo>()) continue;
 	    const CandInfo &candinfo = c.user_info<CandInfo>();
 	    if(candinfo.isCharged() && c.pt() > trackMaxPt) trackMaxPt = c.pt();
-	    if(candinfo.getId() == 3 && c.pt() > muPtCut) {
+	    if(candinfo.getId() == 3 && c.pt() > muPtCut && evtTriggerDecision) {
 	      hasFastJetRecoMuonTag = true;
 	      fastJetMuonPt = c.pt();
 	      fastJetMuonEta = c.eta();
@@ -1237,9 +1243,11 @@ void PbPb_pfCandAnalyzer(int group = 1){
           double fastJetPt_JEC = JEC_PF.GetCorrectedPT();
 	  
 	  if(doJetTrkMaxFilter){
-	    // do track-max pT cut
 	    if(!passesJetTrkMaxFilter(trackMaxPt,fastJetPt_JEC)) continue;
 	  }
+
+
+	  
 	  h_fastJetPt_PF[0]->Fill(jet.pt(), w);
 	  h_fastJetPt_PF[CentralityIndex]->Fill(jet.pt(), w);
 	  h_fastJetPt_PF_JEC[0]->Fill(fastJetPt_JEC, w);
@@ -1304,9 +1312,17 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    JEC_PF.SetJetPT(fastJetPt_dPTSub_PFCsPTAbove60);
 	    double fastJetPt_JEC_dPTSub_PFCsPTAbove60 = JEC_PF.GetCorrectedPT();
 
+
+	    
+
 	    if(fastJetPt_JEC_rcSub > 20.){
 	      h_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetPt_rcSub, w);
               h_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_rcSub, w);
+
+	      if(hasFastJetRecoMuonTag){
+		fastJetMuonPtRel = getPtRel(fastJetMuonPt,fastJetMuonEta,fastJetMuonPhi,fastJetPt_rcSub,jet.eta(),jet.phi_std(),w);
+		h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC->Fill(fastJetMuonPtRel,fastJetPt_rcSub,w);
+	      }
 
 	      h_fastJetPt_PF_JEC_bkgSub_RC[0]->Fill(fastJetPt_JEC_rcSub, w);
               h_fastJetPt_PF_JEC_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_JEC_rcSub, w);
@@ -2007,6 +2023,9 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[i]->Write();
       h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[i]->Write();
       h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[i]->Write();
+
+      h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[i]->Write();
+      
       h_nPFcand[i]->Write();
       h_nPFcandCS[i]->Write();
       h_nPFcandFastJet[i]->Write();
