@@ -37,6 +37,7 @@
 #ifdef DO_FASTJET
 #include "fastjet/ClusterSequence.hh"
 #endif
+#include "../../../headers/fastJetCandInfo.h"
 
 // event map
 #include "../../../eventMap/eventMap.h"
@@ -1153,7 +1154,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
             double E  = pt * TMath::CosH(eta);
 	    bool isCharged = (id == 1 || id == 2 || id == 3); // id = h, e, mu
 	    fastjet::PseudoJet pseudoJet_s(px, py, pz, E);
-	    pseudoJet_s.set_user_index(isCharged ? 1 : 0);
+	    //pseudoJet_s.set_user_index(isCharged ? 1 : 0);
+	    pseudoJet_s.set_user_info(new CandInfo(idx, id));
             fjInputs.push_back(pseudoJet_s);
           }
         }
@@ -1170,7 +1172,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
             double E  = pt * TMath::CosH(eta);
 	    bool isCharged = (id == 1 || id == 2 || id == 3); // id = h, e, mu
 	    fastjet::PseudoJet pseudoJet_l(px, py, pz, E);
-	    pseudoJet_l.set_user_index(isCharged ? 1 : 0);
+	    //pseudoJet_l.set_user_index(isCharged ? 1 : 0);
+	    pseudoJet_l.set_user_info(new CandInfo(l, id));
             fjInputs.push_back(pseudoJet_l);
           }
         }
@@ -1194,8 +1197,24 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  }
 	  
 	  double trackMaxPt = 0.0;
+	  bool hasFastJetRecoMuonTag = false;
+	  double fastJetMuonPt = 0.;
+	  double fastJetMuonEta = 0.;
+	  double fastJetMuonPhi = 0.;
+	  double fastJetMuonPtRel = -999.;
 	  for(const auto& c : constituents){
-	    if(c.user_index() == 1 && c.pt() > trackMaxPt) trackMaxPt = c.pt();
+	    //if(c.user_index() == 1 && c.pt() > trackMaxPt) trackMaxPt = c.pt();
+	    if(!c.has_user_info<CandInfo>()) continue;
+	    const CandInfo &candinfo = c.user_info<CandInfo>();
+	    if(candinfo.isCharged() && c.pt() > trackMaxPt) trackMaxPt = c.pt();
+	    if(candinfo.getId() == 3 && c.pt() > muPtCut) {
+	      hasFastJetRecoMuonTag = true;
+	      fastJetMuonPt = c.pt();
+	      fastJetMuonEta = c.eta();
+	      fastJetMuonPhi = c.phi_std();
+	    }
+	    
+	    
 	  }
 	           
           JEC_PF.SetJetPT(jet.pt());
