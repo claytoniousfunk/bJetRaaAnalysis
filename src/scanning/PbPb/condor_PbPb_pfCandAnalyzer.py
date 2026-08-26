@@ -22,12 +22,12 @@ import os
 # configuration
 # ---------------------------------------------------------------------------
 
-jobname = 'PbPb_pfCandAnalyzer_noRhoModification'
+jobname = 'PbPb_pfCandAnalyzer_HIMinimumBias0_Part1'
 
 # input list -- must be the same one PbPb_pfCandAnalyzer.C selects via its
 # doMinBiasSample / doHardProbesSample / doSingleMuonSample flags, because the
 # job index is matched against `ifile` inside the analyzer.
-dblist = '../../../fileNames/fileNames_HIMinimumBias0_Part1_noRhoModulation.txt'
+dblist = '../../../fileNames/fileNames_HIMinimumBias0_Part1.txt'
 
 # How the analyzer is run.
 #
