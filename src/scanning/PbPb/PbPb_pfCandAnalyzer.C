@@ -1521,9 +1521,16 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  if(etaPhiMask(y,z)) continue;
 	}
 
-	x = applyJEU_JER(x, JEU, JER_fxn, randomGenerator,
-	                 fitFxn_PYTHIA_JERCorrection,
-	                 neutrino_tag_fraction, neutrino_energy_map);
+	if(useCaloJetsOverride){
+	  x = applyJEU_JER(x, JEU_Calo, JER_fxn, randomGenerator,
+			   fitFxn_PYTHIA_JERCorrection,
+			   neutrino_tag_fraction, neutrino_energy_map);
+	}
+	else{
+	  x = applyJEU_JER(x, JEU_Calo, JER_fxn, randomGenerator,
+			   fitFxn_PYTHIA_JERCorrection,
+			   neutrino_tag_fraction, neutrino_energy_map);
+	}
 	if(x < 0) continue;
 
 	//cout << "Event " << evi << ", jet " << i << endl;
