@@ -372,11 +372,17 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
   
     // JET ENERGY CORRECTIONS
-    vector<string> Files;
-    Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2Relative_AK4PF.txt"); // L2Relative correction
-    Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2L3Residual_AK4PF.txt"); // L2L3Residual correction
-    JetCorrector JEC(Files);
-    JetUncertainty JEU("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4PF.txt");
+    vector<string> Files_PF;
+    Files_PF.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2Relative_AK4PF.txt"); // L2Relative correction
+    Files_PF.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2L3Residual_AK4PF.txt"); // L2L3Residual correction
+    JetCorrector JEC_PF(Files_PF);
+    JetUncertainty JEU_PF("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4PF.txt");
+
+    vector<string> Files_Calo;
+    Files_Calo.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2Relative_AK4Calo.txt");
+    Files_Calo.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2L3Residual_AK4Calo.txt");
+    JetCorrector JEC_Calo(Files_Calo);
+    JetUncertainty JEU_Calo("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4Calo.txt");
     /// print out some info
     readConfig();
 
@@ -1021,10 +1027,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    jetPt_i = em->rawpt[i];
 	  }
 	  else{
-	    JEC.SetJetPT(em->rawpt[i]);
-	    JEC.SetJetEta(em->jeteta[i]);
-	    JEC.SetJetPhi(em->jetphi[i]);
-	    jetPt_i = JEC.GetCorrectedPT();
+	    JEC_PF.SetJetPT(em->rawpt[i]);
+	    JEC_PF.SetJetEta(em->jeteta[i]);
+	    JEC_PF.SetJetPhi(em->jetphi[i]);
+	    jetPt_i = JEC_PF.GetCorrectedPT();
 	  }
 	  if(jetPt_i > signalJetPtCut){ eventHasSignalJet = true; break; }
 	}
@@ -1192,10 +1198,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    if(c.user_index() == 1 && c.pt() > trackMaxPt) trackMaxPt = c.pt();
 	  }
 	           
-          JEC.SetJetPT(jet.pt());
-          JEC.SetJetEta(jet.eta());
-          JEC.SetJetPhi(jet.phi_std());
-          double fastJetPt_JEC = JEC.GetCorrectedPT();
+          JEC_PF.SetJetPT(jet.pt());
+          JEC_PF.SetJetEta(jet.eta());
+          JEC_PF.SetJetPhi(jet.phi_std());
+          double fastJetPt_JEC = JEC_PF.GetCorrectedPT();
 	  
 	  if(doJetTrkMaxFilter){
 	    // do track-max pT cut
@@ -1241,29 +1247,29 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    double fastJetPt_dPTSub_dPTAbove0 = jet.pt() - dPTMeanPt_dPTAbove0;
 	    double fastJetPt_dPTSub_PFCsPTAbove60 = jet.pt() - dPTMeanPt_PFCsPTAbove60;
 
-	    JEC.SetJetEta(jet.eta());
-	    JEC.SetJetPhi(jet.phi_std());
+	    JEC_PF.SetJetEta(jet.eta());
+	    JEC_PF.SetJetPhi(jet.phi_std());
 	    
-	    JEC.SetJetPT(fastJetPt_rcSub);
-	    double fastJetPt_JEC_rcSub = JEC.GetCorrectedPT();
+	    JEC_PF.SetJetPT(fastJetPt_rcSub);
+	    double fastJetPt_JEC_rcSub = JEC_PF.GetCorrectedPT();
 
-	    JEC.SetJetPT(fastJetPt_rcSub_geoCorr);
-	    double fastJetPt_JEC_rcSub_geoCorr = JEC.GetCorrectedPT();
+	    JEC_PF.SetJetPT(fastJetPt_rcSub_geoCorr);
+	    double fastJetPt_JEC_rcSub_geoCorr = JEC_PF.GetCorrectedPT();
 
-	    JEC.SetJetPT(fastJetPt_rcSub_geoCorr_etaReflect);
-	    double fastJetPt_JEC_rcSub_geoCorr_etaReflect = JEC.GetCorrectedPT();
+	    JEC_PF.SetJetPT(fastJetPt_rcSub_geoCorr_etaReflect);
+	    double fastJetPt_JEC_rcSub_geoCorr_etaReflect = JEC_PF.GetCorrectedPT();
 
-	    JEC.SetJetPT(fastJetPt_dPTSub);
-	    double fastJetPt_JEC_dPTSub = JEC.GetCorrectedPT();
+	    JEC_PF.SetJetPT(fastJetPt_dPTSub);
+	    double fastJetPt_JEC_dPTSub = JEC_PF.GetCorrectedPT();
 
-	    JEC.SetJetPT(fastJetPt_dPTSub_geoCorr);
-	    double fastJetPt_JEC_dPTSub_geoCorr = JEC.GetCorrectedPT();
+	    JEC_PF.SetJetPT(fastJetPt_dPTSub_geoCorr);
+	    double fastJetPt_JEC_dPTSub_geoCorr = JEC_PF.GetCorrectedPT();
 
-	    JEC.SetJetPT(fastJetPt_dPTSub_dPTAbove0);
-	    double fastJetPt_JEC_dPTSub_dPTAbove0 = JEC.GetCorrectedPT();
+	    JEC_PF.SetJetPT(fastJetPt_dPTSub_dPTAbove0);
+	    double fastJetPt_JEC_dPTSub_dPTAbove0 = JEC_PF.GetCorrectedPT();
 
-	    JEC.SetJetPT(fastJetPt_dPTSub_PFCsPTAbove60);
-	    double fastJetPt_JEC_dPTSub_PFCsPTAbove60 = JEC.GetCorrectedPT();
+	    JEC_PF.SetJetPT(fastJetPt_dPTSub_PFCsPTAbove60);
+	    double fastJetPt_JEC_dPTSub_PFCsPTAbove60 = JEC_PF.GetCorrectedPT();
 
 	    if(fastJetPt_JEC_rcSub > 20.){
 	      h_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetPt_rcSub, w);
@@ -1368,10 +1374,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    if(c.user_index() == 1 && c.pt() > trackMaxPt) trackMaxPt = c.pt();
 	  }
 	  
-          JEC.SetJetPT(jet_PFCs.pt());
-          JEC.SetJetEta(jet_PFCs.eta());
-          JEC.SetJetPhi(jet_PFCs.phi_std());
-          double fastJetPt_PFCs_JEC = JEC.GetCorrectedPT();
+          JEC_PF.SetJetPT(jet_PFCs.pt());
+          JEC_PF.SetJetEta(jet_PFCs.eta());
+          JEC_PF.SetJetPhi(jet_PFCs.phi_std());
+          double fastJetPt_PFCs_JEC = JEC_PF.GetCorrectedPT();
 	  int jetPtIndex_PFCs = -1;
 	  if(fastJetPt_PFCs_JEC < 20.) continue;
 	  if(doJetTrkMaxFilter){
@@ -1476,12 +1482,21 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	}
       
 	// JET VARIABLES
-		
-	JEC.SetJetPT(em->rawpt[i]);
-	JEC.SetJetEta(em->jeteta[i]);
-	JEC.SetJetPhi(em->jetphi[i]);
 
-	double x = JEC.GetCorrectedPT();  // use manual JEC
+	double x = 0.;
+	if(useCaloJetsOverride){
+	  JEC_Calo.SetJetPT(em->rawpt[i]);
+	  JEC_Calo.SetJetEta(em->jeteta[i]);
+	  JEC_Calo.SetJetPhi(em->jetphi[i]);
+	  x = JEC_Calo.GetCorrectedPT();
+	}
+	else{
+	  JEC_PF.SetJetPT(em->rawpt[i]);
+	  JEC_PF.SetJetEta(em->jeteta[i]);
+	  JEC_PF.SetJetPhi(em->jetphi[i]);
+	  x = JEC_PF.GetCorrectedPT();
+	}
+	
 	double rawJetPt_i = em->rawpt[i];
 	//double x = em->jetpt[i]; // use built-in JEC
 	double y = em->jeteta[i]; // recoJetEta
