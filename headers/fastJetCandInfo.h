@@ -1,3 +1,7 @@
+// - based on fastJet user manual.
+// - needed to get pf particle IDs within the cluster sequences
+// https://www.fastjet.fr/repo/fastjet-doc-3.5.1.pdf
+
 #pragma once
 #include "fastjet/PseudoJet.hh"
 
