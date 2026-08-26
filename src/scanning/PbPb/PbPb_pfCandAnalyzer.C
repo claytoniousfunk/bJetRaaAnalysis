@@ -400,7 +400,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
     else if(CENT_SCHEME == CENT_ULTRAFINE){
       f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-17_ultraFineCentBins.root");
     }
-    else if(CENT_SCHEME == CENTPERIPH90){
+    else if(CENT_SCHEME == CENT_PERIPH90){
       std::cout << "ERROR:  No background maps created for CENT_PERIPH90 scheme yet (as of 2026-08-26).  Exiting...\n";
       return;
     }
