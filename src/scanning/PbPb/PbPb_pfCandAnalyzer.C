@@ -277,9 +277,14 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 
   std::string inputFileList = "";
-  if(doSingleMuonSample) inputFileList = "../../../fileNames/fileNames_HISingleMuon_HIRun2018A-04Apr2019-v1.txt";
+  if(doSingleMuonSample) inputFileList = "../../../fileNames/fileNames_PbPb_SingleMuon_withPFCandidates_test.txt";
   else if(doMinBiasSample) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt";
-  else if(doHardProbesSample) inputFileList = "../../../fileNames/fileNames_HIHardProbes_HIRun2018A-04Apr2019-v1_103X_dataRun2_Prompt_fixEcalADCToGeV_v1.txt";
+  else if(doHardProbesSample) {
+    inputFileList = "";
+    std::cout << "no withPFCandidates forest for HardProbes.  Exiting...\n";
+    return;
+  }
+    
   else if(doNoRhoModificationSample) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_noRhoModulation.txt";
   else if(doWithRhoModificationSample) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withRhoModulation.txt";
   else{};
