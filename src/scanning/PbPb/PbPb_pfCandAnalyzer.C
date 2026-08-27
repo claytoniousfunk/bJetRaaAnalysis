@@ -1334,8 +1334,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 		fastJetMuonDR = getDr(fastJetMuonEta,fastJetMuonPhi,jet.eta(),jet.phi_std());
 		h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetMuonPtRel,fastJetPt_rcSub,w);
 		h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetMuonPtRel,fastJetPt_rcSub,w);
-		h_fastJetMuonPtDR_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetMuonDR,fastJetPt_rcSub,w);
-		h_fastJetMuonPtDR_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetMuonDR,fastJetPt_rcSub,w);
+		h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetMuonDR,fastJetPt_rcSub,w);
+		h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetMuonDR,fastJetPt_rcSub,w);
 	      }
 
 	      h_fastJetPt_PF_JEC_bkgSub_RC[0]->Fill(fastJetPt_JEC_rcSub, w);
