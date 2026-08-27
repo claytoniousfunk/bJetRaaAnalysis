@@ -22,12 +22,12 @@ import os
 # configuration
 # ---------------------------------------------------------------------------
 
-jobname = 'PbPb_pfCandAnalyzer_SingleMuon'
+jobname = 'PbPb_pfCandAnalyzer_HISingleMuon_withPFCandidates'
 
 # input list -- must be the same one PbPb_pfCandAnalyzer.C selects via its
 # doMinBiasSample / doHardProbesSample / doSingleMuonSample flags, because the
 # job index is matched against `ifile` inside the analyzer.
-dblist = '../../../fileNames/fileNames_PbPb_SingleMuon_withPFCandidates_test.txt'
+dblist = '../../../fileNames/fileNames_HISingleMuon_withPFCandidates_partial.txt'
 
 # How the analyzer is run.
 #
