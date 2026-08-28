@@ -1170,10 +1170,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 #ifdef DO_FASTJET
       if(doFastJetClustering){
 
-	std::vector<double> mixedEventPFCandidates_pt;
-	std::vector<double> mixedEventPFCandidates_eta;
-	std::vector<double> mixedEventPFCandidates_phi;
-	std::vector<int> mixedEventPFCandidates_id;
+	std::vector<double> *mixedEventPFCandidates_pt = nullptr;
+	std::vector<double> *mixedEventPFCandidates_eta = nullptr;
+	std::vector<double> *mixedEventPFCandidates_phi = nullptr;
+	std::vector<int> *mixedEventPFCandidates_id = nullptr;
 	// FastJet anti-kT clustering on PF candidates
         std::vector<fastjet::PseudoJet> fjInputs;
         if(doEventMixing && poolSize > 0){
@@ -1194,7 +1194,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    //pseudoJet_s.set_user_index(isCharged ? 1 : 0);
 	    pseudoJet_s.set_user_info(new CandInfo(idx, id));
             fjInputs.push_back(pseudoJet_s);
-	    mixedEventPFCandidates_pf.push_back(pt);
+	    mixedEventPFCandidates_pt.push_back(pt);
 	    mixedEventPFCandidates_eta.push_back(eta);
 	    mixedEventPFCandidates_phi.push_back(phi);
 	    mixedEventPFCandidates_id.push_back(id);
