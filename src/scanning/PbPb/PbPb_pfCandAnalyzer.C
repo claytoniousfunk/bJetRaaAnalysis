@@ -1170,10 +1170,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 #ifdef DO_FASTJET
       if(doFastJetClustering){
 
-	std::vector<double> *mixedEventPFCandidates_pt = nullptr;
-	std::vector<double> *mixedEventPFCandidates_eta = nullptr;
-	std::vector<double> *mixedEventPFCandidates_phi = nullptr;
-	std::vector<int> *mixedEventPFCandidates_id = nullptr;
+	std::vector<double> mixedEventPFCandidates_pt;
+	std::vector<double> mixedEventPFCandidates_eta;
+	std::vector<double> mixedEventPFCandidates_phi;
+	std::vector<int> mixedEventPFCandidates_id;
 	// FastJet anti-kT clustering on PF candidates
         std::vector<fastjet::PseudoJet> fjInputs;
         if(doEventMixing && poolSize > 0){
@@ -1194,10 +1194,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    //pseudoJet_s.set_user_index(isCharged ? 1 : 0);
 	    pseudoJet_s.set_user_info(new CandInfo(idx, id));
             fjInputs.push_back(pseudoJet_s);
-	    mixedEventPFCandidates_pt->push_back(pt);
-	    mixedEventPFCandidates_eta->push_back(eta);
-	    mixedEventPFCandidates_phi->push_back(phi);
-	    mixedEventPFCandidates_id->push_back(id);
+	    mixedEventPFCandidates_pt.push_back(pt);
+	    mixedEventPFCandidates_eta.push_back(eta);
+	    mixedEventPFCandidates_phi.push_back(phi);
+	    mixedEventPFCandidates_id.push_back(id);
           }
         }
         else{
@@ -1414,11 +1414,11 @@ void PbPb_pfCandAnalyzer(int group = 1){
         }
 
 	if(doEventMixing){
-	  for(int i = 0; i < mixedEventPFCandidates_id->size(); i++){
+	  for(int i = 0; i < mixedEventPFCandidates_id.size(); i++){
 
-	    if(mixedEventPFCandidates_id->at(i) != 3) continue; // skip if candidate is not a muon
-	    if(mixedEventPFCandidates_pt->at(i) < muPtCut) continue;
-	    if(fabs(mixedEventPFCandidates_eta->at(i)) > 2.) continue;
+	    if(mixedEventPFCandidates_id.at(i) != 3) continue; // skip if candidate is not a muon
+	    if(mixedEventPFCandidates_pt.at(i) < muPtCut) continue;
+	    if(fabs(mixedEventPFCandidates_eta.at(i)) > 2.) continue;
 	    
 	    double fastJetMuonDR_i = 999.;
 
@@ -1442,7 +1442,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 		if(!passesJetTrkMaxFilter(trackMaxPt,jetPt_JEC)) continue;
 	      }
 
-	      muonJetDR_ij = getDr(mixedEventPFCandidates_eta->at(i),mixedEventPFCandidates_phi->at(i),jet.eta(),jet.phi_std());
+	      muonJetDR_ij = getDr(mixedEventPFCandidates_eta.at(i),mixedEventPFCandidates_phi.at(i),jet.eta(),jet.phi_std());
 	      if(muonJetDR_ij < fastJetMuonDR_i) fastJetMuonDR_i = muonJetDR_ij;
 
 	    }
