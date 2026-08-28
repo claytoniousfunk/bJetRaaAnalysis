@@ -1446,9 +1446,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	      if(muonJetDR_ij < fastJetMuonDR_i) fastJetMuonDR_i = muonJetDR_ij;
 
 	    }
+	    h_fastJetMuonDR_inclusiveClosestFastJet[0]->Fill(fastJetMuonDR_i,w);
+	    h_fastJetMuonDR_inclusiveClosestFastJet[CentralityIndex]->Fill(fastJetMuonDR_i,w);
 	  }
-	  h_fastJetMuonDR_inclusiveClosestFastJet[0]->Fill(fastJetMuonDR_i,w);
-	  h_fastJetMuonDR_inclusiveClosestFastJet[CentralityIndex]->Fill(fastJetMuonDR_i,w);
+	  
 	}
 	
 	// FastJet anti-kT clustering on PFCs candidates
