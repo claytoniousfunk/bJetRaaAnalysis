@@ -22,7 +22,7 @@ import os
 # configuration
 # ---------------------------------------------------------------------------
 
-jobname = 'PbPb_pfCandAnalyzer_HISingleMuon_withPFCandidates'
+jobname = 'PbPb_pfCandAnalyzer_HISingleMuon_withPFCandidates_sameEvent'
 
 # input list -- must be the same one PbPb_pfCandAnalyzer.C selects via its
 # doMinBiasSample / doHardProbesSample / doSingleMuonSample flags, because the
