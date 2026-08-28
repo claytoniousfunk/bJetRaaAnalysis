@@ -1194,10 +1194,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    //pseudoJet_s.set_user_index(isCharged ? 1 : 0);
 	    pseudoJet_s.set_user_info(new CandInfo(idx, id));
             fjInputs.push_back(pseudoJet_s);
-	    mixedEventPFCandidates_pt.push_back(pt);
-	    mixedEventPFCandidates_eta.push_back(eta);
-	    mixedEventPFCandidates_phi.push_back(phi);
-	    mixedEventPFCandidates_id.push_back(id);
+	    mixedEventPFCandidates_pt->push_back(pt);
+	    mixedEventPFCandidates_eta->push_back(eta);
+	    mixedEventPFCandidates_phi->push_back(phi);
+	    mixedEventPFCandidates_id->push_back(id);
           }
         }
         else{
