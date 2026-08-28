@@ -1414,7 +1414,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
         }
 
 	if(doEventMixing){
-	  for(int i = 0; i < mixedEventPFCandidates_id.size(); i++){
+	  for(int i = 0; i < mixedEventPFCandidates_id->size(); i++){
 
 	    if(mixedEventPFCandidates_id->at(i) != 3) continue; // skip if candidate is not a muon
 	    if(mixedEventPFCandidates_pt->at(i) < muPtCut) continue;
