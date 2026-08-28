@@ -1,7 +1,7 @@
 #pragma once
 // pfCandidateAnalysis variables
 
-bool doEventMixing = true;
+bool doEventMixing = false;
 
 bool doFastJetClustering = true;      // true = run anti-kT R=0.4 on PF candidates via FastJet (requires -DDO_FASTJET at compile time)
 
