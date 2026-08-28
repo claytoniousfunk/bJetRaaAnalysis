@@ -1421,6 +1421,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    if(fabs(mixedEventPFCandidates_eta.at(i)) > 2.) continue;
 	    
 	    double fastJetMuonDR_i = 999.;
+	    double jetPt_JEC_rcSub_match_i = -999.;
 
 	    for(const auto& jet : jets){
 
@@ -1438,16 +1439,27 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	      JEC_PF.SetJetEta(jet.eta());
 	      JEC_PF.SetJetPhi(jet.phi_std());
 	      double jetPt_JEC = JEC_PF.GetCorrectedPT();
+	      double rcMeanPt = h_RC_map[CentralityIndex]->GetBinContent(
+                                h_RC_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
+	      double jetPt_rcSub = jet.pt() - rcMeanPt;
+	      JEC_PF.SetJetPT(jetPt_rcSub);
+	      double jetPt_JEC_rcSub = JEC_PF.GetCorrectedPT();
+
+	      if(jetPt_JEC_rcSub < 20.) continue;
+	      
 	      if(doJetTrkMaxFilter){
 		if(!passesJetTrkMaxFilter(trackMaxPt,jetPt_JEC)) continue;
 	      }
 
 	      muonJetDR_ij = getDr(mixedEventPFCandidates_eta.at(i),mixedEventPFCandidates_phi.at(i),jet.eta(),jet.phi_std());
-	      if(muonJetDR_ij < fastJetMuonDR_i) fastJetMuonDR_i = muonJetDR_ij;
+	      if(muonJetDR_ij < fastJetMuonDR_i) {
+		fastJetMuonDR_i = muonJetDR_ij;
+		jetPt_JEC_rcSub_match_i = jetPt_JEC_rcSub;
+	      }
 
 	    }
-	    h_fastJetMuonDR_inclusiveClosestFastJet[0]->Fill(fastJetMuonDR_i,w);
-	    h_fastJetMuonDR_inclusiveClosestFastJet[CentralityIndex]->Fill(fastJetMuonDR_i,w);
+	    h_fastJetMuonDR_inclusiveClosestFastJet[0]->Fill(fastJetMuonDR_i,jetPt_JEC_rcSub_match_i,w);
+	    h_fastJetMuonDR_inclusiveClosestFastJet[CentralityIndex]->Fill(fastJetMuonDR_i,jetPt_JEC_rcSub_match_i,w);
 	  }
 	  
 	}
