@@ -440,6 +440,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
       
     }
 
+    for(int i = 0; i < NCentralityIndices; i++){
+      if(!h_RC_map[i]) printf("WARNING: h_randConeEtaPhi_C%i missing from the RC map file\n", i);
+    }
+
     // define histograms
     h_eventsBeforeSelection = new TH1D("h_eventsBeforeSelection","events before selection",2,0,1);
     h_eventsAfterSelection = new TH1D("h_eventsAfterSelection","events before selection",2,0,1);
