@@ -442,6 +442,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
     for(int i = 0; i < NCentralityIndices; i++){
       if(!h_RC_map[i]) printf("WARNING: h_randConeEtaPhi_C%i missing from the RC map file\n", i);
+      if(!h_RC_map[i]) printf("WARNING: h_randConeEtaPhi_C%i MISSING\n", i);
+      if(!h_RC_geoCorr_map[i]) printf("WARNING: h_randConeEtaPhi_geoCorr_C%i MISSING\n", i);
+      if(!h_dPT_map[i]) printf("WARNING: h_dPTEtaPhi_PF_PFCs_C%i MISSING\n", i);
+
     }
 
     // define histograms
@@ -1447,6 +1451,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	      JEC_PF.SetJetEta(jet.eta());
 	      JEC_PF.SetJetPhi(jet.phi_std());
 	      double jetPt_JEC = JEC_PF.GetCorrectedPT();
+	      if(!h_RC_map[CentralityIndex]) continue;
 	      double rcMeanPt = h_RC_map[CentralityIndex]->GetBinContent(
                                 h_RC_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
 	      double jetPt_rcSub = jet.pt() - rcMeanPt;
