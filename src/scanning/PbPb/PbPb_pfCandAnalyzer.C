@@ -247,6 +247,7 @@ TH1D        *h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[NCentralityIndices];
 TH2D *h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[NCentralityIndices];
 TH2D *h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[NCentralityIndices];
 TH2D *h_fastJetMuonDR_inclusiveClosestFastJet[NCentralityIndices];
+TH2D *h_muonDR_inclusiveClosestJet[NCentralityIndices];
 
 
 // RC eta/phi maps loaded from external file at run time
@@ -522,6 +523,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[i] = new TH2D(Form("h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC_C%i",i),Form("fastJet muon #it{p}_{T}^{rel} vs fastJet #it{p}_{T}, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[i] = new TH2D(Form("h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC_C%i",i),Form("fastJet muon #Delta R vs fastJet #it{p}_{T}, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
 	h_fastJetMuonDR_inclusiveClosestFastJet[i] = new TH2D(Form("h_fastJetMuonDR_inclusiveClosestFastJet_C%i",i),Form("fastJet muon #Delta R vs fastJet #it{p}_{T}, inclusive closest fastJet, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
+	h_muonDR_inclusiveClosestJet[i] = new TH2D(Form("h_muonDR_inclusiveClosestJet_C%i",i),Form("muon #Delta R vs jet, inclusive closest jet, %i < hiBin < %i",centEdges[0],centEdges[NCentralityBins-1]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
 	h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{p}_{T}^{rel} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_mupt_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{p}_{T} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NMuPtBins,muPtMin,muPtMax,NPtBins,ptMin,ptMax);
 	h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_mueta_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{#eta} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NTrkEtaBins,trkEtaMin,trkEtaMax,NPtBins,ptMin,ptMax);
@@ -612,6 +614,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[i] = new TH2D(Form("h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC_C%i",i),Form("fastJet muon #it{p}_{T}^{rel} vs fastJet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[i] = new TH2D(Form("h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC_C%i",i),Form("fastJet muon #Delta R vs fastJet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
 	h_fastJetMuonDR_inclusiveClosestFastJet[i] = new TH2D(Form("h_fastJetMuonDR_inclusiveClosestFastJet_C%i",i),Form("fastJet muon #Delta R vs fastJet #it{p}_{T}, inclusive closest fastJet, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
+	h_muonDR_inclusiveClosestJet[i] = new TH2D(Form("h_muonDR_inclusiveClosestJet_C%i",i),Form("muon #Delta R vs jet, inclusive closest jet, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
 	h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{p}_{T}^{rel} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_mupt_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{p}_{T} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NMuPtBins,muPtMin,muPtMax,NPtBins,ptMin,ptMax);
 	h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_mueta_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{#eta} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NTrkEtaBins,trkEtaMin,trkEtaMax,NPtBins,ptMin,ptMax);
@@ -739,6 +742,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[i]->Sumw2();
       h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[i]->Sumw2();
       h_fastJetMuonDR_inclusiveClosestFastJet[i]->Sumw2();
+      h_muonDR_inclusiveClosestJet[i]->Sumw2();
 
       h_nPFcand[i]->Sumw2();
       h_nPFcandCS[i]->Sumw2();
@@ -1460,6 +1464,49 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    }
 	    h_fastJetMuonDR_inclusiveClosestFastJet[0]->Fill(fastJetMuonDR_i,jetPt_JEC_rcSub_match_i,w);
 	    h_fastJetMuonDR_inclusiveClosestFastJet[CentralityIndex]->Fill(fastJetMuonDR_i,jetPt_JEC_rcSub_match_i,w);
+
+	    double fastJetMuonDR_recoJet_i = 999.;
+	    double recoJet_match_i = 0.;
+	    
+	    // loop through jets
+	    for(int j = 0; em->njet; j++){
+
+	      double jetPt_j = 0.;
+	      if(useCaloJetsOverride){
+		JEC_Calo.SetJetPT(em->rawpt[j]);
+		JEC_Calo.SetJetEta(em->jeteta[j]);
+		JEC_Calo.SetJetPhi(em->jetphi[j]);
+		jetPt_j = JEC_Calo.GetCorrectedPT();
+	      }
+	      else{
+		JEC_PF.SetJetPT(em->rawpt[j]);
+		JEC_PF.SetJetEta(em->jeteta[j]);
+		JEC_PF.SetJetPhi(em->jetphi[j]);
+		jetPt_j = JEC_PF.GetCorrectedPT();
+	      }
+
+	      double jetEta_j = em->jeteta[j];
+	      double jetPhi_j = em->jetphi[j];
+	      double jetTrkMax_j = em->jetTrkMax[j];
+
+	      if(jetPt_j < 20.) continue;
+	      if(fabs(jetEta_j) > etaMax) continue;
+	      if(doJetTrkMaxFilter){
+		if(!passesJetTrkMaxFilter(jetTrkMax_j,jetPt_j)) continue;
+	      }
+
+	      double dR_ij = getDr(mixedEventPFCandidates_eta.at(i),mixedEventPFCandidates_phi.at(i),jetEta_j,jetPhi_j);
+	      if(dR_ij < fastJetMuonDR_recoJet_i) {
+		fastJetMuonDR_recoJet_i = dR_ij;
+		recoJet_match_i = jetPt_j;
+	      }
+
+	      
+	    
+	    }
+
+	    h_muonDR_inclusiveClosestJet->Fill(fastJetMuonDR_recoJet_i,recoJet_match_i,w);
+	    
 	  }
 	  
 	}
@@ -1991,7 +2038,6 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    }
 	
 	  }
-
 	}
       }
 
@@ -2101,6 +2147,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[i]->Write();
       h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[i]->Write();
       h_fastJetMuonDR_inclusiveClosestFastJet[i]->Write();
+      h_muonDR_inclusiveClosestJet[i]->Write();
       
       h_nPFcand[i]->Write();
       h_nPFcandCS[i]->Write();
