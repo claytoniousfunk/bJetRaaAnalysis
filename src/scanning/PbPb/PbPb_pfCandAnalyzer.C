@@ -1478,7 +1478,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    double recoJet_match_i = 0.;
 	    
 	    // loop through jets
-	    for(int j = 0; em->njet; j++){
+	    for(int j = 0; j < em->njet; j++){
 
 	      double jetPt_j = 0.;
 	      if(useCaloJetsOverride){
