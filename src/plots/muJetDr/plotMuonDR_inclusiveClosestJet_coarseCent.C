@@ -37,7 +37,13 @@
 const char *inFile =
   "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_SingleMuon_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPFClustering_fastJetResamples-100_2026-9-8_ultraFineCentBins.root";
 
-const char *histBase = "h_muonDR_inclusiveClosestJet";
+// Prefer the trigger-gated histogram when the scan has it, so this figure can
+// be compared directly against plotMixedMuonPtRel_recoJet_coarseCent.C, whose
+// fill is gated. Scans before 2026-09-08 carry only the ungated one; the macro
+// falls back to it and says so, and normalises by the matching denominator in
+// each case -- h_vz_triggerOn for the gated histogram, h_vz for the ungated.
+const char *histBaseGated   = "h_muonDR_inclusiveClosestJet_triggerOn";
+const char *histBaseUngated = "h_muonDR_inclusiveClosestJet";
 
 const char *outDir = "../../../figures/muJetDr/";
 
@@ -59,14 +65,14 @@ double       edge_dR[NEdge_dR] = {0, 0.05, 0.10, 0.15, 0.20, 0.25,
 
 const double plotDRmax = 0.5;
 
-// events in a coarse class = sum of h_vz over its fine slices, matching
-// classEvents() in plotPtRelTemplateDecomposition.C
-double classEvents(TFile *f, int ci)
+// Events in a coarse class, summed over its fine slices. base selects the
+// denominator: "h_vz" for all events, "h_vz_triggerOn" for triggered ones.
+double classEvents(TFile *f, int ci, const char *base)
 {
   double n = 0.;
   for(int si = sliceLo[ci]; si <= sliceHi[ci]; si++){
     TH1D *h = nullptr;
-    f->GetObject(Form("h_vz_C%d", si), h);
+    f->GetObject(Form("%s_C%d", base, si), h);
     if(!h) return -1.;
     n += h->Integral();
   }
@@ -87,7 +93,19 @@ void plotMuonDR_inclusiveClosestJet_coarseCent(const char *scanFile = nullptr,
   gSystem->mkdir(outDir, kTRUE);
 
   TFile *f = TFile::Open(gSystem->ExpandPathName(usePath));
-  if(!f || f->IsZombie()){ printf("ERROR: cannot open %s\n", inFile); return; }
+  if(!f || f->IsZombie()){ printf("ERROR: cannot open %s\n", usePath); return; }
+
+  bool gated = (f->GetListOfKeys()->FindObject(Form("%s_C1", histBaseGated)) != nullptr);
+  const char *histBase = gated ? histBaseGated : histBaseUngated;
+  const char *vzBase   = gated ? "h_vz_triggerOn" : "h_vz";
+  printf("histogram : %s\n", histBase);
+  printf("normalised: per %s event (%s)\n",
+         gated ? "TRIGGERED" : "inclusive", vzBase);
+  if(!gated)
+    printf("  NOTE: this scan predates %s (added 2026-09-08).\n"
+           "        Falling back to the ungated histogram normalised by all events.\n"
+           "        Rates from it are NOT comparable to the trigger-gated ptRel plot.\n",
+           histBaseGated);
 
   for(int ci = 0; ci < NClass; ci++){
 
@@ -102,8 +120,8 @@ void plotMuonDR_inclusiveClosestJet_coarseCent(const char *scanFile = nullptr,
     }
     if(!hSum){ printf("WARNING: no histograms found for class %s, skipping\n", classLabel[ci]); continue; }
 
-    double nEvt = classEvents(f, ci);
-    if(nEvt <= 0.){ printf("WARNING: no h_vz for class %s, skipping\n", classLabel[ci]); continue; }
+    double nEvt = classEvents(f, ci, vzBase);
+    if(nEvt <= 0.){ printf("WARNING: no %s for class %s, skipping\n", vzBase, classLabel[ci]); continue; }
 
     TH1D *proj[NPt];
     int   nEntries[NPt];
@@ -146,7 +164,8 @@ void plotMuonDR_inclusiveClosestJet_coarseCent(const char *scanFile = nullptr,
       proj[p]->SetLineWidth(2);
       proj[p]->SetTitle("");
       proj[p]->GetXaxis()->SetTitle("#it{#Delta}#it{R}(#it{#mu},jet)");
-      proj[p]->GetYaxis()->SetTitle("d#it{N}/d(#it{#Delta}#it{R}) per event");
+      proj[p]->GetYaxis()->SetTitle(gated ? "d#it{N}/d(#it{#Delta}#it{R}) per triggered event"
+                                          : "d#it{N}/d(#it{#Delta}#it{R}) per event");
       proj[p]->GetYaxis()->SetTitleOffset(1.55);
       proj[p]->GetXaxis()->SetTitleSize(0.045);
       proj[p]->GetYaxis()->SetTitleSize(0.045);
@@ -168,7 +187,8 @@ void plotMuonDR_inclusiveClosestJet_coarseCent(const char *scanFile = nullptr,
     // kept clear of the y-axis "x10^-3" exponent, which ROOT draws at the top
     // left of the frame once SetMaxDigits forces scientific notation
     la.DrawLatex(0.21, 0.86,  Form("PbPb SingleMuon (5.02 TeV), %s", classLabel[ci]));
-    la.DrawLatex(0.21, 0.815, "p_{T}^{#mu} > 15 GeV, |#eta^{#mu}| < 2, |#eta^{jet}| < 1.6");
+    la.DrawLatex(0.21, 0.815, Form("p_{T}^{#mu} > 15 GeV, |#eta^{#mu}| < 2, |#eta^{jet}| < 1.6%s",
+                                   gated ? ", mu12 triggered" : ""));
 
     TString out = TString(outDir) + Form("muonDR_inclusiveClosestJet_coarseCent_%s%s.pdf",
                     TString(classLabel[ci]).ReplaceAll("%","pct").ReplaceAll("-","to").Data(),

@@ -10,12 +10,28 @@
 // the mixed muon would actually have been tagged. So this covers the dR < 0.4
 // part of the dR plot.
 //
-// NORMALISATION: per event. Sum h_vz over the class's fine slices, divide, then
-// divide by bin width, giving dN/d(ptRel) per event -- the same convention as
-// plotPtRelTemplateDecomposition.C and the dR plot. Every entry is filled at
-// w_resample = w/N_resamples, so one real event contributes total weight w
-// regardless of the resample count and the rate is comparable across scans with
-// different N.
+// NORMALISATION: per TRIGGERED event, using h_vz_triggerOn summed over the
+// class's fine slices. This histogram is filled only when the muon trigger bit
+// is set, and the fill of h_mixedMuonPtRel_recoJetPt is likewise gated on
+// evtTriggerDecision, so this is the matching denominator.
+//
+// This deliberately DIFFERS from the dR companion plot, which divides by h_vz
+// (all events) because its own fill is ungated. Do not read a rate off one and
+// compare it numerically to the other: for 0-10%, 50-60 GeV the two denominators
+// differ by a factor ~8 (event trigger fraction 0.12), on top of this plot's
+// extra dR < 0.4 requirement.
+//
+// A caveat on the denominator: h_vz_triggerOn is filled on the raw bit
+// HLT_HIL3Mu12_v1 == 1, while evtTriggerDecision additionally requires a
+// non-zero prescale via triggerIsOn(). The triggered-event count is therefore a
+// slight overestimate of the true denominator, and this rate a slight
+// underestimate. Events with the bit set and prescale zero should be rare
+// (a disabled trigger should not fire), but the two are not identical by
+// construction.
+//
+// Every entry is filled at w_resample = w/N_resamples, so one real event
+// contributes total weight w regardless of the resample count and the rate is
+// comparable across scans with different N.
 //
 // WHAT THIS IS FOR: this pairing is the (fake mu, real jet) background template
 // subtracted from the data ptRel. Two things are worth reading off it.
@@ -35,9 +51,15 @@
 //      character across centrality, so a subtraction tuned in one class cannot
 //      be assumed to behave in another.
 //
-// Full 0-10 GeV range is shown deliberately rather than the 0-3 fit window:
-// clipping at 3 would cut away most of the distribution and make the template
-// look small rather than misplaced.
+// AXIS STOPS AT 5 GeV, matching the decomposition plot, but this distribution
+// does not: 55-58% of entries in 0-10% and 10-30% lie ABOVE 5 GeV, 35-45% in
+// 30-50%, and only 6-9% in 50-80%. That is the whole point of the template --
+// most of its weight is outside the region the b-purity fit uses -- so the
+// fraction above the axis maximum is printed and drawn on every panel rather
+// than left for the reader to infer from a curve that appears to stop.
+//
+// The quoted <ptRel> is likewise computed over the FULL 0-10 axis, not the
+// plotted range, so it can and does exceed the axis maximum.
 //
 // Usage: root -l -b -q 'plotMixedMuonPtRel_recoJet_coarseCent.C'
 // Run from: src/plots/muonPtRel/
@@ -66,26 +88,23 @@ const double ptHi[NPt] = {60, 80, 120};
 const char  *ptHex[NPt]    = {"#0072B2", "#D55E00", "#009E73"};   // Okabe-Ito
 const int    ptMarker[NPt] = {20, 21, 33};    // circle, square, diamond -- no triangles
 
-// Variable binning: 0.2 GeV through the low-ptRel region where the data lives
-// and where the peripheral classes pile up, widening out to 1.0 GeV in the tail
-// that only the central classes populate. Native axis is 0.1 wide, so every
-// edge below is a legal merge -- check that before editing. Sparsest window
-// (30-50%, 80-120 GeV) has 249 entries, about 11 per bin at this granularity.
-const double edge_ptRel[] = {0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0,
-                             2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,
-                             7.0,8.0,9.0,10.0};
+// Variable binning, identical to plotPtRelTemplateDecomposition.C: 0.2 GeV
+// through the peak region, widening to 0.8 GeV by 5 GeV. Native axis is 0.1
+// wide, so every edge is a legal merge -- check that before editing.
+const double edge_ptRel[] = {0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,
+                             2.0,2.4,2.8,3.4,4.2,5.0};
 const int NEdge_ptRel = (int)(sizeof(edge_ptRel)/sizeof(double));
 
-const double plotPtRelMax = 10.0;
+const double plotPtRelMax = 5.0;
 
-// events in a coarse class = sum of h_vz over its fine slices, matching
-// classEvents() in plotPtRelTemplateDecomposition.C
-double classEvents(TFile *f, int ci)
+// Events in a coarse class, summed over its fine slices. base picks the
+// denominator: "h_vz" for all events, "h_vz_triggerOn" for triggered ones.
+double classEvents(TFile *f, int ci, const char *base)
 {
   double n = 0.;
   for(int si = sliceLo[ci]; si <= sliceHi[ci]; si++){
     TH1D *h = nullptr;
-    f->GetObject(Form("h_vz_C%d", si), h);
+    f->GetObject(Form("%s_C%d", base, si), h);
     if(!h) return -1.;
     n += h->Integral();
   }
@@ -120,12 +139,14 @@ void plotMixedMuonPtRel_recoJet_coarseCent(const char *scanFile = nullptr,
     }
     if(!hSum){ printf("WARNING: no histograms for class %s, skipping\n", classLabel[ci]); continue; }
 
-    double nEvt = classEvents(f, ci);
-    if(nEvt <= 0.){ printf("WARNING: no h_vz for class %s, skipping\n", classLabel[ci]); continue; }
+    double nEvt    = classEvents(f, ci, "h_vz_triggerOn");   // matching denominator
+    double nEvtAll = classEvents(f, ci, "h_vz");              // for the printout only
+    if(nEvt <= 0.){ printf("WARNING: no h_vz_triggerOn for class %s, skipping\n", classLabel[ci]); continue; }
 
     TH1D  *proj[NPt];
     int    nEntries[NPt];
     double meanPtRel[NPt];
+    double fracAbove[NPt];   // fraction of entries beyond plotPtRelMax
 
     for(int p = 0; p < NPt; p++){
       int b1 = hSum->GetYaxis()->FindBin(ptLo[p] + 1e-6);
@@ -135,6 +156,9 @@ void plotMixedMuonPtRel_recoJet_coarseCent(const char *scanFile = nullptr,
       // mean taken BEFORE rebinning, so it is the true mean rather than one
       // computed from bin centres of wide bins
       meanPtRel[p] = raw->GetMean();
+      { double tot = raw->Integral(0, raw->GetNbinsX()+1);
+        double hi  = raw->Integral(raw->FindBin(plotPtRelMax + 1e-6), raw->GetNbinsX()+1);
+        fracAbove[p] = (tot > 0.) ? hi/tot : 0.; }
 
       TH1D *h = (TH1D*) raw->Rebin(NEdge_ptRel-1, Form("h_ptRel_%d_%d", ci, p), edge_ptRel);
       h->SetDirectory(nullptr);
@@ -144,10 +168,11 @@ void plotMixedMuonPtRel_recoJet_coarseCent(const char *scanFile = nullptr,
       delete raw;
     }
 
-    printf("%-8s N_evt=%.0f", classLabel[ci], nEvt);
+    printf("%-8s N_trig=%.0f (of %.0f, frac %.3f)", classLabel[ci], nEvt, nEvtAll, nEvt/nEvtAll);
     for(int p = 0; p < NPt; p++)
-      printf("  |  %.0f-%.0f GeV: %d entries, %.3e/evt, <ptRel>=%.2f",
-             ptLo[p], ptHi[p], nEntries[p], proj[p]->Integral("width"), meanPtRel[p]);
+      printf("  |  %.0f-%.0f GeV: %d entries, %.3e/trig-evt, <ptRel>=%.2f, %.0f%% above %.0f",
+             ptLo[p], ptHi[p], nEntries[p], proj[p]->Integral("width"), meanPtRel[p],
+             100.*fracAbove[p], plotPtRelMax);
     printf("\n");
 
     TCanvas *c = new TCanvas(Form("c_%d", ci), "", 700, 700);
@@ -169,7 +194,7 @@ void plotMixedMuonPtRel_recoJet_coarseCent(const char *scanFile = nullptr,
       proj[p]->SetLineWidth(2);
       proj[p]->SetTitle("");
       proj[p]->GetXaxis()->SetTitle("#it{p}_{T}^{rel}(#it{#mu},jet) [GeV]");
-      proj[p]->GetYaxis()->SetTitle("d#it{N}/d#it{p}_{T}^{rel} per event");
+      proj[p]->GetYaxis()->SetTitle("d#it{N}/d#it{p}_{T}^{rel} per triggered event");
       proj[p]->GetXaxis()->SetTitleSize(0.045);
       proj[p]->GetYaxis()->SetTitleSize(0.045);
       proj[p]->GetYaxis()->SetTitleOffset(1.55);
@@ -193,8 +218,15 @@ void plotMixedMuonPtRel_recoJet_coarseCent(const char *scanFile = nullptr,
 
     TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.032);
     la.DrawLatex(0.21, 0.86,  Form("PbPb SingleMuon (5.02 TeV), %s", classLabel[ci]));
-    la.DrawLatex(0.21, 0.815, "mixedEvent #mu + sameEvent reco jet, #Delta#it{R} < 0.4");
+    la.DrawLatex(0.21, 0.815, "mixedEvent #mu + sameEvent reco jet, #Delta#it{R} < 0.4, mu12 triggered");
     la.DrawLatex(0.21, 0.77,  "p_{T}^{#mu} > 15 GeV, |#eta^{#mu}| < 2, |#eta^{jet}| < 1.6");
+    { double fLo = 1., fHi = 0.;
+      for(int p = 0; p < NPt; p++){ if(fracAbove[p] < fLo) fLo = fracAbove[p];
+                                    if(fracAbove[p] > fHi) fHi = fracAbove[p]; }
+      TLatex lo; lo.SetNDC(); lo.SetTextFont(42); lo.SetTextSize(0.030);
+      lo.SetTextColor(kGray+3);
+      lo.DrawLatex(0.21, 0.725, Form("%.0f#minus%.0f%% of entries lie above %.0f GeV",
+                                     100.*fLo, 100.*fHi, plotPtRelMax)); }
 
     TString out = TString(outDir) + Form("mixedMuonPtRel_recoJet_coarseCent_%s%s.pdf",
                     TString(classLabel[ci]).ReplaceAll("%","pct").ReplaceAll("-","to").Data(),
