@@ -153,7 +153,8 @@ void drawPair(TH1D *hNo, TH1D *hInj, TH1D *hConst,
   hInj->Draw("E same");
   if(hConst) hConst->Draw("E same");
 
-  TLegend *leg = new TLegend(0.40,0.60,0.95,0.86);
+  // sits below the three header lines, which run down to 0.785
+  TLegend *leg = new TLegend(0.40,0.52,0.95,0.75);
   leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.038);
   leg->AddEntry(hNo,  Form("no inject  (#mu=%.3f)", hNo->GetMean()), "lp");
   leg->AddEntry(hInj, Form("inject  (#mu=%.3f)",    hInj->GetMean()), "lp");
@@ -225,8 +226,12 @@ void plotMuonInjectionEffect(const char *scanFile = nullptr)
     return;
   }
 
-  printf("%-8s %-10s %10s %10s %10s   %s\n",
-         "class","observable","<noInj>","<inject>","<constit>","shift");
+  // Entry counts matter as much as the means here: the injected muon makes its
+  // own jet, so it is tagged far more often than when matched to jets built
+  // without it. That change in population IS the under-representation this
+  // study is about, and a mean alone would hide it.
+  printf("%-8s %-8s %-6s %9s %9s %9s %9s %9s   %s\n",
+         "class","jetpT","obs","N(noInj)","N(inj)","<noInj>","<inject>","<constit>","shift");
 
   for(int ci = 0; ci < NClass; ci++){
 
@@ -240,9 +245,11 @@ void plotMuonInjectionEffect(const char *scanFile = nullptr)
       jNo->Rebin(rebinJetPt); jInj->Rebin(rebinJetPt);
       jNo->Scale(1./nEvt);  divideByBinwidth(jNo);
       jInj->Scale(1./nEvt); divideByBinwidth(jInj);
-      printf("%-8s %-10s %10.3f %10.3f %10s   %+.1f%%\n",
-             classLabel[ci], "jet pT", jNo->GetMean(), jInj->GetMean(), "-",
-             100.*(jInj->GetMean()/jNo->GetMean() - 1.));
+      printf("%-8s %-8s %-6s %9.0f %9.0f %9.3f %9.3f %9s   %s\n",
+             classLabel[ci], "incl", "jetpT",
+             jNo->GetEntries(), jInj->GetEntries(),
+             jNo->GetMean(), jInj->GetMean(), "-",
+             jNo->GetMean() > 0. ? Form("%+.1f%%", 100.*(jInj->GetMean()/jNo->GetMean()-1.)) : "-");
       drawPair(jNo, jInj, nullptr,
                "#it{p}_{T}^{jet} [GeV]", "d#it{N}/d#it{p}_{T}^{jet} per event",
                Form("PbPb SingleMuon, %s", classLabel[ci]),
@@ -283,10 +290,11 @@ void plotMuonInjectionEffect(const char *scanFile = nullptr)
           delete raw;
         }
 
-        printf("%-8s %-10s %10.3f %10.3f %10.3f   %+.1f%%\n",
-               classLabel[ci], which == 0 ? "dR" : "ptRel",
+        printf("%-8s %3.0f-%-4.0f %-6s %9.0f %9.0f %9.3f %9.3f %9.3f   %s\n",
+               classLabel[ci], ptLo[p], ptHi[p], which == 0 ? "dR" : "ptRel",
+               h[0]->GetEntries(), h[1]->GetEntries(),
                h[0]->GetMean(), h[1]->GetMean(), h[2]->GetMean(),
-               h[0]->GetMean() != 0. ? 100.*(h[1]->GetMean()/h[0]->GetMean() - 1.) : 0.);
+               h[0]->GetMean() > 0. ? Form("%+.1f%%", 100.*(h[1]->GetMean()/h[0]->GetMean()-1.)) : "-");
 
         drawPair(h[0], h[1], h[2],
                  which == 0 ? "#it{#Delta}#it{R}(#mu,jet)" : "#it{p}_{T}^{rel} [GeV]",
