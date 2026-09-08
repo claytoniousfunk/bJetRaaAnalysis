@@ -1308,7 +1308,13 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    if(!c.has_user_info<CandInfo>()) continue;
 	    const CandInfo &candinfo = c.user_info<CandInfo>();
 	    if(candinfo.isCharged() && c.pt() > trackMaxPt) trackMaxPt = c.pt();
-	    if(candinfo.getId() == 3 && c.pt() > muPtCut && evtTriggerDecision) {
+	    // c.pt() > fastJetMuonPt keeps the LEADING muon constituent. Without it
+	    // this kept whichever muon happened to come last in constituent order,
+	    // which is an arbitrary choice of tag when a jet contains more than one
+	    // candidate above muPtCut. findRecoMuonTag, which the (real mu)
+	    // templates use, resolves ties by muon index rather than pT, but at
+	    // least "leading" is a defined quantity.
+	    if(candinfo.getId() == 3 && c.pt() > muPtCut && evtTriggerDecision && c.pt() > fastJetMuonPt) {
 	      hasFastJetRecoMuonTag = true;
 	      fastJetMuonPt = c.pt();
 	      fastJetMuonEta = c.eta();
@@ -1588,7 +1594,15 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    // requirement is what makes this a background estimate for the data
 	    // tagging rate rather than just a nearest-neighbour distance -- the
 	    // h_muonDR histogram above deliberately has no such cut.
-	    if(fastJetMuonDR_recoJet_i < epsilon_mm && recoJet_match_i > 0.){
+	    //
+	    // evtTriggerDecision matches the guard on the data fill: without it
+	    // this template accumulates in events the data histogram never sees,
+	    // and the per-event rates being subtracted are normalised over
+	    // different event samples. Note it gates only this fill, NOT the
+	    // enclosing muon loop -- the two h_*muonDR_inclusiveClosest*
+	    // histograms above are pre-existing diagnostics with their own
+	    // (untriggered) convention, and changing them is out of scope here.
+	    if(evtTriggerDecision && fastJetMuonDR_recoJet_i < epsilon_mm && recoJet_match_i > 0.){
 	      double mixedMuonPtRel_i = getPtRel(mixedEventPFCandidates_pt.at(i),
 						 mixedEventPFCandidates_eta.at(i),
 						 mixedEventPFCandidates_phi.at(i),
@@ -1612,15 +1626,43 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  // matchFlagR_mixedJet is a SEPARATE array from the real-jet matching:
 	  // sharing it would let a muon consumed here suppress a later real-jet
 	  // tag in the same event (or vice versa) and bias both.
-	  // Sized to match the matchFlagR[10] convention used above; em->nMu is
-	  // not bounded by 10 anywhere, so the guard below is what keeps this
-	  // in range.
-	  {
-	    int matchFlagR_mixedJet[10] = {0,0,0,0,0,0,0,0,0,0};
-	    if(em->nMu <= 10){
-	      for(const auto& jet : jets){
+	  //
+	  // Sized to em->nMu rather than the fixed [10] used by the data path.
+	  // A fixed 10 would need a guard skipping events with more muons, and
+	  // such an event would then contribute nothing here while still
+	  // contributing to the data histogram this is subtracted from -- biasing
+	  // the template low in exactly the busiest events. (The pre-existing
+	  // matchFlagR[10] in the reco-jet loop has the same latent overflow and
+	  // is deliberately left alone here.)
+	  //
+	  // evtTriggerDecision matches the guard on the data fill, so both are
+	  // normalised over the same event sample.
+	  if(evtTriggerDecision){
+	    std::vector<int> matchFlagR_mixedJet(em->nMu > 0 ? em->nMu : 1, 0);
+	    for(const auto& jet : jets){
 		if(fabs(jet.eta()) > 1.6) continue;
 		if(!h_RC_map[CentralityIndex]) continue;
+
+		// trackMaxPt over the jet's own constituents, then the same
+		// jetTrkMax filter the data, T3 and T4 jet loops all apply --
+		// without it this template accepts jets the other three reject.
+		// Applied against the JEC'd unsubtracted pT, matching how the
+		// neighbouring fastJet loops call it.
+		std::vector<fastjet::PseudoJet> constituents_m = jet.constituents();
+		double trackMaxPt_m = 0.0;
+		for(const auto& c : constituents_m){
+		  if(!c.has_user_info<CandInfo>()) continue;
+		  const CandInfo &candinfo_m = c.user_info<CandInfo>();
+		  if(candinfo_m.isCharged() && c.pt() > trackMaxPt_m) trackMaxPt_m = c.pt();
+		}
+		JEC_PF.SetJetPT(jet.pt());
+		JEC_PF.SetJetEta(jet.eta());
+		JEC_PF.SetJetPhi(jet.phi_std());
+		double jetPt_JEC_m = JEC_PF.GetCorrectedPT();
+		if(doJetTrkMaxFilter){
+		  if(!passesJetTrkMaxFilter(trackMaxPt_m,jetPt_JEC_m)) continue;
+		}
+
 		double rcMeanPt_m = h_RC_map[CentralityIndex]->GetBinContent(
 				      h_RC_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
 		double jetPt_rcSub_m = jet.pt() - rcMeanPt_m;
@@ -1638,12 +1680,11 @@ void PbPb_pfCandAnalyzer(int group = 1){
 		// it corrects, and ptRel itself would be built on a different jet
 		// momentum. Same scale as every other term of the decomposition.
 		double muPtRel_m = -999., muPt_m = -999., muEta_m = -999., muPhi_m = -999., muJetDr_m = -999.;
-		if(findRecoMuonTag(em, jetPt_JEC_rcSub_m, jet.eta(), jet.phi_std(), matchFlagR_mixedJet,
+		if(findRecoMuonTag(em, jetPt_JEC_rcSub_m, jet.eta(), jet.phi_std(), matchFlagR_mixedJet.data(),
 				   muPtRel_m, muPt_m, muEta_m, muPhi_m, muJetDr_m)){
 		  h_realMuonPtRel_mixedFastJetPt[0]->Fill(muPtRel_m,jetPt_JEC_rcSub_m,w_resample);
 		  h_realMuonPtRel_mixedFastJetPt[CentralityIndex]->Fill(muPtRel_m,jetPt_JEC_rcSub_m,w_resample);
 		}
-	      }
 	    }
 	  }
 
