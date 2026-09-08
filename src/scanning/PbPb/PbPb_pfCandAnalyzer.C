@@ -30,6 +30,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <random>
+#include <memory>
 #include "TSystem.h"
 #include "TRandom2.h"
 
@@ -259,6 +260,35 @@ TH2D *h_muonDR_inclusiveClosestJet[NCentralityIndices];
 // peripheral ones), so the two cannot be reconciled after the fact.
 // Divide this one by h_vz_triggerOn, not h_vz.
 TH2D *h_muonDR_inclusiveClosestJet_triggerOn[NCentralityIndices];
+
+// --- muon-injection study (Olga, 2026-09-08) ---------------------------------
+// A mixed-event muon matched to donor-event fastJets two ways:
+//   noInject       donor candidates clustered ALONE, muon matched afterwards.
+//                  This is what the existing templates do, and the jet axis and
+//                  pT know nothing about the muon.
+//   inject         the muon is added to the donor candidates and everything is
+//                  reclustered, so the muon pulls the axis and adds its pT --
+//                  what would happen if that muon really were in the event.
+// The difference between them is the bias currently carried by
+// h_mixedMuonPtRel_recoJetPt: a muon-tagged jet is under-represented at high
+// jet pT because the tagging muon's pT was never added to it.
+//
+// Two tagging conventions are filled for the injected case: nearest jet within
+// dR < epsilon_mm (matching how data tags, and like-for-like with noInject),
+// and the jet that anti-kT actually assigned the muon to (Constit). The gap
+// between them measures how often the nearest jet is not the owning jet.
+//
+// Inclusive donor jet pT for both collections, filled per injection so the two
+// share a denominator and any difference is the injection alone.
+TH1D *h_donorJetPt_noInject[NCentralityIndices];
+TH1D *h_donorJetPt_inject[NCentralityIndices];
+TH2D *h_injMuonDR_donorJetPt_noInject[NCentralityIndices];
+TH2D *h_injMuonPtRel_donorJetPt_noInject[NCentralityIndices];
+TH2D *h_injMuonDR_donorJetPt_inject[NCentralityIndices];
+TH2D *h_injMuonPtRel_donorJetPt_inject[NCentralityIndices];
+TH2D *h_injMuonDR_donorJetPt_injectConstit[NCentralityIndices];
+TH2D *h_injMuonPtRel_donorJetPt_injectConstit[NCentralityIndices];
+
 
 // --- ptRel background templates for the muon-tagged-jet decomposition ---
 // The measured data ptRel (h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn) is a
@@ -568,6 +598,14 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_fastJetMuonDR_inclusiveClosestFastJet[i] = new TH2D(Form("h_fastJetMuonDR_inclusiveClosestFastJet_C%i",i),Form("fastJet muon #Delta R vs fastJet #it{p}_{T}, inclusive closest fastJet, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
 	h_muonDR_inclusiveClosestJet[i] = new TH2D(Form("h_muonDR_inclusiveClosestJet_C%i",i),Form("muon #Delta R vs jet, inclusive closest jet, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
 	h_muonDR_inclusiveClosestJet_triggerOn[i] = new TH2D(Form("h_muonDR_inclusiveClosestJet_triggerOn_C%i",i),Form("muon #Delta R vs jet, inclusive closest jet, triggerOn, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
+	h_donorJetPt_noInject[i] = new TH1D(Form("h_donorJetPt_noInject_C%i",i),Form("donor fastJet #it{p}_{T}, no injection, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_donorJetPt_inject[i] = new TH1D(Form("h_donorJetPt_inject_C%i",i),Form("donor fastJet #it{p}_{T}, muon injected, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_injMuonDR_donorJetPt_noInject[i] = new TH2D(Form("h_injMuonDR_donorJetPt_noInject_C%i",i),Form("mixed #mu #Delta R vs donor fastJet #it{p}_{T}, no injection, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
+	h_injMuonPtRel_donorJetPt_noInject[i] = new TH2D(Form("h_injMuonPtRel_donorJetPt_noInject_C%i",i),Form("mixed #mu #it{p}_{T}^{rel} vs donor fastJet #it{p}_{T}, no injection, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_injMuonDR_donorJetPt_inject[i] = new TH2D(Form("h_injMuonDR_donorJetPt_inject_C%i",i),Form("mixed #mu #Delta R vs donor fastJet #it{p}_{T}, muon injected, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
+	h_injMuonPtRel_donorJetPt_inject[i] = new TH2D(Form("h_injMuonPtRel_donorJetPt_inject_C%i",i),Form("mixed #mu #it{p}_{T}^{rel} vs donor fastJet #it{p}_{T}, muon injected, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_injMuonDR_donorJetPt_injectConstit[i] = new TH2D(Form("h_injMuonDR_donorJetPt_injectConstit_C%i",i),Form("mixed #mu #Delta R vs donor fastJet #it{p}_{T}, injected, constituent-tagged, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
+	h_injMuonPtRel_donorJetPt_injectConstit[i] = new TH2D(Form("h_injMuonPtRel_donorJetPt_injectConstit_C%i",i),Form("mixed #mu #it{p}_{T}^{rel} vs donor fastJet #it{p}_{T}, injected, constituent-tagged, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_mixedMuonPtRel_recoJetPt[i] = new TH2D(Form("h_mixedMuonPtRel_recoJetPt_C%i",i),Form("mixed-event muon #it{p}_{T}^{rel} vs reco jet #it{p}_{T}, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_realMuonPtRel_mixedFastJetPt[i] = new TH2D(Form("h_realMuonPtRel_mixedFastJetPt_C%i",i),Form("real muon #it{p}_{T}^{rel} vs mixed-event fastJet #it{p}_{T}, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{p}_{T}^{rel} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
@@ -662,6 +700,14 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_fastJetMuonDR_inclusiveClosestFastJet[i] = new TH2D(Form("h_fastJetMuonDR_inclusiveClosestFastJet_C%i",i),Form("fastJet muon #Delta R vs fastJet #it{p}_{T}, inclusive closest fastJet, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
 	h_muonDR_inclusiveClosestJet[i] = new TH2D(Form("h_muonDR_inclusiveClosestJet_C%i",i),Form("muon #Delta R vs jet, inclusive closest jet, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
 	h_muonDR_inclusiveClosestJet_triggerOn[i] = new TH2D(Form("h_muonDR_inclusiveClosestJet_triggerOn_C%i",i),Form("muon #Delta R vs jet, inclusive closest jet, triggerOn, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
+	h_donorJetPt_noInject[i] = new TH1D(Form("h_donorJetPt_noInject_C%i",i),Form("donor fastJet #it{p}_{T}, no injection, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_donorJetPt_inject[i] = new TH1D(Form("h_donorJetPt_inject_C%i",i),Form("donor fastJet #it{p}_{T}, muon injected, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_injMuonDR_donorJetPt_noInject[i] = new TH2D(Form("h_injMuonDR_donorJetPt_noInject_C%i",i),Form("mixed #mu #Delta R vs donor fastJet #it{p}_{T}, no injection, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
+	h_injMuonPtRel_donorJetPt_noInject[i] = new TH2D(Form("h_injMuonPtRel_donorJetPt_noInject_C%i",i),Form("mixed #mu #it{p}_{T}^{rel} vs donor fastJet #it{p}_{T}, no injection, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_injMuonDR_donorJetPt_inject[i] = new TH2D(Form("h_injMuonDR_donorJetPt_inject_C%i",i),Form("mixed #mu #Delta R vs donor fastJet #it{p}_{T}, muon injected, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
+	h_injMuonPtRel_donorJetPt_inject[i] = new TH2D(Form("h_injMuonPtRel_donorJetPt_inject_C%i",i),Form("mixed #mu #it{p}_{T}^{rel} vs donor fastJet #it{p}_{T}, muon injected, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_injMuonDR_donorJetPt_injectConstit[i] = new TH2D(Form("h_injMuonDR_donorJetPt_injectConstit_C%i",i),Form("mixed #mu #Delta R vs donor fastJet #it{p}_{T}, injected, constituent-tagged, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
+	h_injMuonPtRel_donorJetPt_injectConstit[i] = new TH2D(Form("h_injMuonPtRel_donorJetPt_injectConstit_C%i",i),Form("mixed #mu #it{p}_{T}^{rel} vs donor fastJet #it{p}_{T}, injected, constituent-tagged, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_mixedMuonPtRel_recoJetPt[i] = new TH2D(Form("h_mixedMuonPtRel_recoJetPt_C%i",i),Form("mixed-event muon #it{p}_{T}^{rel} vs reco jet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_realMuonPtRel_mixedFastJetPt[i] = new TH2D(Form("h_realMuonPtRel_mixedFastJetPt_C%i",i),Form("real muon #it{p}_{T}^{rel} vs mixed-event fastJet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{p}_{T}^{rel} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
@@ -793,6 +839,14 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_fastJetMuonDR_inclusiveClosestFastJet[i]->Sumw2();
       h_muonDR_inclusiveClosestJet[i]->Sumw2();
       h_muonDR_inclusiveClosestJet_triggerOn[i]->Sumw2();
+      h_donorJetPt_noInject[i]->Sumw2();
+      h_donorJetPt_inject[i]->Sumw2();
+      h_injMuonDR_donorJetPt_noInject[i]->Sumw2();
+      h_injMuonPtRel_donorJetPt_noInject[i]->Sumw2();
+      h_injMuonDR_donorJetPt_inject[i]->Sumw2();
+      h_injMuonPtRel_donorJetPt_inject[i]->Sumw2();
+      h_injMuonDR_donorJetPt_injectConstit[i]->Sumw2();
+      h_injMuonPtRel_donorJetPt_injectConstit[i]->Sumw2();
       h_mixedMuonPtRel_recoJetPt[i]->Sumw2();
       h_realMuonPtRel_mixedFastJetPt[i]->Sumw2();
 
@@ -1134,6 +1188,16 @@ void PbPb_pfCandAnalyzer(int group = 1){
       
       // pre-load mixed-event PF candidates from same-centrality events into a pool
       std::vector<double> pool_pfPt, pool_pfEta, pool_pfPhi, pool_pfId;
+
+      // DONOR EVENT for the muon-injection study. The first centrality-matched
+      // event at or after evi+1 -- which is exactly the first event this pool
+      // loop accepts, so it is captured here rather than costing another
+      // getEvent() pass. Its candidates are clustered on their own (baseline)
+      // and again with a mixed-event muon added (injected), so the two can be
+      // compared jet by jet.
+      std::vector<double> donor_pfPt, donor_pfEta, donor_pfPhi;
+      std::vector<int>    donor_pfId;
+
       if(doEventMixing){
 	int eventsInPool = 0;
 	int jPool = 0;
@@ -1146,6 +1210,12 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    pool_pfEta.push_back(em->pfEta->at(l));
 	    pool_pfPhi.push_back(em->pfPhi->at(l));
 	    pool_pfId.push_back(em->pfId->at(l));
+	    if(eventsInPool == 0){          // this event is the donor
+	      donor_pfPt.push_back(em->pfPt->at(l));
+	      donor_pfEta.push_back(em->pfEta->at(l));
+	      donor_pfPhi.push_back(em->pfPhi->at(l));
+	      donor_pfId.push_back(em->pfId->at(l));
+	    }
 	  }
 	  eventsInPool++;
 	  jPool++;
@@ -1157,6 +1227,41 @@ void PbPb_pfCandAnalyzer(int group = 1){
       std::mt19937 rng(std::random_device{}());
       double pi_pfcand = TMath::Pi();
       double dR_max_pfcand = 0.4;
+
+#ifdef DO_FASTJET
+      // Baseline clustering of the donor event, done ONCE per event since the
+      // donor does not change with the resample index. The injected version is
+      // reclustered per muon inside the mixed-muon loop below.
+      //
+      // NOTE: no jetTrkMax filter is applied to either collection here. That
+      // filter rejects jets with trkMax/jetPt > 0.98, and injecting a 15+ GeV
+      // muon into a soft combinatorial jet drives that ratio towards 1 -- it
+      // would preferentially delete exactly the jets where the injection
+      // matters most, and would change the jet population between the two
+      // collections, which is the one thing this comparison must not do.
+      std::vector<fastjet::PseudoJet> donorInputs;
+      for(size_t l = 0; l < donor_pfPt.size(); l++){
+	double pt = donor_pfPt[l];
+	if(pt < pseudoJetCandPt_min) continue;
+	double eta = donor_pfEta[l], phi = donor_pfPhi[l];
+	fastjet::PseudoJet pj(pt*TMath::Cos(phi), pt*TMath::Sin(phi),
+			      pt*TMath::SinH(eta), pt*TMath::CosH(eta));
+	pj.set_user_info(new CandInfo((int)l, donor_pfId[l]));
+	donorInputs.push_back(pj);
+      }
+      fastjet::JetDefinition donorJetDef(fastjet::antikt_algorithm, dR_max_pfcand);
+      // unique_ptr, not a raw new/delete pair: the PseudoJets in donorJets stay
+      // valid only while their ClusterSequence lives, so it has to outlast the
+      // muon loop, and there is no safe single place to delete it that a future
+      // "continue" in the event loop could not skip. One allocation per event
+      // leaked would be fatal over a full scan.
+      std::unique_ptr<fastjet::ClusterSequence> donorCS;
+      std::vector<fastjet::PseudoJet> donorJets;
+      if(!donorInputs.empty()){
+	donorCS.reset(new fastjet::ClusterSequence(donorInputs, donorJetDef));
+	donorJets = fastjet::sorted_by_pt(donorCS->inclusive_jets(0.));
+      }
+#endif
 
       for(int k = 0; k < N_mixedEventsInPool; k++){
 
@@ -1633,6 +1738,106 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	      h_mixedMuonPtRel_recoJetPt[CentralityIndex]->Fill(mixedMuonPtRel_i,recoJet_match_i,w_resample);
 	    }
 
+	    // ---- muon-injection study ------------------------------------
+	    // Same mixed-event muon, matched to donor-event fastJets twice:
+	    // once against jets clustered without it, once after adding it to
+	    // the donor candidates and reclustering. See the histogram
+	    // declarations for what the difference measures.
+	    //
+	    // No jetTrkMax filter here, deliberately: it cuts trkMax/jetPt >
+	    // 0.98, and a 15+ GeV muon injected into a soft combinatorial jet
+	    // approaches that, so it would preferentially remove the jets the
+	    // study is about and change the population between the two
+	    // collections.
+	    if(!donorJets.empty() && h_RC_map[CentralityIndex]){
+
+	      double muPt_inj  = mixedEventPFCandidates_pt.at(i);
+	      double muEta_inj = mixedEventPFCandidates_eta.at(i);
+	      double muPhi_inj = mixedEventPFCandidates_phi.at(i);
+
+	      // (a) BASELINE: donor jets as clustered WITHOUT the muon
+	      double drB = 999., ptB = -999., etaB = -999., phiB = -999.;
+	      for(const auto& dj : donorJets){
+		if(fabs(dj.eta()) > 1.6) continue;
+		double rc = h_RC_map[CentralityIndex]->GetBinContent(
+			      h_RC_map[CentralityIndex]->FindBin(dj.eta(), dj.phi_std()));
+		JEC_PF.SetJetPT(dj.pt() - rc);
+		JEC_PF.SetJetEta(dj.eta());
+		JEC_PF.SetJetPhi(dj.phi_std());
+		double djPt = JEC_PF.GetCorrectedPT();
+		if(djPt < 20.) continue;
+		h_donorJetPt_noInject[0]->Fill(djPt, w_resample);
+		h_donorJetPt_noInject[CentralityIndex]->Fill(djPt, w_resample);
+		double dr = getDr(muEta_inj, muPhi_inj, dj.eta(), dj.phi_std());
+		if(dr < drB){ drB = dr; ptB = djPt; etaB = dj.eta(); phiB = dj.phi_std(); }
+	      }
+	      if(ptB > 0.){
+		h_injMuonDR_donorJetPt_noInject[0]->Fill(drB, ptB, w_resample);
+		h_injMuonDR_donorJetPt_noInject[CentralityIndex]->Fill(drB, ptB, w_resample);
+		if(drB < epsilon_mm){
+		  double pr = getPtRel(muPt_inj, muEta_inj, muPhi_inj, ptB, etaB, phiB);
+		  h_injMuonPtRel_donorJetPt_noInject[0]->Fill(pr, ptB, w_resample);
+		  h_injMuonPtRel_donorJetPt_noInject[CentralityIndex]->Fill(pr, ptB, w_resample);
+		}
+	      }
+
+	      // (b) INJECTED: add the muon to the donor candidates, recluster
+	      std::vector<fastjet::PseudoJet> injInputs = donorInputs;
+	      fastjet::PseudoJet muPJ(muPt_inj*TMath::Cos(muPhi_inj),
+				      muPt_inj*TMath::Sin(muPhi_inj),
+				      muPt_inj*TMath::SinH(muEta_inj),
+				      muPt_inj*TMath::CosH(muEta_inj));
+	      muPJ.set_user_info(new CandInfo(-1, 3));  // index -1 marks the injected muon
+	      injInputs.push_back(muPJ);
+	      fastjet::ClusterSequence injCS(injInputs, donorJetDef);
+	      std::vector<fastjet::PseudoJet> injJets = fastjet::sorted_by_pt(injCS.inclusive_jets(0.));
+
+	      double drI = 999., ptI = -999., etaI = -999., phiI = -999.;
+	      double drO = -999., ptO = -999., etaO = -999., phiO = -999.;   // owning jet
+	      for(const auto& ij : injJets){
+		if(fabs(ij.eta()) > 1.6) continue;
+		double rc = h_RC_map[CentralityIndex]->GetBinContent(
+			      h_RC_map[CentralityIndex]->FindBin(ij.eta(), ij.phi_std()));
+		JEC_PF.SetJetPT(ij.pt() - rc);
+		JEC_PF.SetJetEta(ij.eta());
+		JEC_PF.SetJetPhi(ij.phi_std());
+		double ijPt = JEC_PF.GetCorrectedPT();
+		if(ijPt < 20.) continue;
+		h_donorJetPt_inject[0]->Fill(ijPt, w_resample);
+		h_donorJetPt_inject[CentralityIndex]->Fill(ijPt, w_resample);
+		double dr = getDr(muEta_inj, muPhi_inj, ij.eta(), ij.phi_std());
+		if(dr < drI){ drI = dr; ptI = ijPt; etaI = ij.eta(); phiI = ij.phi_std(); }
+		// is this the jet anti-kT gave the injected muon to?
+		for(const auto& c : ij.constituents()){
+		  if(!c.has_user_info<CandInfo>()) continue;
+		  if(c.user_info<CandInfo>().getIndex() == -1){
+		    drO = dr; ptO = ijPt; etaO = ij.eta(); phiO = ij.phi_std();
+		    break;
+		  }
+		}
+	      }
+	      if(ptI > 0.){
+		h_injMuonDR_donorJetPt_inject[0]->Fill(drI, ptI, w_resample);
+		h_injMuonDR_donorJetPt_inject[CentralityIndex]->Fill(drI, ptI, w_resample);
+		if(drI < epsilon_mm){
+		  double pr = getPtRel(muPt_inj, muEta_inj, muPhi_inj, ptI, etaI, phiI);
+		  h_injMuonPtRel_donorJetPt_inject[0]->Fill(pr, ptI, w_resample);
+		  h_injMuonPtRel_donorJetPt_inject[CentralityIndex]->Fill(pr, ptI, w_resample);
+		}
+	      }
+	      // No dR cut on the constituent-tagged case: the owning jet is the
+	      // owning jet however far its axis ends up from the muon. It must
+	      // still clear the same 20 GeV and |eta| cuts as the others, so a
+	      // muon whose jet falls below threshold contributes to neither.
+	      if(ptO > 0.){
+		h_injMuonDR_donorJetPt_injectConstit[0]->Fill(drO, ptO, w_resample);
+		h_injMuonDR_donorJetPt_injectConstit[CentralityIndex]->Fill(drO, ptO, w_resample);
+		double pr = getPtRel(muPt_inj, muEta_inj, muPhi_inj, ptO, etaO, phiO);
+		h_injMuonPtRel_donorJetPt_injectConstit[0]->Fill(pr, ptO, w_resample);
+		h_injMuonPtRel_donorJetPt_injectConstit[CentralityIndex]->Fill(pr, ptO, w_resample);
+	      }
+	    }
+
 	  }
 
 	  // (real mu, fake jet) template: a genuine reco muon tagged to a
@@ -1709,7 +1914,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  }
 
 	}
-	
+
 	// FastJet anti-kT clustering on PFCs candidates
         std::vector<fastjet::PseudoJet> fjInputs_PFCs;
         
@@ -2350,6 +2555,14 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_fastJetMuonDR_inclusiveClosestFastJet[i]->Write();
       h_muonDR_inclusiveClosestJet[i]->Write();
       h_muonDR_inclusiveClosestJet_triggerOn[i]->Write();
+      h_donorJetPt_noInject[i]->Write();
+      h_donorJetPt_inject[i]->Write();
+      h_injMuonDR_donorJetPt_noInject[i]->Write();
+      h_injMuonPtRel_donorJetPt_noInject[i]->Write();
+      h_injMuonDR_donorJetPt_inject[i]->Write();
+      h_injMuonPtRel_donorJetPt_inject[i]->Write();
+      h_injMuonDR_donorJetPt_injectConstit[i]->Write();
+      h_injMuonPtRel_donorJetPt_injectConstit[i]->Write();
       h_mixedMuonPtRel_recoJetPt[i]->Write();
       h_realMuonPtRel_mixedFastJetPt[i]->Write();
       
