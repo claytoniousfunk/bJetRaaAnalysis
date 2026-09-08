@@ -45,9 +45,11 @@
 //    candidates, RC-background-subtracted. Data and T3 use akCs4PF reco jets.
 //    These are different jet definitions. The mixed-event fastJet is a PROXY
 //    for the fake component of the reco collection, not the same object, and
-//    the two need not have the same pT scale or the same ptRel response. This
-//    is the single largest systematic in the whole construction and it is not
-//    quantified here.
+//    the two need not have the same ptRel response. All four terms are on the
+//    same JEC-corrected, background-subtracted pT scale, so the pT windows do
+//    select comparable jets -- but the underlying jet DEFINITION still differs,
+//    and that residual is the single largest systematic in the construction.
+//    It is not quantified here.
 //
 // 2. T3's denominator is "all reco jets", i.e. genuine + fake. That is exactly
 //    what the inclusion-exclusion above assumes, so it is consistent -- but it
@@ -104,14 +106,7 @@ const char *mcPath =
 const char *nameD  = "h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn";  // real mu + real jet
 const char *nameT2 = "h_realMuonPtRel_mixedFastJetPt";                 // real mu + fake jet
 const char *nameT3 = "h_mixedMuonPtRel_recoJetPt";                     // fake mu + real jet
-// Two candidates for the doubly-fake term. They are the SAME muon on the SAME
-// jet; the only difference is the jet pT scale. Prefer the JEC one, because D
-// and T3 are both on the JEC scale and a mixed-scale subtraction compares
-// different jets in the same nominal pT window. The RC one is the pre-existing
-// histogram on the raw rcSub scale, kept only as a fallback for scans produced
-// before the JEC twin was added.
-const char *nameT4     = "h_mixedMuonPtRel_mixedFastJetPt";            // fake mu + fake jet, JEC scale
-const char *nameT4_raw = "h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC";  // same, raw rcSub scale
+const char *nameT4 = "h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC";      // fake mu + fake jet
 const char *nameMC = "h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_allJets"; // + "_C%dT0"
 
 const char *outDir = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/ptRelDecomposition";
@@ -217,26 +212,24 @@ void plotPtRelTemplateDecomposition()
   if(!fM || fM->IsZombie()){ printf("ERROR: cannot open MC file\n  %s\n", mcPath); return; }
 
   // ---- report which templates the input actually carries -------------------
-  bool haveT2 = false, haveT3 = false, haveT4 = false, t4IsRaw = false;
-  const char *nameT4_jec = nameT4;   // nameT4 is repointed on fallback; keep the JEC name for the message
+  bool haveT2 = false, haveT3 = false, haveT4 = false;
   { TH2D *h=nullptr;
     fS->GetObject(Form("%s_C1",nameT2),h); haveT2 = (h!=nullptr); h=nullptr;
     fS->GetObject(Form("%s_C1",nameT3),h); haveT3 = (h!=nullptr); h=nullptr;
-    fS->GetObject(Form("%s_C1",nameT4),h); haveT4 = (h!=nullptr); h=nullptr;
-    if(!haveT4){
-      fS->GetObject(Form("%s_C1",nameT4_raw),h);
-      if(h){ haveT4 = true; t4IsRaw = true; nameT4 = nameT4_raw; } } }
+    fS->GetObject(Form("%s_C1",nameT4),h); haveT4 = (h!=nullptr); }
 
   printf("\n=== template availability in the input scan ===\n");
   printf("  D  real mu + real jet   %-40s present\n", nameD);
   printf("  T2 real mu + fake jet   %-40s %s\n", nameT2, haveT2 ? "present" : "*** MISSING ***");
   printf("  T3 fake mu + real jet   %-40s %s\n", nameT3, haveT3 ? "present" : "*** MISSING ***");
   printf("  T4 fake mu + fake jet   %-40s %s\n", nameT4, haveT4 ? "present" : "*** MISSING ***");
-  if(t4IsRaw)
-    printf("\n  WARNING: falling back to the RAW rcSub-scale doubly-fake histogram --\n"
-           "           its jet pT is not JEC-corrected while D and T3 are, so the\n"
-           "           jet pT windows do not select the same jets on both sides of\n"
-           "           the subtraction. Rerun the scan to pick up %s.\n", nameT4_jec);
+  // T2 and T3 did not exist before the rescan, and in the same scan the RC
+  // histogram was still filled on the raw rcSub jet pT scale. Their absence is
+  // therefore also the signal that T4 is on the wrong scale.
+  if(!haveT2 || !haveT3)
+    printf("\n  WARNING: in a scan this old, %s\n"
+           "           is filled on the RAW rcSub jet pT scale, not the JEC one.\n"
+           "           Its pT windows do not select the same jets as D and T3.\n", nameT4);
   if(!haveT2 || !haveT3){
     printf("\n  NOTE: the missing templates were added to PbPb_pfCandAnalyzer.C AFTER\n");
     printf("        this scan was produced. The decomposition below is PARTIAL --\n");
