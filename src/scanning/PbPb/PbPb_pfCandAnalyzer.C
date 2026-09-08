@@ -2097,13 +2097,22 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  if(etaPhiMask(y,z)) continue;
 	}
 
+	// JEU must follow the jet collection, exactly as JEC does above. Both
+	// branches previously passed JEU_Calo, so a PF jet was assigned the
+	// AK4Calo uncertainty and JEU_PF was declared but never used anywhere.
+	// Harmless while apply_JEU_shift_up/down are both false -- applyJEU_JER
+	// only reads the JEU inside those branches -- but wrong the moment a JEU
+	// systematic is switched on.
+	//
+	// The else branch covers akCs4PF and, via useFlowJetsOverride,
+	// akFlowPuCs4PF; both are PF collections, so JEU_PF is right for each.
 	if(useCaloJetsOverride){
 	  x = applyJEU_JER(x, JEU_Calo, JER_fxn, randomGenerator,
 			   fitFxn_PYTHIA_JERCorrection,
 			   neutrino_tag_fraction, neutrino_energy_map);
 	}
 	else{
-	  x = applyJEU_JER(x, JEU_Calo, JER_fxn, randomGenerator,
+	  x = applyJEU_JER(x, JEU_PF, JER_fxn, randomGenerator,
 			   fitFxn_PYTHIA_JERCorrection,
 			   neutrino_tag_fraction, neutrino_energy_map);
 	}
