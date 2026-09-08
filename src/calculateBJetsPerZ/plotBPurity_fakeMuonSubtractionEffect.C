@@ -1,4 +1,30 @@
-// Effect of the fake-muon ptRel subtraction on the b-jet template fit purity.
+// Effect of the ptRel background subtraction on the b-jet template fit purity.
+//
+// UPDATED 2026-09-08. Two changes from the version that produced the figures in
+// the 2026-09-01 talk:
+//
+//   1. BOTH background pairings are now subtracted, matching
+//      S = D - T2 - T3 in plotPtRelTemplateDecomposition.C:
+//        T2  h_mixedMuonPtRel_recoJetPt       fake mu + real reco jet
+//        T3  h_fastJetMuonPtRel_..._bkgSub_RC fake mu + mixed fastJet
+//      Only T3 came off before; T2 did not exist in the scan until 2026-09-08.
+//      Both describe a muon that is not from the jet it was tagged to.
+//
+//   2. The source is the 100-resample scan, ~95x the mixed-event statistics of
+//      the file used before, so the subtracted templates are far less noisy.
+//
+//   Also relevant: T3's jet pT axis moved from raw rcSub to JEC-corrected on
+//   2026-09-08, so it now shares the data's pT scale. In the earlier figures a
+//   given jet pT window selected a systematically different jet population on
+//   the template side than on the data side.
+//
+//   3. The fit range is 0-4 GeV rather than 0-3. T2 pairs a muon
+//      against a jet axis computed without that muon (see the geometry caveat
+//      in plotPtRelTemplateDecomposition.C), which puts its mean ptRel near
+//      5 GeV in central events -- a 0-3 window excluded nearly all of it, so
+//      the template could not influence the fit whatever its size. See the
+//      note on low_x/high_x: the range choice moves the baseline purity by
+//      more than the subtraction does, so it is not a neutral knob.
 //
 // Reproduces the data-preparation and RooFit template-fit machinery from
 // templateFitter() in calculateBJetsPerZ.cc (that file's PbPb, isData=1,
@@ -51,9 +77,11 @@
 // SumW2Error, range 0-5 GeV). fb.getVal()/getError() is the b-purity and its
 // fit error, matching templateFitter()'s returnValueIndex 1/2 exactly.
 //
-// The fake-muon subtraction itself (when enabled) is templateFitter() lines
-// 313-319 verbatim: per-event-normalise both data and fake, subtract, then
-// scale back to the data's raw count.
+// The subtraction itself follows templateFitter() lines 313-319: per-event
+// normalise data and each template, subtract, then scale back to the data's raw
+// count so the fit sees the data's original normalisation. The only change is
+// that two templates come off instead of one; they share fakeFile's event count
+// so a single division serves both.
 //
 // RATIO PANEL ERRORS treat the two fits (with/without subtraction) as
 // independent when propagating to the ratio. They are not independent -- both
@@ -80,7 +108,15 @@ const char *bJetFile =
 const char *muJetFile =
   "/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIAHYDJET/latest/PYTHIAHYDJET_MuJet_pThat-30_mu12_pTmu-15_tight_mu12TriggerEfficiencyCorrection_vzReweight_hiBinReweight_hiBinShift-10_leadingXjetDumpFilter_jetTrkMaxFilter_removeHYDJETjet0p35CutOnGen_WDecayFilter_weightCut_2026-2-12.root";
 const char *fakeFile =
-  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_SingleMuon_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPFClustering_pseudoJetCandPtMin-0.0_2026-9-1_ultraFineCentBins.root";
+  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/"
+  "PbPb_SingleMuon_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_"
+  "mixedEventPFClustering_fastJetResamples-100_2026-9-8_ultraFineCentBins.root";
+
+// The two background templates of the ptRel decomposition
+// (plotPtRelTemplateDecomposition.C). Both describe a muon that is NOT from the
+// jet it was tagged to; they differ only in whether the jet is real.
+const char *bkgT2 = "h_mixedMuonPtRel_recoJetPt";                 // fake mu + real reco jet
+const char *bkgT3 = "h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC";  // fake mu + mixed fastJet
 
 const char *outDir = "../../figures/bPurity/";
 
@@ -96,7 +132,17 @@ double muRelPtAxis[M] = {0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3
 const int    N_jetPtAxisEdges = 8;
 double       jetPtAxisEdges[N_jetPtAxisEdges] = {80,90,100,120,150,200,300,500};
 
-const double low_x = 0.0, high_x = 3.0;
+// RooFit fit range, the named "fit_region" below. The observable itself spans
+// the full muRelPtAxis (0-5 GeV); this restricts where the likelihood is
+// evaluated. This is NOT a neutral choice -- the uncorrected purity in 0-10%,
+// 80-90 GeV reads 0.767 / 0.843 / 0.828 at 0-3 / 0-5 / 0-4, so the range moves
+// the baseline by more than the background subtraction does. Set deliberately.
+//
+// History: 0-3 originally; widened to 0-5 on 2026-09-08 because T2's weight
+// sits near 5 GeV (mean ~5.1 in central events) and a 0-3 window excluded
+// almost all of it, leaving the template unable to affect the fit whatever its
+// size; then set to 0-4.
+const double low_x = 0.0, high_x = 4.0;
 const double c_multiplier = 1.0;
 const double bGS_multiplier = 1.2;   // gluon-splitting enhancement factor
 
@@ -109,15 +155,15 @@ TFile *fData = nullptr, *fDiJet = nullptr, *fBJet = nullptr, *fMuJet = nullptr, 
 
 // Merge fine slices sliceLo[classIdx]..sliceHi[classIdx] of the fake-muon
 // ptRel-vs-jetPt map into one coarse-class histogram, and its event count.
-static TH2D* mergeFakeCoarse(int classIdx, double &Nevents, int tag){
+static TH2D* mergeFakeCoarse(int classIdx, const char *base, double &Nevents, int tag){
   TH2D *sum = nullptr;
   Nevents = 0.;
   for(int si = sliceLo[classIdx]; si <= sliceHi[classIdx]; si++){
     TH2D *h = nullptr; TH1D *v = nullptr;
-    fFake->GetObject(Form("h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC_C%d", si), h);
+    fFake->GetObject(Form("%s_C%d", base, si), h);
     fFake->GetObject(Form("h_vz_C%d", si), v);
-    if(!h || !v){ printf("WARNING: fake-muon slice C%d missing\n", si); continue; }
-    if(!sum){ sum = (TH2D*) h->Clone(Form("fakeSum_%d_%d", classIdx, tag)); sum->SetDirectory(nullptr); }
+    if(!h || !v){ printf("WARNING: %s slice C%d missing\n", base, si); continue; }
+    if(!sum){ sum = (TH2D*) h->Clone(Form("bkgSum_%s_%d_%d", base, classIdx, tag)); sum->SetDirectory(nullptr); }
     else sum->Add(h);
     Nevents += v->Integral();
   }
@@ -164,18 +210,35 @@ static void fitBPurity(int classIdx, double lowPt, double highPt, bool doFakeSub
   h_data->SetDirectory(nullptr);
 
   if(doFakeSub){
-    double Nfake = 0.;
-    TH2D *H_fake = mergeFakeCoarse(classIdx, Nfake, tag);
-    if(!H_fake || Nfake <= 0.){ printf("ERROR: fake-muon map missing/empty for C%d\n", centBin); purity = purityErr = -1.; return; }
-    TH1D *h_fake = H_fake->ProjectionX(Form("h_fake_%d", tag), b1, b2);
-    h_fake->SetDirectory(nullptr);
+    // Subtract BOTH background pairings, matching S = D - T2 - T3 in
+    // plotPtRelTemplateDecomposition.C. Previously only T3 came off.
+    //
+    // Both templates and the data are put on a per-event footing before the
+    // subtraction and the result scaled back to the data's raw count, so the
+    // fit sees a histogram with the data's original normalisation. That is
+    // templateFitter()'s convention, kept so this stays comparable to it; the
+    // two templates share fakeFile's event count so one division serves both.
+    const char *base[2] = {bkgT2, bkgT3};
+    TH1D *h_bkg[2] = {nullptr, nullptr};
+    double Nbkg[2] = {0., 0.};
+    for(int t = 0; t < 2; t++){
+      TH2D *H = mergeFakeCoarse(classIdx, base[t], Nbkg[t], tag*10 + t);
+      if(!H || Nbkg[t] <= 0.){
+        printf("ERROR: %s missing/empty for C%d\n", base[t], centBin);
+        purity = purityErr = -1.; return;
+      }
+      h_bkg[t] = H->ProjectionX(Form("h_bkg%d_%d", t, tag), b1, b2);
+      h_bkg[t]->SetDirectory(nullptr);
+      h_bkg[t]->Scale(1./Nbkg[t]);
+      delete H;
+    }
 
     h_data->Scale(1./h_vz_data->Integral());
-    h_fake->Scale(1./Nfake);
-    h_data->Add(h_fake, -1.);
+    h_data->Add(h_bkg[0], -1.);
+    h_data->Add(h_bkg[1], -1.);
     h_data->Scale(h_vz_data->Integral());
 
-    delete h_fake; delete H_fake;
+    delete h_bkg[0]; delete h_bkg[1];
   }
 
   TH1D *h_b   = H_b  ->ProjectionX(Form("h_b_%d", tag),   b1, b2); h_b  ->SetDirectory(nullptr);
@@ -329,8 +392,8 @@ void plotBPurity_fakeMuonSubtractionEffect(){
 
     TLegend *leg = new TLegend(0.55, 0.70, 0.90, 0.86);
     leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.036);
-    leg->AddEntry(gNo, "no fake-muon subtraction", "lp");
-    leg->AddEntry(gWith, "with fake-muon subtraction", "lp");
+    leg->AddEntry(gNo, "no background subtraction", "lp");
+    leg->AddEntry(gWith, "with T2 + T3 subtraction", "lp");
     leg->Draw();
 
     TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.036);

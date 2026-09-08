@@ -62,10 +62,17 @@
 
 #include "../../../headers/functions/divideByBinwidth.h"
 
+// Both from the post-2026-09-08 scan generation, so the jet pT axis is
+// JEC-corrected on each side and the tagging muon is the leading constituent in
+// each. checkGeneration below enforces that.
 const char *sameFile =
-  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_SingleMuon_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-28_ultraFineCentBins.root";
+  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/"
+  "PbPb_SingleMuon_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_"
+  "sameEventPFClustering_2026-9-8_ultraFineCentBins.root";
 const char *mixedFile =
-  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_SingleMuon_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPFClustering_pseudoJetCandPtMin-0.0_2026-9-1_ultraFineCentBins.root";
+  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/"
+  "PbPb_SingleMuon_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_"
+  "mixedEventPFClustering_fastJetResamples-100_2026-9-8_ultraFineCentBins.root";
 
 const char *histBase = "h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC";
 
@@ -85,8 +92,15 @@ const double ptHi[NPt] = {60, 80, 120};
 const char *sameHex  = "#0072B2";   // Okabe-Ito blue
 const char *mixedHex = "#D55E00";   // Okabe-Ito vermillion
 
-const int    NEdge = 6;
-double       edgeAxis[NEdge] = {0, 0.5, 1.0, 1.5, 2.5, 5.0};
+// Retuned 2026-09-08 for the 100-resample mixed scan. The old 5-bin scheme was
+// set by mixed-event counts in the tens; the mixed side is now ~100x larger
+// (33047 vs 252 in central 50-60 GeV) and the SAME-event side is the limiting
+// one, from 3397 down to 152 in the sparsest panel. 15 bins keeps ~10 entries
+// per bin there while resolving the peak in the classes that can support it.
+// Native axis is 0.1 wide, so every edge is a legal merge.
+const int    NEdge = 16;
+double       edgeAxis[NEdge] = {0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8,
+                                2.0, 2.5, 3.0, 3.5, 4.0, 5.0};
 
 // Same-event and mixed-event yields differ by 1-2 orders of magnitude
 // depending on class/pT (mixed is the rare combinatorial estimate), so the
@@ -117,9 +131,15 @@ bool isNewGeneration(TFile *f)
 
 // sameOverride / mixedOverride let a fresh scan be dropped in without editing
 // the constants above.
+// allowMismatch: draw anyway when the two scans are from different generations.
+// The refusal exists because such a plot looks perfectly reasonable, so this
+// does two things to stop it being mistaken for a clean one later -- it stamps
+// every canvas with a warning, and if no suffix is given it forces
+// "_MIXEDGEN" so the files cannot overwrite a valid set.
 void plotFastJetMuonPtRel_sameVsMixedEvent_coarseCent(const char *sameOverride  = nullptr,
                                                       const char *mixedOverride = nullptr,
-                                                      const char *outSuffix     = "")
+                                                      const char *outSuffix     = "",
+                                                      bool        allowMismatch = false)
 {
   gStyle->SetOptStat(0);
   gSystem->mkdir(outDir, kTRUE);
@@ -139,13 +159,23 @@ void plotFastJetMuonPtRel_sameVsMixedEvent_coarseCent(const char *sameOverride  
   bool newS = isNewGeneration(fS), newM = isNewGeneration(fM);
   printf("same-event : %s\n  generation: %s\n", usedSame,  newS ? "post-2026-09-08" : "pre-2026-09-08");
   printf("mixed-event: %s\n  generation: %s\n", usedMixed, newM ? "post-2026-09-08" : "pre-2026-09-08");
-  if(newS != newM){
+  bool genMismatch = (newS != newM);
+  if(genMismatch && allowMismatch){
+    printf("\n*** SCAN GENERATIONS DIFFER -- drawing anyway (allowMismatch=true) ***\n"
+           "    The same/mixed difference below is confounded with a raw-vs-JEC jet\n"
+           "    pT axis and a different choice of tagging muon. Every canvas is\n"
+           "    stamped, and the filenames carry a suffix so they cannot overwrite\n"
+           "    a clean set.\n");
+    if(!outSuffix || !outSuffix[0]) outSuffix = "_MIXEDGEN";
+  }
+  if(genMismatch && !allowMismatch){
     printf("\nREFUSING TO PLOT: the two scans are from different generations of\n"
            "PbPb_pfCandAnalyzer.C, so h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC\n"
            "does not mean the same thing in each (jet pT axis raw vs JEC, and a\n"
            "different choice of tagging muon). The same/mixed difference this\n"
            "plot is for would be confounded with both. See the header.\n\n"
-           "Fix: rerun the %s scan with the current code.\n",
+           "Fix: rerun the %s scan with the current code, or pass\n"
+           "allowMismatch=true to draw it anyway with a warning stamp.\n",
            newS ? "MIXED-event" : "SAME-event");
     return;
   }
@@ -246,6 +276,13 @@ void plotFastJetMuonPtRel_sameVsMixedEvent_coarseCent(const char *sameOverride  
       la.DrawLatex(0.19, 0.90, Form("PbPb SingleMuon (5.02 TeV), %s", classLabel[ci]));
       la.DrawLatex(0.19, 0.855, Form("%.0f < p_{T}^{jet} < %.0f GeV, |#eta^{jet}| < 1.6", ptLo[p], ptHi[p]));
       la.DrawLatex(0.19, 0.81, "p_{T}^{#mu} > 15 GeV, |#eta^{#mu}| < 2");
+      if(genMismatch){
+        TLatex lw; lw.SetNDC(); lw.SetTextFont(62); lw.SetTextSize(0.030);
+        lw.SetTextColor(kRed+1);
+        lw.SetTextSize(0.026);
+        lw.DrawLatex(0.19, 0.775, "MIXED SCAN GENERATIONS: jet #it{p}_{T} axis and muon choice");
+        lw.DrawLatex(0.19, 0.745, "differ between the two curves");
+      }
 
       c->cd();
       TPad *pDn = new TPad("pDn", "", 0, 0, 1, split);
