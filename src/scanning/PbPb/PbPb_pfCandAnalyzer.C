@@ -249,6 +249,32 @@ TH2D *h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[NCentralityIndices];
 TH2D *h_fastJetMuonDR_inclusiveClosestFastJet[NCentralityIndices];
 TH2D *h_muonDR_inclusiveClosestJet[NCentralityIndices];
 
+// --- ptRel background templates for the muon-tagged-jet decomposition ---
+// The measured data ptRel (h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn) is a
+// sum of four pairings:
+//   (real mu, real jet)   the signal we want to isolate
+//   (real mu, fake jet)   -> h_realMuonPtRel_mixedFastJetPt   (mixed-event jet)
+//   (fake mu, real jet)   -> h_mixedMuonPtRel_recoJetPt       (mixed-event muon)
+//   (fake mu, fake jet)   -> h_mixedMuonPtRel_mixedFastJetPt   (both mixed)
+// All three require doEventMixing and are filled ONLY inside the mixed-event
+// branch; they stay empty in a same-event scan.
+//
+// All three carry JEC-corrected jet pT, matching the data histogram they are
+// subtracted from. This is why the doubly-fake term is a new histogram rather
+// than the pre-existing h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC, which holds
+// the same muon on the same jet but on the raw rcSub scale.
+//
+// All apply the SAME dR < epsilon_mm tagging criterion the real analysis uses
+// (findRecoMuonTag), so the per-event rates are directly comparable to data.
+// Note h_muonDR_inclusiveClosestJet, by contrast, has NO dR cut -- it records
+// the closest jet at any distance -- so it cannot be reused for this.
+TH2D *h_mixedMuonPtRel_recoJetPt[NCentralityIndices];
+TH2D *h_realMuonPtRel_mixedFastJetPt[NCentralityIndices];
+// JEC-scale twin of h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC. Same muon, same
+// jet, only the pT scale differs -- needed because the other three terms of the
+// decomposition are all on the JEC scale and the RC histogram is not.
+TH2D *h_mixedMuonPtRel_mixedFastJetPt[NCentralityIndices];
+
 
 // RC eta/phi maps loaded from external file at run time
 TProfile2D  *h_RC_map[NCentralityIndices];
@@ -532,6 +558,9 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[i] = new TH2D(Form("h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC_C%i",i),Form("fastJet muon #Delta R vs fastJet #it{p}_{T}, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
 	h_fastJetMuonDR_inclusiveClosestFastJet[i] = new TH2D(Form("h_fastJetMuonDR_inclusiveClosestFastJet_C%i",i),Form("fastJet muon #Delta R vs fastJet #it{p}_{T}, inclusive closest fastJet, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
 	h_muonDR_inclusiveClosestJet[i] = new TH2D(Form("h_muonDR_inclusiveClosestJet_C%i",i),Form("muon #Delta R vs jet, inclusive closest jet, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
+	h_mixedMuonPtRel_recoJetPt[i] = new TH2D(Form("h_mixedMuonPtRel_recoJetPt_C%i",i),Form("mixed-event muon #it{p}_{T}^{rel} vs reco jet #it{p}_{T}, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_realMuonPtRel_mixedFastJetPt[i] = new TH2D(Form("h_realMuonPtRel_mixedFastJetPt_C%i",i),Form("real muon #it{p}_{T}^{rel} vs mixed-event fastJet #it{p}_{T}, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_mixedMuonPtRel_mixedFastJetPt[i] = new TH2D(Form("h_mixedMuonPtRel_mixedFastJetPt_C%i",i),Form("mixed-event muon #it{p}_{T}^{rel} vs mixed-event fastJet #it{p}_{T} (JEC), %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{p}_{T}^{rel} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_mupt_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{p}_{T} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NMuPtBins,muPtMin,muPtMax,NPtBins,ptMin,ptMax);
 	h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_mueta_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{#eta} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[0], centEdges[NCentralityIndices-1]),NTrkEtaBins,trkEtaMin,trkEtaMax,NPtBins,ptMin,ptMax);
@@ -623,6 +652,9 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[i] = new TH2D(Form("h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC_C%i",i),Form("fastJet muon #Delta R vs fastJet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
 	h_fastJetMuonDR_inclusiveClosestFastJet[i] = new TH2D(Form("h_fastJetMuonDR_inclusiveClosestFastJet_C%i",i),Form("fastJet muon #Delta R vs fastJet #it{p}_{T}, inclusive closest fastJet, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
 	h_muonDR_inclusiveClosestJet[i] = new TH2D(Form("h_muonDR_inclusiveClosestJet_C%i",i),Form("muon #Delta R vs jet, inclusive closest jet, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
+	h_mixedMuonPtRel_recoJetPt[i] = new TH2D(Form("h_mixedMuonPtRel_recoJetPt_C%i",i),Form("mixed-event muon #it{p}_{T}^{rel} vs reco jet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_realMuonPtRel_mixedFastJetPt[i] = new TH2D(Form("h_realMuonPtRel_mixedFastJetPt_C%i",i),Form("real muon #it{p}_{T}^{rel} vs mixed-event fastJet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1],centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_mixedMuonPtRel_mixedFastJetPt[i] = new TH2D(Form("h_mixedMuonPtRel_mixedFastJetPt_C%i",i),Form("mixed-event muon #it{p}_{T}^{rel} vs mixed-event fastJet #it{p}_{T} (JEC), %i < hiBin < %i",centEdges[i-1],centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{p}_{T}^{rel} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_mupt_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{p}_{T} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NMuPtBins,muPtMin,muPtMax,NPtBins,ptMin,ptMax);
 	h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_mueta_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("muon #it{#eta} vs jet #it{p}_{T}, %i < hiBin < %i",centEdges[i-1], centEdges[i]),NTrkEtaBins,trkEtaMin,trkEtaMax,NPtBins,ptMin,ptMax);
@@ -751,6 +783,9 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[i]->Sumw2();
       h_fastJetMuonDR_inclusiveClosestFastJet[i]->Sumw2();
       h_muonDR_inclusiveClosestJet[i]->Sumw2();
+      h_mixedMuonPtRel_recoJetPt[i]->Sumw2();
+      h_realMuonPtRel_mixedFastJetPt[i]->Sumw2();
+      h_mixedMuonPtRel_mixedFastJetPt[i]->Sumw2();
 
       h_nPFcand[i]->Sumw2();
       h_nPFcandCS[i]->Sumw2();
@@ -1377,6 +1412,19 @@ void PbPb_pfCandAnalyzer(int group = 1){
 		h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetMuonPtRel,fastJetPt_rcSub,w_resample);
 		h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetMuonDR,fastJetPt_rcSub,w_resample);
 		h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetMuonDR,fastJetPt_rcSub,w_resample);
+
+		// (fake mu, fake jet) on the JEC scale -- the doubly-fake term of the
+		// ptRel inclusion-exclusion. Same muon and same jet as the RC
+		// histogram immediately above; the ONLY difference is that the jet pT
+		// is JEC-corrected, so that this is commensurate with
+		// h_realMuonPtRel_mixedFastJetPt, h_mixedMuonPtRel_recoJetPt and the
+		// data, all of which are on the JEC scale. Kept as a separate
+		// histogram rather than changing the RC one in place because that one
+		// already has downstream consumers on the raw scale.
+		double mixedMuonPtRel_JEC = getPtRel(fastJetMuonPt,fastJetMuonEta,fastJetMuonPhi,
+						     fastJetPt_JEC_rcSub,jet.eta(),jet.phi_std());
+		h_mixedMuonPtRel_mixedFastJetPt[0]->Fill(mixedMuonPtRel_JEC,fastJetPt_JEC_rcSub,w_resample);
+		h_mixedMuonPtRel_mixedFastJetPt[CentralityIndex]->Fill(mixedMuonPtRel_JEC,fastJetPt_JEC_rcSub,w_resample);
 	      }
 
 	      h_fastJetPt_PF_JEC_bkgSub_RC[0]->Fill(fastJetPt_JEC_rcSub, w_resample);
@@ -1493,7 +1541,11 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 	    double fastJetMuonDR_recoJet_i = 999.;
 	    double recoJet_match_i = 0.;
-	    
+	    // jet axis of the closest-reco-jet match, kept so ptRel can be formed
+	    // below -- jet pT alone is not enough
+	    double recoJetEta_match_i = -999.;
+	    double recoJetPhi_match_i = -999.;
+
 	    // loop through jets
 	    for(int j = 0; j < em->njet; j++){
 
@@ -1525,6 +1577,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	      if(dR_ij < fastJetMuonDR_recoJet_i) {
 		fastJetMuonDR_recoJet_i = dR_ij;
 		recoJet_match_i = jetPt_j;
+		recoJetEta_match_i = jetEta_j;
+		recoJetPhi_match_i = jetPhi_j;
 	      }
 
 	      
@@ -1533,9 +1587,75 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 	    h_muonDR_inclusiveClosestJet[0]->Fill(fastJetMuonDR_recoJet_i,recoJet_match_i,w_resample);
 	    h_muonDR_inclusiveClosestJet[CentralityIndex]->Fill(fastJetMuonDR_recoJet_i,recoJet_match_i,w_resample);
-	    
+
+	    // (fake mu, real jet) template: a mixed-event PF muon that lands close
+	    // enough to a REAL reco jet to have been tagged. The dR < epsilon_mm
+	    // requirement is what makes this a background estimate for the data
+	    // tagging rate rather than just a nearest-neighbour distance -- the
+	    // h_muonDR histogram above deliberately has no such cut.
+	    if(fastJetMuonDR_recoJet_i < epsilon_mm && recoJet_match_i > 0.){
+	      double mixedMuonPtRel_i = getPtRel(mixedEventPFCandidates_pt.at(i),
+						 mixedEventPFCandidates_eta.at(i),
+						 mixedEventPFCandidates_phi.at(i),
+						 recoJet_match_i,
+						 recoJetEta_match_i,
+						 recoJetPhi_match_i);
+	      h_mixedMuonPtRel_recoJetPt[0]->Fill(mixedMuonPtRel_i,recoJet_match_i,w_resample);
+	      h_mixedMuonPtRel_recoJetPt[CentralityIndex]->Fill(mixedMuonPtRel_i,recoJet_match_i,w_resample);
+	    }
+
 	  }
-	  
+
+	  // (real mu, fake jet) template: a genuine reco muon tagged to a
+	  // MIXED-EVENT fastJet, i.e. a combinatorial jet that has nothing to do
+	  // with this muon. findRecoMuonTag is reused verbatim so the muon
+	  // selection (tight quality ID, pT window, |eta|<2, W-decay filter,
+	  // dR < epsilon_mm) is byte-identical to the data tagging -- writing the
+	  // cuts out by hand here would risk the template and the data drifting
+	  // apart silently.
+	  //
+	  // matchFlagR_mixedJet is a SEPARATE array from the real-jet matching:
+	  // sharing it would let a muon consumed here suppress a later real-jet
+	  // tag in the same event (or vice versa) and bias both.
+	  // Sized to match the matchFlagR[10] convention used above; em->nMu is
+	  // not bounded by 10 anywhere, so the guard below is what keeps this
+	  // in range.
+	  {
+	    int matchFlagR_mixedJet[10] = {0,0,0,0,0,0,0,0,0,0};
+	    if(em->nMu <= 10){
+	      for(const auto& jet : jets){
+		if(fabs(jet.eta()) > 1.6) continue;
+		if(!h_RC_map[CentralityIndex]) continue;
+		double rcMeanPt_m = h_RC_map[CentralityIndex]->GetBinContent(
+				      h_RC_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
+		double jetPt_rcSub_m = jet.pt() - rcMeanPt_m;
+		JEC_PF.SetJetPT(jetPt_rcSub_m);
+		JEC_PF.SetJetEta(jet.eta());
+		JEC_PF.SetJetPhi(jet.phi_std());
+		double jetPt_JEC_rcSub_m = JEC_PF.GetCorrectedPT();
+		if(jetPt_JEC_rcSub_m < 20.) continue;
+
+		// JEC-corrected pT, NOT the raw rcSub one, for both the ptRel and
+		// the Y axis. This template is subtracted from
+		// h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn, whose jet pT is
+		// JEC-corrected; filling on the raw scale would mean a "80-100 GeV"
+		// window selected systematically harder jets here than in the data
+		// it corrects, and ptRel itself would be built on a different jet
+		// momentum. Note this deliberately differs from the neighbouring
+		// h_fastJetMuonPtRel_..._RC fill, which is on the raw rcSub scale --
+		// that one is pre-existing with downstream consumers, so it is left
+		// alone and given a JEC-scale twin instead (see
+		// h_mixedMuonPtRel_mixedFastJetPt).
+		double muPtRel_m = -999., muPt_m = -999., muEta_m = -999., muPhi_m = -999., muJetDr_m = -999.;
+		if(findRecoMuonTag(em, jetPt_JEC_rcSub_m, jet.eta(), jet.phi_std(), matchFlagR_mixedJet,
+				   muPtRel_m, muPt_m, muEta_m, muPhi_m, muJetDr_m)){
+		  h_realMuonPtRel_mixedFastJetPt[0]->Fill(muPtRel_m,jetPt_JEC_rcSub_m,w_resample);
+		  h_realMuonPtRel_mixedFastJetPt[CentralityIndex]->Fill(muPtRel_m,jetPt_JEC_rcSub_m,w_resample);
+		}
+	      }
+	    }
+	  }
+
 	}
 	
 	// FastJet anti-kT clustering on PFCs candidates
@@ -2177,6 +2297,9 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[i]->Write();
       h_fastJetMuonDR_inclusiveClosestFastJet[i]->Write();
       h_muonDR_inclusiveClosestJet[i]->Write();
+      h_mixedMuonPtRel_recoJetPt[i]->Write();
+      h_realMuonPtRel_mixedFastJetPt[i]->Write();
+      h_mixedMuonPtRel_mixedFastJetPt[i]->Write();
       
       h_nPFcand[i]->Write();
       h_nPFcandCS[i]->Write();
