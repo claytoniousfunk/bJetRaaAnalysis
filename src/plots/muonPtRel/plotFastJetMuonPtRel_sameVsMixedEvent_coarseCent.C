@@ -13,6 +13,29 @@
 // ratio panel (mixed/same) is the combinatorial-background fraction of the
 // measured yield per pT bin -- how much of what you see is fake.
 //
+// SCAN-VERSION REQUIREMENT (added 2026-09-08). Both files must come from the
+// same generation of PbPb_pfCandAnalyzer.C. Three commits that day changed what
+// h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC contains:
+//
+//   e52a4682  jet pT on the Y axis moved from raw rcSub to JEC-corrected, so a
+//             "50 < pT < 60" window selects a different jet population
+//             (JEC ~ 1.16 here). ptRel itself is unaffected -- getPtRel divides
+//             by |jet|^2, so the magnitude cancels -- but the binning is not.
+//   3490cf89  the tagging muon became the LEADING muon constituent instead of
+//             whichever came last in constituent order.
+//   3490cf89  T2/T3 gained a trigger gate (does not touch this histogram).
+//
+// Mixing generations folds those into the same/mixed difference this plot is
+// meant to isolate: comparing the raw-scale 2026-9-1 mixed file against the
+// JEC-scale 2026-9-8 one, same dataset and same histogram, the ptRel mean in a
+// fixed window moves by up to 2.5x. checkScanGeneration() below refuses that
+// combination rather than drawing it.
+//
+// The marker is whether the file carries h_mixedMuonPtRel_recoJetPt: that key
+// is booked and written unconditionally by the new code, and is simply empty in
+// a same-event scan, so its PRESENCE identifies the generation regardless of
+// doEventMixing.
+//
 // INPUT FILES. Same-event: 2026-8-28 (matches the reference macro). Mixed-
 // event: 2026-9-1, NOT the 2026-8-27 file the reference macro uses. Checked
 // before choosing it: the 2026-8-27 mixed-event file (despite carrying no
@@ -86,14 +109,46 @@ static TH2D* mergeCoarse(TFile *f, int ci, double &Nevents){
   return sum;
 }
 
-void plotFastJetMuonPtRel_sameVsMixedEvent_coarseCent(){
+// true if the file was written by the post-2026-09-08 scan
+bool isNewGeneration(TFile *f)
+{
+  return f->GetListOfKeys()->FindObject("h_mixedMuonPtRel_recoJetPt_C1") != nullptr;
+}
+
+// sameOverride / mixedOverride let a fresh scan be dropped in without editing
+// the constants above.
+void plotFastJetMuonPtRel_sameVsMixedEvent_coarseCent(const char *sameOverride  = nullptr,
+                                                      const char *mixedOverride = nullptr,
+                                                      const char *outSuffix     = "")
+{
   gStyle->SetOptStat(0);
   gSystem->mkdir(outDir, kTRUE);
 
-  TFile *fS = TFile::Open(sameFile);
-  TFile *fM = TFile::Open(mixedFile);
-  if(!fS || fS->IsZombie()){ printf("ERROR: cannot open %s\n", sameFile); return; }
-  if(!fM || fM->IsZombie()){ printf("ERROR: cannot open %s\n", mixedFile); return; }
+  const char *usedSame  = (sameOverride  && sameOverride[0])  ? sameOverride  : sameFile;
+  const char *usedMixed = (mixedOverride && mixedOverride[0]) ? mixedOverride : mixedFile;
+
+  TFile *fS = TFile::Open(gSystem->ExpandPathName(usedSame));
+  TFile *fM = TFile::Open(gSystem->ExpandPathName(usedMixed));
+  if(!fS || fS->IsZombie()){ printf("ERROR: cannot open %s\n", usedSame); return; }
+  if(!fM || fM->IsZombie()){ printf("ERROR: cannot open %s\n", usedMixed); return; }
+
+  // Refuse, do not warn: a plot drawn from mismatched generations looks
+  // perfectly reasonable and there is nothing on it to tell the reader that
+  // most of the same/mixed difference is a jet pT scale and a muon-choice
+  // change rather than physics.
+  bool newS = isNewGeneration(fS), newM = isNewGeneration(fM);
+  printf("same-event : %s\n  generation: %s\n", usedSame,  newS ? "post-2026-09-08" : "pre-2026-09-08");
+  printf("mixed-event: %s\n  generation: %s\n", usedMixed, newM ? "post-2026-09-08" : "pre-2026-09-08");
+  if(newS != newM){
+    printf("\nREFUSING TO PLOT: the two scans are from different generations of\n"
+           "PbPb_pfCandAnalyzer.C, so h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC\n"
+           "does not mean the same thing in each (jet pT axis raw vs JEC, and a\n"
+           "different choice of tagging muon). The same/mixed difference this\n"
+           "plot is for would be confounded with both. See the header.\n\n"
+           "Fix: rerun the %s scan with the current code.\n",
+           newS ? "MIXED-event" : "SAME-event");
+    return;
+  }
 
   int colS = TColor::GetColor(sameHex);
   int colM = TColor::GetColor(mixedHex);
@@ -215,7 +270,7 @@ void plotFastJetMuonPtRel_sameVsMixedEvent_coarseCent(){
       one->SetLineStyle(2); one->SetLineColor(kGray+2); one->Draw();
 
       TString out = TString(outDir) +
-        Form("muonPtRel_sameVsMixed_coarseCent_%s_pt%.0fto%.0f.pdf", classTag[ci], ptLo[p], ptHi[p]);
+        Form("muonPtRel_sameVsMixed_coarseCent_%s_pt%.0fto%.0f%s.pdf", classTag[ci], ptLo[p], ptHi[p], outSuffix);
       c->SaveAs(out);
     }
     printf("\n");
