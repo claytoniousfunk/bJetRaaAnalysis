@@ -20,6 +20,34 @@ bool useGeoCorrForRCMap = false;
 
 int N_mixedEventsInPool = 100;
 
+// The mixed-event candidate pool (N_mixedEventsInPool events' worth of PF
+// candidates) is built once per event. This controls how many INDEPENDENT
+// random draws of NCandidatesToSample are then taken from that same pool for
+// the FastJet clustering step -- each draw is reclustered from scratch and
+// filled separately, so this multiplies the statistics of every FastJet
+// mixed-event histogram (h_fastJetPt_PF*, h_fastJetMuonPtRel_fastJetPt_PF_
+// bkgSub_RC*, h_muonDR_inclusiveClosestJet, the PFCs-matching histograms,
+// ...) without requiring more real events to be scanned.
+//
+// Each draw is filled with weight w/N_fastJetMixedEventResamples, so the
+// TOTAL contribution of one real event to any of these histograms is
+// unchanged no matter what this is set to -- increasing it only reduces the
+// pool-sampling noise (smoother fake-muon/fake-jet shapes at the same
+// normalisation). No downstream macro needs to change: still just divide by
+// h_vz for a per-event rate, exactly as today. This is deliberately DIFFERENT
+// from the existing random-cone convention (h_pseudoJetPt etc.), which fills
+// every one of its N_mixedEventsInPool cone throws at the FULL weight w and
+// requires dividing by N_pool downstream (see makeFakeJetFile.C) -- that
+// asymmetry is intentional: the random-cone histograms were designed that
+// way already and changing their convention would break every macro that
+// reads them, whereas this is a brand-new knob with no consumers yet, so it
+// can default to the answer that needs no new bookkeeping.
+//
+// Has no effect when !doEventMixing: same-event clustering has no randomness
+// to resample (it is just the event's own candidates every time), so the
+// loop runs exactly once regardless of this value.
+int N_fastJetMixedEventResamples = 1;
+
 double pseudoJetCandPt_min = 0.0;
 
 double subleadingPFCandPt_min = 15.0;

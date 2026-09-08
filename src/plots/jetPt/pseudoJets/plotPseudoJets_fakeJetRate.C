@@ -12,12 +12,13 @@
 //   "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/HYDJET/HYDJET_pThat-unweighted_mu12_pTmu-15to999_tight_hiBinShift-0_jetTrkMaxFilter_WDecayFilter_mixedEventPseudoJets_pfCandCS_pseudoJetCandPtMin-0.0_subleadingPFCandPtMin-15_2026-6-23_ultraFineCentBins.root";
 
 const char *fmixed_path =
-  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPseudoJets_pfCand_pseudoJetCandPtMin-0.0_2026-7-14_ultraFineCentBins.root";
+  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-18_ultraFineCentBins.root";
 
 const int    N_cones   = 100;
 const double R         = 0.4;
 const double eta_range = 3.2;  // cone centers in [-1.6, 1.6]
-const double N_indep   = (eta_range * 2. * TMath::Pi()) / (TMath::Pi() * R * R);
+//const double N_indep   = (eta_range * 2. * TMath::Pi()) / (TMath::Pi() * R * R);
+const double N_indep = 1.0;
 
 const char *centLabel[17] = {
   "",
@@ -35,9 +36,10 @@ int centColor(int iC){
 }
 
 // Build differential fake-jet rate histogram from a raw histogram
-TH1D* makeDiff(TH1D *hRaw, const char *name){
-  double N_events = hRaw->GetEntries() / double(N_cones);
-  double norm     = N_indep / (N_events * N_cones);
+TH1D* makeDiff(TH1D *hRaw, TH1D *h_vz, const char *name){
+  double N_events = h_vz->Integral();
+  //double norm     = N_indep / (N_events * N_cones);
+  double norm     = 1./N_events;
   TH1D *h = (TH1D*) hRaw->Clone(name);
   h->Scale(norm);
   for(int b = 1; b <= h->GetNbinsX(); b++){
@@ -51,7 +53,7 @@ TH1D* makeDiff(TH1D *hRaw, const char *name){
 
 void styleUp(TH1D *h, double lm, double tm){
   h->SetTitle("");
-  h->GetXaxis()->SetRangeUser(0., 100.);
+  h->GetXaxis()->SetRangeUser(20., 150.);
   h->GetYaxis()->SetTitle("d#it{N}_{fake}/d#it{p}_{T} per event [GeV^{-1}]");
   h->GetYaxis()->SetTitleSize(0.052);
   h->GetYaxis()->SetLabelSize(0.048);
@@ -60,10 +62,10 @@ void styleUp(TH1D *h, double lm, double tm){
 
 void styleDn(TH1D *h){
   h->SetTitle("");
-  h->GetXaxis()->SetRangeUser(0., 100.);
-  h->GetXaxis()->SetTitle("Pseudo-jet #it{p}_{T} [GeV]");
-  h->GetYaxis()->SetTitle("Cent. / peripheral");
-  h->GetYaxis()->SetRangeUser(0., 25.);
+  h->GetXaxis()->SetRangeUser(20., 150.);
+  h->GetXaxis()->SetTitle("Combinatorial-jet #it{p}_{T} [GeV]");
+  h->GetYaxis()->SetTitle("Centrality / 0-5%");
+  h->GetYaxis()->SetRangeUser(0., 1.0);
   h->GetXaxis()->SetTitleSize(0.105);
   h->GetXaxis()->SetLabelSize(0.090);
   h->GetYaxis()->SetTitleSize(0.095);
@@ -95,13 +97,15 @@ void plotPseudoJets_fakeJetRate(){
     TH1D *hDiff[17] = {};
     for(int iC = 1; iC <= 16; iC++){
       TH1D *hRaw;
-      fM->GetObject(Form("h_fastJetPt_JEC_bkgSub_RC_C%d", iC), hRaw);
+      TH1D *h_vz;
+      fM->GetObject(Form("h_fastJetPt_PF_JEC_bkgSub_RC_C%d", iC), hRaw);
+      fM->GetObject(Form("h_vz_C%d",iC),h_vz);
       if(!hRaw){ printf("WARNING: missing C%d\n", iC); continue; }
-      hDiff[iC] = makeDiff(hRaw, Form("hDiff_C%d", iC));
+      hDiff[iC] = makeDiff(hRaw, h_vz, Form("hDiff_C%d", iC));
       hDiff[iC]->SetLineColor(centColor(iC));
       hDiff[iC]->SetLineWidth(2);
     }
-    TH1D *hRef = hDiff[16];  // 75-80% reference
+    TH1D *hRef = hDiff[1];  // 0-5% reference
 
     TCanvas *c = new TCanvas("c_diff","",700,900);
     TPad *pUp = new TPad("pUp","",0,0.35,1,1);
@@ -121,7 +125,7 @@ void plotPseudoJets_fakeJetRate(){
     TLatex *lat = new TLatex(); lat->SetNDC(); lat->SetTextSize(0.050);
     lat->DrawLatex(lm+0.02, 1.-tm+0.02, "PbPb 5.02 TeV");
     lat->DrawLatex(lm+0.02, 1.-tm-0.06,
-      Form("Mixed-event, anti-#it{k}_{T} #it{R}=0.4 (#it{N}_{indep}=%.0f)", N_indep));
+		   "Mixed-event, anti-#it{k}_{T} #it{R}=0.4");
 
     c->cd();
     TPad *pDn = new TPad("pDn","",0,0,1,0.35);
@@ -142,7 +146,7 @@ void plotPseudoJets_fakeJetRate(){
         hr->Draw("hist same");
       }
     }
-    unity->DrawLine(0., 1., 100., 1.);
+    //unity->DrawLine(20., 1., 100., 1.);
 
     c->SaveAs(outDir + "fakeJetRate_differential.pdf");
     printf("Saved: fakeJetRate_differential.pdf\n");
@@ -168,19 +172,29 @@ void plotPseudoJets_fakeJetRate(){
     TH1D *hCoarse[4] = {};
     for(int ic = 0; ic < NCB; ic++){
       TH1D *hSum = nullptr;
+      TH1D *h_vz_sum = nullptr;
       double totalEntries = 0.;
       for(int iC = cb[ic].first; iC <= cb[ic].last; iC++){
         TH1D *hRaw;
-        fM->GetObject(Form("h_fastJetPt_JEC_bkgSub_RC_C%d", iC), hRaw);
-        if(!hRaw) continue;
+	TH1D *h_vz_raw;
+	fM->GetObject(Form("h_fastJetPt_PF_JEC_bkgSub_RC_C%d", iC), hRaw);
+	fM->GetObject(Form("h_vz_C%d", iC), h_vz_raw);
+	if(!hRaw) continue;
         totalEntries += hRaw->GetEntries();
-        if(!hSum) hSum = (TH1D*) hRaw->Clone(Form("hCoarseRaw_%d", ic));
-        else      hSum->Add(hRaw);
+        if(!hSum) {
+	  hSum = (TH1D*) hRaw->Clone(Form("hCoarseRaw_%d", ic));
+	  h_vz_sum = (TH1D*) h_vz_raw->Clone(Form("hVzCoarseRaw_%d",ic));
+	}
+        else {
+	  hSum->Add(hRaw);
+	  h_vz_sum->Add(h_vz_raw);
+	}
       }
       if(!hSum) continue;
       // override GetEntries (lost after Add); use totalEntries
-      double N_events = totalEntries / double(N_cones);
-      double norm     = N_indep / (N_events * N_cones);
+      //double N_events = totalEntries / double(N_cones);
+      double N_events = h_vz_sum->Integral();
+      double norm     = 1./N_events;
       hCoarse[ic] = (TH1D*) hSum->Clone(Form("hCoarse_%d", ic));
       hCoarse[ic]->Scale(norm);
       for(int b = 1; b <= hCoarse[ic]->GetNbinsX(); b++){
@@ -193,7 +207,7 @@ void plotPseudoJets_fakeJetRate(){
       hCoarse[ic]->SetStats(0);
       delete hSum;
     }
-    TH1D *hRef = hCoarse[3];  // 50-80% reference
+    TH1D *hRef = hCoarse[0];  // 0-10% reference
 
     TCanvas *c2 = new TCanvas("c_coarse","",700,900);
     TPad *pUp = new TPad("pUp2","",0,0.35,1,1);
@@ -214,7 +228,7 @@ void plotPseudoJets_fakeJetRate(){
     TLatex *lat2 = new TLatex(); lat2->SetNDC(); lat2->SetTextSize(0.050);
     lat2->DrawLatex(lm+0.02, 1.-tm+0.02, "PbPb 5.02 TeV");
     lat2->DrawLatex(lm+0.02, 1.-tm-0.06,
-      Form("Mixed-event, anti-#it{k}_{T} #it{R}=0.4 (#it{N}_{indep}=%.0f)", N_indep));
+		    "Mixed-event, anti-#it{k}_{T} #it{R}=0.4");
 
     c2->cd();
     TPad *pDn = new TPad("pDn2","",0,0,1,0.35);
@@ -223,19 +237,20 @@ void plotPseudoJets_fakeJetRate(){
     pDn->Draw(); pDn->cd();
 
     TH1D *hRatioFrame = nullptr;
-    for(int ic = 0; ic < NCB-1; ic++){
+    for(int ic = 1; ic < NCB; ic++){
       if(!hCoarse[ic] || !hRef) continue;
       TH1D *hr = (TH1D*) hCoarse[ic]->Clone(Form("hCoarseRatio_%d", ic));
       hr->Divide(hRef);
       if(!hRatioFrame){
         hRatioFrame = hr;
         styleDn(hRatioFrame);
+	hRatioFrame->GetYaxis()->SetTitle("Centrality / 0-10%");
         hRatioFrame->Draw("hist");
       } else {
         hr->Draw("hist same");
       }
     }
-    unity->DrawLine(0., 1., 100., 1.);
+    //unity->DrawLine(20., 1., 100., 1.);
 
     c2->SaveAs(outDir + "fakeJetRate_differential_coarseCent.pdf");
     printf("Saved: fakeJetRate_differential_coarseCent.pdf\n");

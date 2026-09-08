@@ -265,11 +265,13 @@ void unfoldTest(){
   //TFile *file_PH_response_even = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIAHYDJET/latest/response/PYTHIAHYDJET_response_DiJet_pThat-15_mu12_pTmu-15_tight_vzReweight_hiBinReweight_hiBinShift-10_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-4-1_evenEvents.root");
   //TFile *file_PH_response_even = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIAHYDJET/latest/response/PYTHIAHYDJET_response_DiJet_pThat-15_mu12_pTmu-15_tight_vzReweight_hiBinReweight_hiBinShift-10_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-4-1_evenEvents_matchedRecoJetPtCut60.root");
   TFile *file_PH_response_even = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIAHYDJET/latest/response/PYTHIAHYDJET_response_DiJet_pThat-15_mu12_pTmu-15_tight_vzReweight_hiBinReweight_hiBinShift-10_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-4-6_evenEvents.root");
+  //TFile *file_PH_response_even = TFile::Open("/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PYTHIAHYDJET/PYTHIAHYDJET_response_DiJet_pThat-unweighted_pThat-15_mu12_pTmu-15_tight_vzReweight_hiBinReweight_hiBinShift-10_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-7-28_evenEvents.root");
   
   //TFile *file_PH_response_odd = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIAHYDJET/latest/response/PYTHIAHYDJET_response_DiJet_pThat-15_mu12_pTmu-15_tight_vzReweight_hiBinReweight_hiBinShift-10_leadingXjetDumpFilter_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-3-24_oddEvents.root");
   //TFile *file_PH_response_odd = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIAHYDJET/latest/response/PYTHIAHYDJET_response_DiJet_pThat-15_mu12_pTmu-15_tight_vzReweight_hiBinReweight_hiBinShift-10_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-4-1_evenEvents.root");
   //TFile *file_PH_response_odd = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIAHYDJET/latest/response/PYTHIAHYDJET_response_DiJet_pThat-15_mu12_pTmu-15_tight_vzReweight_hiBinReweight_hiBinShift-10_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-4-1_oddEvents_matchedRecoJetPtCut60.root");
-  TFile *file_PH_response_odd = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIAHYDJET/latest/response/PYTHIAHYDJET_response_DiJet_pThat-15_mu12_pTmu-15_tight_vzReweight_hiBinReweight_hiBinShift-10_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-4-6_oddEvents.root");
+  //TFile *file_PH_response_odd = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIAHYDJET/latest/response/PYTHIAHYDJET_response_DiJet_pThat-15_mu12_pTmu-15_tight_vzReweight_hiBinReweight_hiBinShift-10_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-4-6_oddEvents.root");
+  TFile *file_PH_response_odd = TFile::Open("/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PYTHIAHYDJET/PYTHIAHYDJET_response_DiJet_pThat-unweighted_pThat-15_mu12_pTmu-15_tight_vzReweight_hiBinReweight_hiBinShift-10_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-7-28_oddEvents.root");
 
   TH1D *h_pp, *h_C4, *h_C3, *h_C2, *h_C1;
   TH1D *h_pp_jetMB, *h_C4_jetMB, *h_C3_jetMB, *h_C2_jetMB, *h_C1_jetMB;
@@ -715,17 +717,17 @@ void unfoldTest(){
   double mse_C2_iterTest[N_iter_tot]   = {};
   double mse_C1_iterTest[N_iter_tot]   = {};
 
-  h_pp_unfold = (TH1D*) unfold_pp.Hreco();
-  h_C4_unfold = (TH1D*) unfold_C4.Hreco();
-  h_C3_unfold = (TH1D*) unfold_C3.Hreco();
-  h_C2_unfold = (TH1D*) unfold_C2.Hreco();
-  h_C1_unfold = (TH1D*) unfold_C1.Hreco();
+  h_pp_unfold = (TH1D*) unfold_pp.Hunfold();
+  h_C4_unfold = (TH1D*) unfold_C4.Hunfold();
+  h_C3_unfold = (TH1D*) unfold_C3.Hunfold();
+  h_C2_unfold = (TH1D*) unfold_C2.Hunfold();
+  h_C1_unfold = (TH1D*) unfold_C1.Hunfold();
 
-  h_ppMC_unfold = (TH1D*) unfold_ppMC.Hreco();
-  h_C4MC_unfold = (TH1D*) unfold_C4MC.Hreco();
-  h_C3MC_unfold = (TH1D*) unfold_C3MC.Hreco();
-  h_C2MC_unfold = (TH1D*) unfold_C2MC.Hreco();
-  h_C1MC_unfold = (TH1D*) unfold_C1MC.Hreco();
+  h_ppMC_unfold = (TH1D*) unfold_ppMC.Hunfold();
+  h_C4MC_unfold = (TH1D*) unfold_C4MC.Hunfold();
+  h_C3MC_unfold = (TH1D*) unfold_C3MC.Hunfold();
+  h_C2MC_unfold = (TH1D*) unfold_C2MC.Hunfold();
+  h_C1MC_unfold = (TH1D*) unfold_C1MC.Hunfold();
 
   TMatrixD cov_ppMC = unfold_ppMC.Eunfold();
   TMatrixD cov_C4MC = unfold_C4MC.Eunfold();
@@ -738,11 +740,11 @@ void unfoldTest(){
     h_ppMC_unfold->SetBinError(i,err);
   }
 
-  h_meas_pp_unfold = (TH1D*) unfold_meas_pp.Hreco();
-  h_meas_C4_unfold = (TH1D*) unfold_meas_C4.Hreco();
-  h_meas_C3_unfold = (TH1D*) unfold_meas_C3.Hreco();
-  h_meas_C2_unfold = (TH1D*) unfold_meas_C2.Hreco();
-  h_meas_C1_unfold = (TH1D*) unfold_meas_C1.Hreco();
+  h_meas_pp_unfold = (TH1D*) unfold_meas_pp.Hunfold();
+  h_meas_C4_unfold = (TH1D*) unfold_meas_C4.Hunfold();
+  h_meas_C3_unfold = (TH1D*) unfold_meas_C3.Hunfold();
+  h_meas_C2_unfold = (TH1D*) unfold_meas_C2.Hunfold();
+  h_meas_C1_unfold = (TH1D*) unfold_meas_C1.Hunfold();
 
   
   int colorArray[10] = {1,2,4,8,9,12,20,26,31,38};
@@ -755,28 +757,28 @@ void unfoldTest(){
 
     unfold_pp.SetIterations(i+1);
     unfold_ppMC.SetIterations(i+1);
-    h_pp_unfold_iterTest[i] = (TH1D*) unfold_pp.Hreco();
-    h_ppMC_unfold_iterTest[i] = (TH1D*) unfold_ppMC.Hreco();
+    h_pp_unfold_iterTest[i] = (TH1D*) unfold_pp.Hunfold();
+    h_ppMC_unfold_iterTest[i] = (TH1D*) unfold_ppMC.Hunfold();
 
     unfold_C4.SetIterations(i+1);
     unfold_C4MC.SetIterations(i+1);
-    h_C4_unfold_iterTest[i] = (TH1D*) unfold_C4.Hreco();
-    h_C4MC_unfold_iterTest[i] = (TH1D*) unfold_C4MC.Hreco();
+    h_C4_unfold_iterTest[i] = (TH1D*) unfold_C4.Hunfold();
+    h_C4MC_unfold_iterTest[i] = (TH1D*) unfold_C4MC.Hunfold();
 
     unfold_C3.SetIterations(i+1);
     unfold_C3MC.SetIterations(i+1);
-    h_C3_unfold_iterTest[i] = (TH1D*) unfold_C3.Hreco();
-    h_C3MC_unfold_iterTest[i] = (TH1D*) unfold_C3MC.Hreco();
+    h_C3_unfold_iterTest[i] = (TH1D*) unfold_C3.Hunfold();
+    h_C3MC_unfold_iterTest[i] = (TH1D*) unfold_C3MC.Hunfold();
 
     unfold_C2.SetIterations(i+1);
     unfold_C2MC.SetIterations(i+1);
-    h_C2_unfold_iterTest[i] = (TH1D*) unfold_C2.Hreco();
-    h_C2MC_unfold_iterTest[i] = (TH1D*) unfold_C2MC.Hreco();
+    h_C2_unfold_iterTest[i] = (TH1D*) unfold_C2.Hunfold();
+    h_C2MC_unfold_iterTest[i] = (TH1D*) unfold_C2MC.Hunfold();
 
     unfold_C1.SetIterations(i+1);
     unfold_C1MC.SetIterations(i+1);
-    h_C1_unfold_iterTest[i] = (TH1D*) unfold_C1.Hreco();
-    h_C1MC_unfold_iterTest[i] = (TH1D*) unfold_C1MC.Hreco();
+    h_C1_unfold_iterTest[i] = (TH1D*) unfold_C1.Hunfold();
+    h_C1MC_unfold_iterTest[i] = (TH1D*) unfold_C1MC.Hunfold();
 
 
     std::cout << "iterations = " << unfold_pp.GetIterations() << "\n";

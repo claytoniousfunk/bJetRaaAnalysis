@@ -60,12 +60,12 @@ const char *extEvtHist = "Event_Hist/hCent";   // entry count = events passing
 const char *outDir  = "../../../figures/jetPt/";
 const char *outName = "jetPt_externalCrossCheck.pdf";
 
-const double plotPtMin = 20., plotPtMax = 120.;
+const double plotPtMin = 20., plotPtMax = 130.;
 
 // Coarser than the native 5 GeV so the external file's thin high-pT tail
 // stays visible rather than dissolving into single-count bins.
-const int    NEdge = 14;
-double       ptEdge[NEdge] = { 20,25,30,35,40,45,50,55,60,70,80,95,110,130 };
+const int    NEdge = 13;
+double       ptEdge[NEdge] = { 20,25,30,35,40,45,50,55,60,70,80,100,130 };
 
 const char *ourHex = "#0072B2", *extHex = "#D55E00";
 
@@ -181,7 +181,7 @@ void plotJetPt_externalCrossCheck()
   ratio->GetYaxis()->SetTitleOffset(1.35/sc);
   ratio->GetYaxis()->SetNdivisions(505);
   ratio->GetXaxis()->SetRangeUser(plotPtMin, plotPtMax);
-  ratio->SetMinimum(0.4); ratio->SetMaximum(2.1);
+  ratio->SetMinimum(0.4); ratio->SetMaximum(1.6);
   ratio->Draw("ep");
 
   for(double yl : {1.0, 1.1, 0.9}){

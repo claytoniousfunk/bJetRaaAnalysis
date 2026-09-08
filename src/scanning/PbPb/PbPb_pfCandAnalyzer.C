@@ -349,12 +349,12 @@ void PbPb_pfCandAnalyzer(int group = 1){
 						   fillMu5,
 						   fillMu7,
 						   fillMu12,
-						   pseudoJetCandPt_min,
 						   doEventMixing,
 						   skipSingleConstituentJets,
 						   doHiBinReweightToHardProbesJet80,
 						   useCaloJetsOverride,
-						   useFlowJetsOverride);
+						   useFlowJetsOverride,
+						   N_fastJetMixedEventResamples);
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
@@ -1182,6 +1182,23 @@ void PbPb_pfCandAnalyzer(int group = 1){
 #ifdef DO_FASTJET
       if(doFastJetClustering){
 
+	// Redraw NCandidatesToSample from the SAME pool this many times, each a
+	// fresh independent FastJet clustering, to multiply the statistics of
+	// every histogram filled below without scanning more real events. Every
+	// resample fills with weight w_resample = w/N_fastJetResamples, so the
+	// TOTAL contribution of this one real event is unchanged regardless of
+	// N_fastJetResamples -- only the pool-sampling noise shrinks. See
+	// N_fastJetMixedEventResamples in pseudoJets.h for the full rationale,
+	// including why this is a DIFFERENT convention from the pre-existing
+	// random-cone resampling (h_pseudoJetPt etc.), which fills every throw
+	// at the full weight w and requires dividing by N_pool downstream.
+	// No effect when !doEventMixing: same-event clustering is deterministic
+	// (identical candidates every time), so this runs exactly once.
+	int N_fastJetResamples = doEventMixing ? N_fastJetMixedEventResamples : 1;
+	double w_resample = w / N_fastJetResamples;
+
+	for(int fjResample = 0; fjResample < N_fastJetResamples; fjResample++){
+
 	std::vector<double> mixedEventPFCandidates_pt;
 	std::vector<double> mixedEventPFCandidates_eta;
 	std::vector<double> mixedEventPFCandidates_phi;
@@ -1236,8 +1253,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
         // number drawn from the pool, which is meant to be NCandidatesToSample =
         // em->nPFpart as well -- comparing this against h_nPFcand is the check
         // that the mixed event is being built at the right multiplicity.
-        h_nPFcandFastJet[0]->Fill((int)fjInputs.size(), w);
-        h_nPFcandFastJet[CentralityIndex]->Fill((int)fjInputs.size(), w);
+        h_nPFcandFastJet[0]->Fill((int)fjInputs.size(), w_resample);
+        h_nPFcandFastJet[CentralityIndex]->Fill((int)fjInputs.size(), w_resample);
 
         fastjet::JetDefinition jetDef(fastjet::antikt_algorithm, dR_max_pfcand);
         fastjet::ClusterSequence cs(fjInputs, jetDef);
@@ -1282,10 +1299,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 
 	  
-	  h_fastJetPt_PF[0]->Fill(jet.pt(), w);
-	  h_fastJetPt_PF[CentralityIndex]->Fill(jet.pt(), w);
-	  h_fastJetPt_PF_JEC[0]->Fill(fastJetPt_JEC, w);
-          h_fastJetPt_PF_JEC[CentralityIndex]->Fill(fastJetPt_JEC, w);
+	  h_fastJetPt_PF[0]->Fill(jet.pt(), w_resample);
+	  h_fastJetPt_PF[CentralityIndex]->Fill(jet.pt(), w_resample);
+	  h_fastJetPt_PF_JEC[0]->Fill(fastJetPt_JEC, w_resample);
+          h_fastJetPt_PF_JEC[CentralityIndex]->Fill(fastJetPt_JEC, w_resample);
           // RC-subtracted fastJet pT: subtract mean UE pT at the jet's (eta,phi) location
           if(h_RC_map[CentralityIndex]){
             double rcMeanPt = h_RC_map[CentralityIndex]->GetBinContent(
@@ -1350,76 +1367,76 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    
 
 	    if(fastJetPt_JEC_rcSub > 20.){
-	      h_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetPt_rcSub, w);
-              h_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_rcSub, w);
+	      h_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetPt_rcSub, w_resample);
+              h_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_rcSub, w_resample);
 
 	      if(hasFastJetRecoMuonTag){
 		fastJetMuonPtRel = getPtRel(fastJetMuonPt,fastJetMuonEta,fastJetMuonPhi,fastJetPt_rcSub,jet.eta(),jet.phi_std());
 		fastJetMuonDR = getDr(fastJetMuonEta,fastJetMuonPhi,jet.eta(),jet.phi_std());
-		h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetMuonPtRel,fastJetPt_rcSub,w);
-		h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetMuonPtRel,fastJetPt_rcSub,w);
-		h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetMuonDR,fastJetPt_rcSub,w);
-		h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetMuonDR,fastJetPt_rcSub,w);
+		h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetMuonPtRel,fastJetPt_rcSub,w_resample);
+		h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetMuonPtRel,fastJetPt_rcSub,w_resample);
+		h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetMuonDR,fastJetPt_rcSub,w_resample);
+		h_fastJetMuonDR_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetMuonDR,fastJetPt_rcSub,w_resample);
 	      }
 
-	      h_fastJetPt_PF_JEC_bkgSub_RC[0]->Fill(fastJetPt_JEC_rcSub, w);
-              h_fastJetPt_PF_JEC_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_JEC_rcSub, w);
+	      h_fastJetPt_PF_JEC_bkgSub_RC[0]->Fill(fastJetPt_JEC_rcSub, w_resample);
+              h_fastJetPt_PF_JEC_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_JEC_rcSub, w_resample);
 
 	      if(eventHasSignalJet){
-	        h_fastJetPt_PF_bkgSub_RC_sigSel[0]->Fill(fastJetPt_rcSub, w);
-                h_fastJetPt_PF_bkgSub_RC_sigSel[CentralityIndex]->Fill(fastJetPt_rcSub, w);
+	        h_fastJetPt_PF_bkgSub_RC_sigSel[0]->Fill(fastJetPt_rcSub, w_resample);
+                h_fastJetPt_PF_bkgSub_RC_sigSel[CentralityIndex]->Fill(fastJetPt_rcSub, w_resample);
 
-	        h_fastJetPt_PF_JEC_bkgSub_RC_sigSel[0]->Fill(fastJetPt_JEC_rcSub, w);
-                h_fastJetPt_PF_JEC_bkgSub_RC_sigSel[CentralityIndex]->Fill(fastJetPt_JEC_rcSub, w);
+	        h_fastJetPt_PF_JEC_bkgSub_RC_sigSel[0]->Fill(fastJetPt_JEC_rcSub, w_resample);
+                h_fastJetPt_PF_JEC_bkgSub_RC_sigSel[CentralityIndex]->Fill(fastJetPt_JEC_rcSub, w_resample);
 	      }
 	    }
 
 	    if(fastJetPt_JEC_rcSub_geoCorr > 20.){
-	      h_fastJetPt_PF_bkgSub_RC_geoCorr[0]->Fill(fastJetPt_rcSub_geoCorr, w);
-              h_fastJetPt_PF_bkgSub_RC_geoCorr[CentralityIndex]->Fill(fastJetPt_rcSub_geoCorr, w);
+	      h_fastJetPt_PF_bkgSub_RC_geoCorr[0]->Fill(fastJetPt_rcSub_geoCorr, w_resample);
+              h_fastJetPt_PF_bkgSub_RC_geoCorr[CentralityIndex]->Fill(fastJetPt_rcSub_geoCorr, w_resample);
 
-	      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[0]->Fill(fastJetPt_JEC_rcSub_geoCorr, w);
-              h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[CentralityIndex]->Fill(fastJetPt_JEC_rcSub_geoCorr, w);
+	      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[0]->Fill(fastJetPt_JEC_rcSub_geoCorr, w_resample);
+              h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr[CentralityIndex]->Fill(fastJetPt_JEC_rcSub_geoCorr, w_resample);
 	    }
 
 	    if(fastJetPt_JEC_rcSub_geoCorr_etaReflect > 20.){
-	      h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[0]->Fill(fastJetPt_rcSub_geoCorr_etaReflect, w);
-              h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[CentralityIndex]->Fill(fastJetPt_rcSub_geoCorr_etaReflect, w);
+	      h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[0]->Fill(fastJetPt_rcSub_geoCorr_etaReflect, w_resample);
+              h_fastJetPt_PF_bkgSub_RC_geoCorr_etaReflect[CentralityIndex]->Fill(fastJetPt_rcSub_geoCorr_etaReflect, w_resample);
 
-	      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[0]->Fill(fastJetPt_JEC_rcSub_geoCorr_etaReflect, w);
-              h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[CentralityIndex]->Fill(fastJetPt_JEC_rcSub_geoCorr_etaReflect, w);
+	      h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[0]->Fill(fastJetPt_JEC_rcSub_geoCorr_etaReflect, w_resample);
+              h_fastJetPt_PF_JEC_bkgSub_RC_geoCorr_etaReflect[CentralityIndex]->Fill(fastJetPt_JEC_rcSub_geoCorr_etaReflect, w_resample);
 	    }
 
 	    if(fastJetPt_JEC_dPTSub > 20.){
-	      h_fastJetPt_PF_bkgSub_dPT[0]->Fill(fastJetPt_dPTSub,w);
-	      h_fastJetPt_PF_bkgSub_dPT[CentralityIndex]->Fill(fastJetPt_dPTSub,w);
+	      h_fastJetPt_PF_bkgSub_dPT[0]->Fill(fastJetPt_dPTSub,w_resample);
+	      h_fastJetPt_PF_bkgSub_dPT[CentralityIndex]->Fill(fastJetPt_dPTSub,w_resample);
 
-	      h_fastJetPt_PF_JEC_bkgSub_dPT[0]->Fill(fastJetPt_JEC_dPTSub,w);
-	      h_fastJetPt_PF_JEC_bkgSub_dPT[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub,w);
+	      h_fastJetPt_PF_JEC_bkgSub_dPT[0]->Fill(fastJetPt_JEC_dPTSub,w_resample);
+	      h_fastJetPt_PF_JEC_bkgSub_dPT[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub,w_resample);
 	    }
 
 	    if(h_dPT_geoCorr_map[CentralityIndex] && fastJetPt_JEC_dPTSub_geoCorr > 20.){
-	      h_fastJetPt_PF_bkgSub_dPT_geoCorr[0]->Fill(fastJetPt_dPTSub_geoCorr,w);
-	      h_fastJetPt_PF_bkgSub_dPT_geoCorr[CentralityIndex]->Fill(fastJetPt_dPTSub_geoCorr,w);
+	      h_fastJetPt_PF_bkgSub_dPT_geoCorr[0]->Fill(fastJetPt_dPTSub_geoCorr,w_resample);
+	      h_fastJetPt_PF_bkgSub_dPT_geoCorr[CentralityIndex]->Fill(fastJetPt_dPTSub_geoCorr,w_resample);
 
-	      h_fastJetPt_PF_JEC_bkgSub_dPT_geoCorr[0]->Fill(fastJetPt_JEC_dPTSub_geoCorr,w);
-	      h_fastJetPt_PF_JEC_bkgSub_dPT_geoCorr[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_geoCorr,w);
+	      h_fastJetPt_PF_JEC_bkgSub_dPT_geoCorr[0]->Fill(fastJetPt_JEC_dPTSub_geoCorr,w_resample);
+	      h_fastJetPt_PF_JEC_bkgSub_dPT_geoCorr[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_geoCorr,w_resample);
 	    }
 
 	    if(fastJetPt_JEC_dPTSub_dPTAbove0 > 20.){
-	      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[0]->Fill(fastJetPt_dPTSub_dPTAbove0,w);
-	      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[CentralityIndex]->Fill(fastJetPt_dPTSub_dPTAbove0,w);
+	      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[0]->Fill(fastJetPt_dPTSub_dPTAbove0,w_resample);
+	      h_fastJetPt_PF_bkgSub_dPT_dPTAbove0[CentralityIndex]->Fill(fastJetPt_dPTSub_dPTAbove0,w_resample);
 
-	      h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[0]->Fill(fastJetPt_JEC_dPTSub_dPTAbove0,w);
-	      h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_dPTAbove0,w);
+	      h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[0]->Fill(fastJetPt_JEC_dPTSub_dPTAbove0,w_resample);
+	      h_fastJetPt_PF_JEC_bkgSub_dPT_dPTAbove0[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_dPTAbove0,w_resample);
 	    }
 
 	    if(fastJetPt_JEC_dPTSub_PFCsPTAbove60 > 20.){
-	      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[0]->Fill(fastJetPt_dPTSub_PFCsPTAbove60,w);
-	      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[CentralityIndex]->Fill(fastJetPt_dPTSub_PFCsPTAbove60,w);
+	      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[0]->Fill(fastJetPt_dPTSub_PFCsPTAbove60,w_resample);
+	      h_fastJetPt_PF_bkgSub_dPT_PFCsPTAbove60[CentralityIndex]->Fill(fastJetPt_dPTSub_PFCsPTAbove60,w_resample);
 
-	      h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[0]->Fill(fastJetPt_JEC_dPTSub_PFCsPTAbove60,w);
-	      h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_PFCsPTAbove60,w);
+	      h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[0]->Fill(fastJetPt_JEC_dPTSub_PFCsPTAbove60,w_resample);
+	      h_fastJetPt_PF_JEC_bkgSub_dPT_PFCsPTAbove60[CentralityIndex]->Fill(fastJetPt_JEC_dPTSub_PFCsPTAbove60,w_resample);
 	    }
 	    
           }
@@ -1471,8 +1488,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	      }
 
 	    }
-	    h_fastJetMuonDR_inclusiveClosestFastJet[0]->Fill(fastJetMuonDR_i,jetPt_JEC_rcSub_match_i,w);
-	    h_fastJetMuonDR_inclusiveClosestFastJet[CentralityIndex]->Fill(fastJetMuonDR_i,jetPt_JEC_rcSub_match_i,w);
+	    h_fastJetMuonDR_inclusiveClosestFastJet[0]->Fill(fastJetMuonDR_i,jetPt_JEC_rcSub_match_i,w_resample);
+	    h_fastJetMuonDR_inclusiveClosestFastJet[CentralityIndex]->Fill(fastJetMuonDR_i,jetPt_JEC_rcSub_match_i,w_resample);
 
 	    double fastJetMuonDR_recoJet_i = 999.;
 	    double recoJet_match_i = 0.;
@@ -1514,8 +1531,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    
 	    }
 
-	    h_muonDR_inclusiveClosestJet[0]->Fill(fastJetMuonDR_recoJet_i,recoJet_match_i,w);
-	    h_muonDR_inclusiveClosestJet[CentralityIndex]->Fill(fastJetMuonDR_recoJet_i,recoJet_match_i,w);
+	    h_muonDR_inclusiveClosestJet[0]->Fill(fastJetMuonDR_recoJet_i,recoJet_match_i,w_resample);
+	    h_muonDR_inclusiveClosestJet[CentralityIndex]->Fill(fastJetMuonDR_recoJet_i,recoJet_match_i,w_resample);
 	    
 	  }
 	  
@@ -1566,10 +1583,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  }
 	  jetPtIndex_PFCs = getJetPtBin(fastJetPt_PFCs_JEC);
 	  
-	  h_fastJetPt_PFCs[0]->Fill(jet_PFCs.pt(), w);
-          h_fastJetPt_PFCs[CentralityIndex]->Fill(jet_PFCs.pt(), w);
-          h_fastJetPt_PFCs_JEC[0]->Fill(fastJetPt_PFCs_JEC, w);
-          h_fastJetPt_PFCs_JEC[CentralityIndex]->Fill(fastJetPt_PFCs_JEC, w);
+	  h_fastJetPt_PFCs[0]->Fill(jet_PFCs.pt(), w_resample);
+          h_fastJetPt_PFCs[CentralityIndex]->Fill(jet_PFCs.pt(), w_resample);
+          h_fastJetPt_PFCs_JEC[0]->Fill(fastJetPt_PFCs_JEC, w_resample);
+          h_fastJetPt_PFCs_JEC[CentralityIndex]->Fill(fastJetPt_PFCs_JEC, w_resample);
 
 	  double dR_min = 999.0;
 	  double dPT = -999.0;
@@ -1587,8 +1604,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	      matchedPtPF = jet_PF.pt();
 	    }
 	  }
-	  h_dRmin_PF_PFCs[0]->Fill(dR_min,w);
-	  h_dRmin_PF_PFCs[CentralityIndex]->Fill(dR_min,w);
+	  h_dRmin_PF_PFCs[0]->Fill(dR_min,w_resample);
+	  h_dRmin_PF_PFCs[CentralityIndex]->Fill(dR_min,w_resample);
 	  h_dPTEtaPhi_PF_PFCs[0]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
 	  h_dPTEtaPhi_PF_PFCs[CentralityIndex]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
 	  double dPT_geoCorr = dPT * TMath::Cos(dR_min);
@@ -1603,24 +1620,26 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60[CentralityIndex]->Fill(jet_PFCs.eta(),jet_PFCs.phi_std(),dPT);
 	  }
 
-	  h_fastJetPtPF_dRmin[0][0]->Fill(matchedPtPF,dR_min,w);
-	  h_fastJetPtPF_dRmin[CentralityIndex][0]->Fill(matchedPtPF,dR_min,w);
+	  h_fastJetPtPF_dRmin[0][0]->Fill(matchedPtPF,dR_min,w_resample);
+	  h_fastJetPtPF_dRmin[CentralityIndex][0]->Fill(matchedPtPF,dR_min,w_resample);
 	  if(jetPtIndex_PFCs > 0){
-	    h_fastJetPtPF_dRmin[0][jetPtIndex_PFCs]->Fill(matchedPtPF,dR_min,w);
-	    h_fastJetPtPF_dRmin[CentralityIndex][jetPtIndex_PFCs]->Fill(matchedPtPF,dR_min,w);
+	    h_fastJetPtPF_dRmin[0][jetPtIndex_PFCs]->Fill(matchedPtPF,dR_min,w_resample);
+	    h_fastJetPtPF_dRmin[CentralityIndex][jetPtIndex_PFCs]->Fill(matchedPtPF,dR_min,w_resample);
 	  }
 
-	  h_fastJetPtPF_etaPFCs[0][0]->Fill(matchedPtPF,jet_PFCs.eta(),w);
-	  h_fastJetPtPF_etaPFCs[CentralityIndex][0]->Fill(matchedPtPF,jet_PFCs.eta(),w);
+	  h_fastJetPtPF_etaPFCs[0][0]->Fill(matchedPtPF,jet_PFCs.eta(),w_resample);
+	  h_fastJetPtPF_etaPFCs[CentralityIndex][0]->Fill(matchedPtPF,jet_PFCs.eta(),w_resample);
 	  if(jetPtIndex_PFCs > 0){
-	    h_fastJetPtPF_etaPFCs[0][jetPtIndex_PFCs]->Fill(matchedPtPF,jet_PFCs.eta(),w);
-	    h_fastJetPtPF_etaPFCs[CentralityIndex][jetPtIndex_PFCs]->Fill(matchedPtPF,jet_PFCs.eta(),w);
+	    h_fastJetPtPF_etaPFCs[0][jetPtIndex_PFCs]->Fill(matchedPtPF,jet_PFCs.eta(),w_resample);
+	    h_fastJetPtPF_etaPFCs[CentralityIndex][jetPtIndex_PFCs]->Fill(matchedPtPF,jet_PFCs.eta(),w_resample);
 	  }
-	  
+
         }
 
-	
-	
+	} // end for(fjResample ...)
+
+
+
 
 
 

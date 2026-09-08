@@ -33,6 +33,13 @@ bool   pinFakesToData = false;
 double pinFakePt      = 22.5;   // centre of the 20-25 GeV bin, the first kept
                                 // after makeFakeJetFile.C zeroes below 20
 
+// Which fake-jet estimate to subtract, and where to persist the resulting
+// r_C*_r / r_C*_fine histograms. Both non-const so a wrapper invocation can
+// override them (see plotRAA_fakeSubRatio.C for the established pattern of
+// running this twice with different values and diffing the two output files).
+TString fakeJetsPath  = "../../rootFiles/fakeJets/fakeJets.root";
+TString outputRootPath = "./rootFiles/JetsPerZ/histograms_JetsPerZ_lightJets_rebinned.root";
+
 // Bayes iteration counts, at file scope so they can be scanned without editing
 // the function body. See the comment above the unfolding block for why 1.
 int N_iter_pp = 1;
@@ -583,7 +590,7 @@ void calculateRAA(){
   // Data-driven fake jets from mixed-event FastJet clustering on CS PF candidates.
   // Built by makeFakeJetFile.C from the MinBias mixed-event scan; already normalised
   // to fake jets per bin per event with pT < 20 GeV zeroed.
-  TFile *file_fakeJets = TFile::Open("../../rootFiles/fakeJets/fakeJets.root");
+  TFile *file_fakeJets = TFile::Open(fakeJetsPath);
   TH1D *h_fakeJets_C4, *h_fakeJets_C3, *h_fakeJets_C2, *h_fakeJets_C1;
   file_fakeJets->GetObject("h_fakeJets_C4", h_fakeJets_C4);
   file_fakeJets->GetObject("h_fakeJets_C3", h_fakeJets_C3);
@@ -627,7 +634,7 @@ void calculateRAA(){
   TH1D *h_C1_clone = (TH1D*) h_C1_jetMB->Clone("h_C1_clone");
   TH1D *h_fakeJets_C1_clone = (TH1D*) h_fakeJets_C1->Clone("h_fakeJets_C1_clone");
   TH1D *h_C1_sub = (TH1D*) h_C1_jetMB->Clone("h_C1_sub");
-  //h_C1_sub->Add(h_fakeJets_C1,-1);
+  h_C1_sub->Add(h_fakeJets_C1,-1);
   h_C1_clone->SetLineColor(kRed-4);
   h_fakeJets_C1_clone->SetLineColor(kGray+1);
   h_C1_sub->SetLineColor(kRed-4);
@@ -686,7 +693,7 @@ void calculateRAA(){
   TH1D *h_C2_clone = (TH1D*) h_C2_jetMB->Clone("h_C2_clone");
   TH1D *h_fakeJets_C2_clone = (TH1D*) h_fakeJets_C2->Clone("h_fakeJets_C2_clone");
   TH1D *h_C2_sub = (TH1D*) h_C2_jetMB->Clone("h_C2_sub");
-  //h_C2_sub->Add(h_fakeJets_C2,-1);
+  h_C2_sub->Add(h_fakeJets_C2,-1);
   h_C2_clone->SetLineColor(kGreen+2);
   h_fakeJets_C2_clone->SetLineColor(kGray+1);
   h_C2_sub->SetLineColor(kGreen+2);
@@ -745,7 +752,7 @@ void calculateRAA(){
   TH1D *h_C3_clone = (TH1D*) h_C3_jetMB->Clone("h_C3_clone");
   TH1D *h_fakeJets_C3_clone = (TH1D*) h_fakeJets_C3->Clone("h_fakeJets_C3_clone");
   TH1D *h_C3_sub = (TH1D*) h_C3_jetMB->Clone("h_C3_sub");
-  //h_C3_sub->Add(h_fakeJets_C3,-1);
+  h_C3_sub->Add(h_fakeJets_C3,-1);
   h_C3_clone->SetLineColor(kBlue-4);
   h_fakeJets_C3_clone->SetLineColor(kGray+1);
   h_C3_sub->SetLineColor(kBlue-4);
@@ -803,7 +810,7 @@ void calculateRAA(){
   TH1D *h_C4_clone = (TH1D*) h_C4_jetMB->Clone("h_C4_clone");
   TH1D *h_fakeJets_C4_clone = (TH1D*) h_fakeJets_C4->Clone("h_fakeJets_C4_clone");
   TH1D *h_C4_sub = (TH1D*) h_C4_jetMB->Clone("h_C4_sub");
-  //h_C4_sub->Add(h_fakeJets_C4,-1);
+  h_C4_sub->Add(h_fakeJets_C4,-1);
   h_C4_clone->SetLineColor(kBlack);
   h_fakeJets_C4_clone->SetLineColor(kGray+1);
   h_C4_sub->SetLineColor(kBlack);
@@ -1668,7 +1675,7 @@ void calculateRAA(){
   leg->Draw();
 
   canv_prime_r->SaveAs("../../figures/JetsPerZ/JetsPerZ_lightJets_rebinned.pdf");
-  TFile *file_JetsPerZ_lightJets_rebinned = (TFile*) TFile::Open("./rootFiles/JetsPerZ/histograms_JetsPerZ_lightJets_rebinned.root","recreate");
+  TFile *file_JetsPerZ_lightJets_rebinned = (TFile*) TFile::Open(outputRootPath,"recreate");
   r_C4_r->Write();
   r_C3_r->Write();
   r_C2_r->Write();

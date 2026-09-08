@@ -23,12 +23,12 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
 				   bool fillMu5,
 				   bool fillMu7,
 				   bool fillMu12,
-				   double pseudoJetCandPt_min,
 				   bool doEventMixing,
 				   bool skipSingleConstituentJets,
 				   bool doHiBinReweightToHardProbesJet80,
 				   bool useCaloJetsOverride,
-				   bool useFlowJetsOverride)
+				   bool useFlowJetsOverride,
+				   int N_fastJetMixedEventResamples)
 {
 
   TString result = "output";
@@ -74,10 +74,15 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   if(apply_JEU_shift_down) result.Append("_applyJEUShiftDown");
 
   // pfCand / event-mixing options
-  if(doEventMixing) result.Append("_mixedEventPFClustering");
+  if(doEventMixing){
+    result.Append("_mixedEventPFClustering");
+    // only meaningful for doEventMixing -- same-event clustering has no
+    // randomness to resample, so this is omitted there rather than printing
+    // a misleading "_fastJetResamples-N" on a file it did not affect
+    result.Append(Form("_fastJetResamples-%i",N_fastJetMixedEventResamples));
+  }
   else result.Append("_sameEventPFClustering");
   if(skipSingleConstituentJets) result.Append("_skipSingleConstituentJets");
-  result.Append(Form("_pseudoJetCandPtMin-%1.1f",pseudoJetCandPt_min));
 
   TDatime dt;
   result.Append(Form("_%i-%i-%i",dt.GetYear(),dt.GetMonth(),dt.GetDay()));

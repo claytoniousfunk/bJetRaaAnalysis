@@ -7,7 +7,10 @@
 //   root -l -b -q plotFastJet_rcSubtraction.C
 
 const char *inFile =
-  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPseudoJets_pfCand_pseudoJetCandPtMin-0.0_2026-7-16_ultraFineCentBins.root";
+  //"/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-4_ultraFineCentBins.root";
+  //"/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-5_ultraFineCentBins_dPTMapBkgSub_fixFastJetPtCut_fixJECApplicationOrder.root";
+  //"/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_RCMapBkgSub_2026-8-5_ultraFineCentBins.root";
+  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_RCGeoCorrMapBkgSub_2026-8-5_ultraFineCentBins.root";
 
 const char *outDir =
   "../../../../figures/jetPt/pseudoJets/rcSubtraction/";
@@ -60,6 +63,7 @@ void plotFastJet_rcSubtraction()
     return;
   }
 
+
   TLine *li = new TLine();
   li->SetLineStyle(7);
   li->SetLineColor(kGray + 1);
@@ -69,17 +73,35 @@ void plotFastJet_rcSubtraction()
     TH1D *hRaw = nullptr;
     TH1D *hSub = nullptr;
     TH1D *hRC = nullptr;
-    f->GetObject(Form("h_fastJetPt_%s",        centSuffix[ci]), hRaw);
-    f->GetObject(Form("h_fastJetPt_bkgSub_RC_%s", centSuffix[ci]), hSub);
-    // f->GetObject(Form("h_fastJetPt_JEC_%s",        centSuffix[ci]), hRaw);
-    // f->GetObject(Form("h_fastJetPt_JEC_bkgSub_RC_%s", centSuffix[ci]), hSub);
+    TH1D *hvz = nullptr;
+    TH1D *hCS = nullptr;
+    TH1D *hvz2 = nullptr;
+    // f->GetObject(Form("h_fastJetPt_%s",        centSuffix[ci]), hRaw);
+    // f->GetObject(Form("h_fastJetPt_bkgSub_RC_%s", centSuffix[ci]), hSub);
+    // f->GetObject(Form("h_fastJetPt_PF_%s",        centSuffix[ci]), hRaw);
+    // f->GetObject(Form("h_fastJetPt_PF_bkgSub_RC_%s", centSuffix[ci]), hSub);
+    f->GetObject(Form("h_fastJetPt_PF_JEC_%s",        centSuffix[ci]), hRaw);
+    f->GetObject(Form("h_fastJetPt_PF_JEC_bkgSub_RC_%s", centSuffix[ci]), hSub);
 
+    f->GetObject(Form("h_inclRecoJetPt_%s", centSuffix[ci]), hCS);
+    //f->GetObject(Form("h_inclRawJetPt_%s", centSuffix[ci]), hCS);
+    f->GetObject(Form("h_vz_%s",centSuffix[ci]),hvz);
     f->GetObject(Form("h_pseudoJetPt_%s", centSuffix[ci]), hRC);
 
+    
     if(!hRaw || !hSub){
       std::cerr << "WARNING: histograms not found for " << centSuffix[ci] << " — skipping\n";
       continue;
     }
+
+
+
+    if(!hCS){
+      std::cerr << "WARNING: h_inclRecoJetPt_" << centSuffix[ci] << " not found — skipping CS comparison\n";
+      continue;
+    }
+    hCS = (TH1D*) hCS->Clone(Form("hCS_%s", centSuffix[ci]));
+    hCS->SetDirectory(nullptr);
 
     hRaw = (TH1D*) hRaw->Clone(Form("hRaw_%s", centSuffix[ci]));
     hSub = (TH1D*) hSub->Clone(Form("hSub_%s", centSuffix[ci]));
@@ -123,7 +145,7 @@ void plotFastJet_rcSubtraction()
     hRaw->GetXaxis()->SetLabelSize(0.);
     hRaw->Draw("hist");
     hSub->Draw("hist same");
-    hRC->Draw("hist same");
+    //hRC->Draw("hist same");
 
     TLatex lat;
     lat.SetNDC();
@@ -134,8 +156,9 @@ void plotFastJet_rcSubtraction()
     lat.DrawLatex(0.18, 0.76, "FastJet (raw)");
     lat.SetTextColor(colSub);
     lat.DrawLatex(0.18, 0.68, "FastJet (RC subtracted)");
-    lat.SetTextColor(colRC);
-    lat.DrawLatex(0.18, 0.60, "Random Cone");
+    //lat.DrawLatex(0.18, 0.68, "FastJet (#Delta p_{T} subtracted + JEC)");
+    // lat.SetTextColor(colRC);
+    // lat.DrawLatex(0.18, 0.60, "Random Cone");
 
     // lower pad: ratio
     pDn->cd();
@@ -161,22 +184,18 @@ void plotFastJet_rcSubtraction()
     delete c;
 
     // ---- canvas 2: RC-subtracted FastJet vs CS reco jets (shape comparison) --
-    TH1D *hCS = nullptr;
-    f->GetObject(Form("h_inclRecoJetPt_%s", centSuffix[ci]), hCS);
-    if(!hCS){
-      std::cerr << "WARNING: h_inclRecoJetPt_" << centSuffix[ci] << " not found — skipping CS comparison\n";
-      continue;
-    }
-    hCS = (TH1D*) hCS->Clone(Form("hCS_%s", centSuffix[ci]));
-    hCS->SetDirectory(nullptr);
+
 
     // normalize to unity for shape comparison
     TH1D *hSubNorm = (TH1D*) hSub->Clone(Form("hSubNorm_%s", centSuffix[ci]));
     TH1D *hCSNorm  = (TH1D*) hCS ->Clone(Form("hCSNorm_%s",  centSuffix[ci]));
     hSubNorm->SetDirectory(nullptr);
     hCSNorm ->SetDirectory(nullptr);
-    if(hSubNorm->Integral() > 0) hSubNorm->Scale(1. / hSubNorm->Integral(hSubNorm->FindBin(20),hSubNorm->FindBin(500)));
-    if(hCSNorm ->Integral() > 0) hCSNorm ->Scale(1. / hCSNorm ->Integral(hCSNorm->FindBin(20),hCSNorm->FindBin(500)));
+    // if(hSubNorm->Integral() > 0) hSubNorm->Scale(1. / hSubNorm->Integral(hSubNorm->FindBin(20),hSubNorm->FindBin(500)));
+    // if(hCSNorm ->Integral() > 0) hCSNorm ->Scale(1. / hCSNorm ->Integral(hCSNorm->FindBin(20),hCSNorm->FindBin(500)));
+    if(hvz->Integral() > 0) hSubNorm->Scale(1./hvz->Integral());
+      
+    if(hvz->Integral() > 0) hCSNorm->Scale(1./hvz->Integral());
 
     const int colCS = kGreen + 2;
     styleHist(hSubNorm, colSub);
@@ -203,7 +222,7 @@ void plotFastJet_rcSubtraction()
 
     hSubNorm->GetXaxis()->SetRangeUser(pTlo, pThi);
     hSubNorm->GetYaxis()->SetRangeUser(ymin2 * 0.05, ymax2 * 50.);
-    hSubNorm->GetYaxis()->SetTitle("Entries (norm. for #it{p}_{T} > 20 GeV)");
+    hSubNorm->GetYaxis()->SetTitle("Entries per-event");
     hSubNorm->GetXaxis()->SetLabelSize(0.);
     hSubNorm->Draw("hist");
     hCSNorm ->Draw("hist same");
@@ -214,9 +233,13 @@ void plotFastJet_rcSubtraction()
     lat2.DrawLatex(0.68, 0.82, Form("PbPb, %s", centLabel[ci]));
     lat2.SetTextSize(0.045);
     lat2.SetTextColor(colSub);
-    lat2.DrawLatex(0.18, 0.76, "FastJet (RC subtracted)");
+    //lat2.DrawLatex(0.18, 0.76, "FastJet (RC subtracted)");
+    lat2.DrawLatex(0.18, 0.76, "FastJet (RC subtracted + JEC)");
+    //lat.DrawLatex(0.18, 0.76, "FastJet (#Delta p_{T} subtracted)");
+    //lat.DrawLatex(0.18, 0.76, "FastJet (#Delta p_{T} subtracted + JEC)");
     lat2.SetTextColor(colCS);
-    lat2.DrawLatex(0.18, 0.68, "CS reco jets (akCs4PF)");
+    //lat2.DrawLatex(0.18, 0.68, "CS reco jets (akCs4PF raw)");
+    lat2.DrawLatex(0.18, 0.68, "CS reco jets (akCs4PF raw + JEC)");
 
     pDn2->cd();
     TH1D *hRatio2 = (TH1D*) hSubNorm->Clone(Form("hRatio2_%s", centSuffix[ci]));
