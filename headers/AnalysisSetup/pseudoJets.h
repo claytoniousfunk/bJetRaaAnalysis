@@ -46,7 +46,7 @@ int N_mixedEventsInPool = 100;
 // Has no effect when !doEventMixing: same-event clustering has no randomness
 // to resample (it is just the event's own candidates every time), so the
 // loop runs exactly once regardless of this value.
-int N_fastJetMixedEventResamples = 1;
+int N_fastJetMixedEventResamples = 100;
 
 double pseudoJetCandPt_min = 0.0;
 
