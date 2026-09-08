@@ -2,20 +2,32 @@
 // muons -- not restricted to the muon's own tagged jet) in three jet pT
 // windows, merged into the standard 4 coarse centrality classes.
 //
-// One canvas per coarse class, three overlaid dR shapes (one per pT window),
-// each unit-normalized so the curves compare SHAPE, not rate -- absolute
-// yields already differ by two orders of magnitude across the pT windows and
-// would dominate an un-normalized overlay.
+// One canvas per coarse class, three overlaid dR distributions (one per jet pT
+// window), each divided by the number of events in that coarse class and by bin
+// width, giving dN/d(dR) PER EVENT. This is the same normalisation the ptRel
+// decomposition uses: sum h_vz over the class's fine slices and divide. Because
+// every histogram here is filled at w_resample = w/N_resamples, one real event
+// contributes total weight w regardless of the resample count, so the per-event
+// rate is directly comparable across scans with different N.
 //
-// STATISTICS ARE THIN outside 0-10%, and the legend reports raw entries per
-// curve so that is visible rather than hidden: merged-class entry counts run
-// from 364 (0-10%, 50-60 GeV) down to 4 (50-80%, 60-80 GeV). Treat the
-// peripheral panels as indicative shapes, not measurements.
+// These curves were previously unit-normalised on the grounds that the absolute
+// yields spanned two orders of magnitude. They do not: the per-event rates
+// across the three pT windows differ by only 1.9x (30-50%) to 4.7x (0-10%), so
+// all three sit legibly on one linear axis while now carrying rate information
+// that unit normalisation threw away.
 //
-// dR rebinned into 5 uniform 0.1-wide bins -- wider than
-// plotFastJetMuonDR_inJetVsInclusive.cc's convention, since the merged
-// coarse-class statistics here (as low as 4 entries in a pT window) do not
-// support the finer low-dR binning used there.
+// Statistics from the 100-resample scan (fastJetResamples-100, 2026-09-08) are
+// roughly two orders of magnitude above the earlier single-sample version:
+// merged-class entry counts run from 31975 (0-10%, 50-60 GeV) down to 490
+// (50-80%, 80-120 GeV), against 364 down to 4 before. The legend still reports
+// raw entries per curve.
+//
+// dR rebinned into 10 uniform 0.05-wide bins. The earlier 0.1-wide binning was
+// forced by those old counts and is no longer necessary; the native axis is
+// 0.0025 wide, so any multiple of that is a legal edge. Note the peripheral
+// panels remain thin at LOW dR specifically: for a flat density the entries go
+// as dR, so the first bin holds only ~1% of a curve's total -- about 5 entries
+// in the sparsest panel even though the curve as a whole has 490.
 //
 // Usage: root -l -b -q 'plotMuonDR_inclusiveClosestJet_coarseCent.C'
 // Run from: src/plots/muJetDr/
@@ -23,7 +35,7 @@
 #include "../../../headers/functions/divideByBinwidth.h"
 
 const char *inFile =
-  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_SingleMuon_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPFClustering_pseudoJetCandPtMin-0.0_2026-9-1_ultraFineCentBins.root";
+  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_SingleMuon_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPFClustering_fastJetResamples-100_2026-9-8_ultraFineCentBins.root";
 
 const char *histBase = "h_muonDR_inclusiveClosestJet";
 
@@ -41,16 +53,40 @@ const double ptHi[NPt] = {60, 80, 120};
 const char  *ptHex[NPt]   = {"#0072B2", "#D55E00", "#009E73"};   // Okabe-Ito
 const int    ptMarker[NPt] = {20, 21, 33};                        // circle, square, diamond -- no triangles
 
-const int    NEdge_dR = 6;
-double       edge_dR[NEdge_dR] = {0, 0.1, 0.2, 0.3, 0.4, 0.5};
+const int    NEdge_dR = 11;
+double       edge_dR[NEdge_dR] = {0, 0.05, 0.10, 0.15, 0.20, 0.25,
+                                  0.30, 0.35, 0.40, 0.45, 0.50};
 
 const double plotDRmax = 0.5;
 
-void plotMuonDR_inclusiveClosestJet_coarseCent(){
+// events in a coarse class = sum of h_vz over its fine slices, matching
+// classEvents() in plotPtRelTemplateDecomposition.C
+double classEvents(TFile *f, int ci)
+{
+  double n = 0.;
+  for(int si = sliceLo[ci]; si <= sliceHi[ci]; si++){
+    TH1D *h = nullptr;
+    f->GetObject(Form("h_vz_C%d", si), h);
+    if(!h) return -1.;
+    n += h->Integral();
+  }
+  return n;
+}
+
+// scanFile overrides inFile, so an alternative scan can be checked without
+// editing the constant; outSuffix is appended to each output filename.
+void plotMuonDR_inclusiveClosestJet_coarseCent(const char *scanFile = nullptr,
+                                               const char *outSuffix = ""){
   gStyle->SetOptStat(0);
+  // per-event rates are ~1e-4, so without this the y labels render as
+  // 0.0002, 0.0004, ... which are wide enough to push the axis title off the
+  // canvas; 3 digits forces a shared "x10^-3" header instead
+  TGaxis::SetMaxDigits(3);
+  const char *usePath = (scanFile && scanFile[0]) ? scanFile : inFile;
+  printf("scan file: %s\n", usePath);
   gSystem->mkdir(outDir, kTRUE);
 
-  TFile *f = TFile::Open(inFile);
+  TFile *f = TFile::Open(gSystem->ExpandPathName(usePath));
   if(!f || f->IsZombie()){ printf("ERROR: cannot open %s\n", inFile); return; }
 
   for(int ci = 0; ci < NClass; ci++){
@@ -66,6 +102,9 @@ void plotMuonDR_inclusiveClosestJet_coarseCent(){
     }
     if(!hSum){ printf("WARNING: no histograms found for class %s, skipping\n", classLabel[ci]); continue; }
 
+    double nEvt = classEvents(f, ci);
+    if(nEvt <= 0.){ printf("WARNING: no h_vz for class %s, skipping\n", classLabel[ci]); continue; }
+
     TH1D *proj[NPt];
     int   nEntries[NPt];
 
@@ -77,18 +116,21 @@ void plotMuonDR_inclusiveClosestJet_coarseCent(){
 
       TH1D *h = (TH1D*) raw->Rebin(NEdge_dR-1, Form("h_dR_%d_%d", ci, p), edge_dR);
       h->SetDirectory(nullptr);
-      if(h->Integral() > 0.) h->Scale(1./h->Integral());
-      divideByBinwidth(h);
+      h->Scale(1./nEvt);      // per-event rate
+      divideByBinwidth(h);    // ... per unit dR
+
       proj[p] = h;
     }
 
-    printf("%-8s", classLabel[ci]);
-    for(int p = 0; p < NPt; p++) printf("  %.0f-%.0f GeV: %d entries", ptLo[p], ptHi[p], nEntries[p]);
+    printf("%-8s N_evt=%.0f", classLabel[ci], nEvt);
+    for(int p = 0; p < NPt; p++)
+      printf("  |  %.0f-%.0f GeV: %d entries, %.3e/evt",
+             ptLo[p], ptHi[p], nEntries[p], proj[p]->Integral("width"));
     printf("\n");
 
     TCanvas *c = new TCanvas(Form("c_%d", ci), "", 700, 700);
     TPad *pad = new TPad("pad", "", 0, 0, 1, 1);
-    pad->SetLeftMargin(0.14);
+    pad->SetLeftMargin(0.17);
     pad->SetBottomMargin(0.12);
     pad->Draw(); pad->cd();
 
@@ -104,7 +146,8 @@ void plotMuonDR_inclusiveClosestJet_coarseCent(){
       proj[p]->SetLineWidth(2);
       proj[p]->SetTitle("");
       proj[p]->GetXaxis()->SetTitle("#it{#Delta}#it{R}(#it{#mu},jet)");
-      proj[p]->GetYaxis()->SetTitle("1/#it{N} d#it{N}/d(#it{#Delta}#it{R})");
+      proj[p]->GetYaxis()->SetTitle("d#it{N}/d(#it{#Delta}#it{R}) per event");
+      proj[p]->GetYaxis()->SetTitleOffset(1.55);
       proj[p]->GetXaxis()->SetTitleSize(0.045);
       proj[p]->GetYaxis()->SetTitleSize(0.045);
       proj[p]->GetXaxis()->SetLabelSize(0.04);
@@ -122,11 +165,14 @@ void plotMuonDR_inclusiveClosestJet_coarseCent(){
     leg->Draw();
 
     TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.032);
-    la.DrawLatex(0.17, 0.90, Form("PbPb SingleMuon (5.02 TeV), %s", classLabel[ci]));
-    la.DrawLatex(0.17, 0.855, "p_{T}^{#mu} > 15 GeV, |#eta^{#mu}| < 2, |#eta^{jet}| < 1.6");
+    // kept clear of the y-axis "x10^-3" exponent, which ROOT draws at the top
+    // left of the frame once SetMaxDigits forces scientific notation
+    la.DrawLatex(0.21, 0.86,  Form("PbPb SingleMuon (5.02 TeV), %s", classLabel[ci]));
+    la.DrawLatex(0.21, 0.815, "p_{T}^{#mu} > 15 GeV, |#eta^{#mu}| < 2, |#eta^{jet}| < 1.6");
 
-    TString out = TString(outDir) + Form("muonDR_inclusiveClosestJet_coarseCent_%s.pdf",
-                    TString(classLabel[ci]).ReplaceAll("%","pct").ReplaceAll("-","to").Data());
+    TString out = TString(outDir) + Form("muonDR_inclusiveClosestJet_coarseCent_%s%s.pdf",
+                    TString(classLabel[ci]).ReplaceAll("%","pct").ReplaceAll("-","to").Data(),
+                    outSuffix);
     c->SaveAs(out);
     printf("Saved %s\n\n", out.Data());
   }
