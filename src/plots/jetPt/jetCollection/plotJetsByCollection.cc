@@ -11,11 +11,17 @@
 #include "TColor.h"
 #include "TROOT.h"
 #include "TSystem.h"
+#include "TMath.h"
 #include <iostream>
 
 
 
 #include "../../../../headers/functions/divideByBinwidth.h"
+
+// outDir is created if absent; all canvases are written there. Declared here
+// rather than beside main() because drawRCP() saves its own figures and is
+// defined earlier in the file.
+const char *outDir = "../../../../figures/jetCollection/";
 
 TFile *f_calo, *f_flow, *f_pf;
 TH1D *h_calo, *h_flow, *h_pf, *r_calo, *r_flow;
@@ -286,17 +292,61 @@ void drawRCP(){
 
   TLatex laR; laR.SetNDC(); laR.SetTextFont(42); laR.SetTextSize(0.032);
   laR.DrawLatex(0.19, 0.92, Form("PbPb, C%d / 50-80%%  (no N_{coll} scaling)", centBin));
-  
 
+  canv_RCP->SaveAs(Form("%sjetsByCollection_RCP_C%d%s.pdf", outDir, centBin,
+                        useRawJets ? "_rawPt" : ""));
 
+  // ---- same curves, pinned to agree in the highest pT bin -----------------
+  // Each RCP is divided by its OWN value there, so all three pass through 1 and
+  // what remains is the pT dependence alone, with the overall offset removed.
+  //
+  // Note this is NOT normalizeByHighPtIntegral(): that scales the spectra, and
+  // scaling numerator and denominator by their own integrals only multiplies
+  // each RCP by a constant -- it does not bring the curves together.
+  int bHi = RCP_calo->FindBin(jetPtNorm + 1e-6);   // the 100-200 GeV bin
+  double pc = RCP_calo->GetBinContent(bHi);
+  double pfl = RCP_flow->GetBinContent(bHi);
+  double pp = RCP_pf->GetBinContent(bHi);
+  if(pc <= 0. || pfl <= 0. || pp <= 0.){
+    printf("  (pinned RCP skipped: a collection has no yield in the %.0f GeV bin)\n", jetPtNorm);
+    return;
+  }
+  RCP_calo->Scale(1./pc);
+  RCP_flow->Scale(1./pfl);
+  RCP_pf->Scale(1./pp);
+
+  TCanvas *canv_RCPpin = new TCanvas("canv_RCPpin","canv_RCPpin",700,700);
+  canv_RCPpin->cd();
+  TPad *padPin = new TPad("padPin","padPin",0,0.,1,1);
+  padPin->SetLeftMargin(0.19);
+  padPin->Draw(); padPin->cd();
+
+  double pmax = 0.;
+  for(int b = 1; b <= RCP_calo->GetNbinsX(); b++){
+    pmax = TMath::Max(pmax, RCP_calo->GetBinContent(b) + RCP_calo->GetBinError(b));
+    pmax = TMath::Max(pmax, RCP_flow->GetBinContent(b) + RCP_flow->GetBinError(b));
+    pmax = TMath::Max(pmax, RCP_pf->GetBinContent(b)   + RCP_pf->GetBinError(b));
+  }
+  RCP_calo->SetTitle("");
+  RCP_calo->GetYaxis()->SetTitle(Form("(C%d / 50-80%%), pinned at %.0f GeV", centBin, jetPtNorm));
+  RCP_calo->GetYaxis()->SetTitleOffset(1.55);
+  RCP_calo->SetMinimum(0.);
+  RCP_calo->SetMaximum(pmax*1.35);
+  RCP_calo->Draw();
+  RCP_flow->Draw("same");
+  RCP_pf->Draw("same");
+
+  TLine *lOne = new TLine(newPtAxis[0], 1.0, newPtAxis[NPtEdges-1], 1.0);
+  lOne->SetLineStyle(2); lOne->SetLineColor(kGray+2); lOne->Draw();
+
+  legRCP->Draw();
+  laR.DrawLatex(0.19, 0.92, Form("PbPb, C%d / 50-80%%, pinned at %.0f GeV", centBin, jetPtNorm));
+
+  canv_RCPpin->SaveAs(Form("%sjetsByCollection_RCPpinned_C%d%s.pdf", outDir, centBin,
+                           useRawJets ? "_rawPt" : ""));
 }
 
 
-
-// outDir is created if absent; both canvases are written there. Without this
-// the program drew to screen and saved nothing, so a headless run produced no
-// output at all.
-const char *outDir = "../../../../figures/jetCollection/";
 
 // centBin comes from the command line rather than a loop: rebin() creates
 // histograms by fixed name ("h_calo", ...), so a second pass in the same
@@ -332,17 +382,12 @@ int main(int argc, char **argv){
   stylizeHistograms();
   computeRatio();
   draw();
-  drawRCP();
+  // RCP is this bin over C4, so for centBin 4 it is identically 1
+  if(centBin != 4) drawRCP();
+  else printf("  (RCP skipped: C4/C4 is identically 1)\n");
 
   canv->SaveAs(Form("%sjetsByCollection_C%d%s.pdf", outDir, centBin,
                     useRawJets ? "_rawPt" : ""));
-  // RCP is this bin divided by C4, so for centBin 4 it is identically 1 and
-  // carries no information -- not worth writing a panel of ones.
-  if(centBin != 4)
-    canv_RCP->SaveAs(Form("%sjetsByCollection_RCP_C%d%s.pdf", outDir, centBin,
-                          useRawJets ? "_rawPt" : ""));
-  else
-    printf("  (RCP skipped: C4/C4 is identically 1)\n");
   printf("wrote figures to %s\n", outDir);
 
   return 0;   // was -1, which reports failure to any calling script
