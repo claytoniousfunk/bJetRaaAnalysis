@@ -19,3 +19,9 @@
 # generated SQLite catalog (rebuild with catalog/build_catalog.py)
 catalog/scan_catalog.db
 
+
+# compiled plot binaries and ACLiC leftovers
+a.out
+*_cc.d
+*_cc.so
+src/plots/**/plotJetsByCollection

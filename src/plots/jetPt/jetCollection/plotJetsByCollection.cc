@@ -1,3 +1,18 @@
+// ROOT headers, needed because this has a main() and is built with g++ rather
+// than run through the interpreter, which would supply them implicitly.
+#include "TFile.h"
+#include "TH1D.h"
+#include "TCanvas.h"
+#include "TPad.h"
+#include "TLegend.h"
+#include "TLatex.h"
+#include "TLine.h"
+#include "TStyle.h"
+#include "TColor.h"
+#include "TROOT.h"
+#include "TSystem.h"
+#include <iostream>
+
 
 
 #include "../../../../headers/functions/divideByBinwidth.h"
@@ -253,7 +268,15 @@ void drawRCP(){
 
 
 
+// outDir is created if absent; both canvases are written there. Without this
+// the program drew to screen and saved nothing, so a headless run produced no
+// output at all.
+const char *outDir = "../../../../figures/jetCollection/";
+
 int main(){
+
+  gROOT->SetBatch(kTRUE);
+  gSystem->mkdir(outDir, kTRUE);
 
   centBin = 1;
   normalizeByHighPt = false;
@@ -272,7 +295,13 @@ int main(){
   draw();
   drawRCP();
 
-  return -1;
+  canv->SaveAs(Form("%sjetsByCollection_C%d%s.pdf", outDir, centBin,
+                    useRawJets ? "_rawPt" : ""));
+  canv_RCP->SaveAs(Form("%sjetsByCollection_RCP_C%d%s.pdf", outDir, centBin,
+                        useRawJets ? "_rawPt" : ""));
+  printf("wrote figures to %s\n", outDir);
+
+  return 0;   // was -1, which reports failure to any calling script
 }
 
 
