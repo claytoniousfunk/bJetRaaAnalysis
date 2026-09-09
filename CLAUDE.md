@@ -103,8 +103,11 @@ Coarse classes: `0-10% = slices 1-2`, `10-30% = 3-6`, `30-50% = 7-10`,
 
 ## Scan workflow
 
-Scans run on lxplus and take hours, so **batch scan-code changes**. Anything
-that adds or changes a histogram needs a full rescan before it can be used.
+Scans run on lxplus and take hours, and anything that adds or changes a
+histogram needs a full rescan before it can be used. The histogram set is
+largely settled as of 2026-09, so this is not usually a bottleneck; if a stretch
+of work starts needing several new histograms, batch them into one scan rather
+than paying a round trip each.
 
 **Type-check before submitting.** The `#ifdef DO_FASTJET` block is the
 highest-risk code here to edit, and it is now checkable locally:
