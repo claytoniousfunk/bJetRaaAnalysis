@@ -94,7 +94,6 @@ TF1 *fitFxn_PbPb_HLT_C4, *fitFxn_PbPb_HLT_C3, *fitFxn_PbPb_HLT_C2, *fitFxn_PbPb_
 #include "../../../headers/functions/getDatasetName/getDatasetName_PbPb.h"
 #include "../../../headers/functions/getInputFileName/getInputFileName_PbPb.h"
 #include "../../../headers/functions/configureOutputDatasetName/configureOutputDatasetName_PbPb_pfCandAnalyzer.h"
-#include "../../../headers/functions/writeProvenance.h"
 // dimuon mass calculation
 #include "../../../headers/functions/calculateDimuonMass.h"
 // shared scanning helpers
@@ -102,6 +101,8 @@ TF1 *fitFxn_PbPb_HLT_C4, *fitFxn_PbPb_HLT_C3, *fitFxn_PbPb_HLT_C2, *fitFxn_PbPb_
 #include "../scan_muon_tag.h"
 // pfCand analysis variables
 #include "../../../headers/AnalysisSetup/pseudoJets.h"
+// must follow pseudoJets.h and the config headers -- it reads their globals
+#include "../../../headers/functions/writeProvenance.h"
 // hibin fit parameters / functions
 #include "../../../headers/fitParameters/hiBinFitParams_PYTHIAHYDJET.h"
 TF1 *fitFxn_hiBin;

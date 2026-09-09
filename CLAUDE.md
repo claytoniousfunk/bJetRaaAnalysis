@@ -106,10 +106,31 @@ Coarse classes: `0-10% = slices 1-2`, `10-30% = 3-6`, `30-50% = 7-10`,
 Scans run on lxplus and take hours, so **batch scan-code changes**. Anything
 that adds or changes a histogram needs a full rescan before it can be used.
 
-FastJet is not available in this sandbox, so the `#ifdef DO_FASTJET` block
-**cannot be compiled here** — it is the highest-risk place to edit. Verify brace
-balance and symbol scope by hand, and compile on lxplus before submitting a full
-job.
+**Type-check before submitting.** The `#ifdef DO_FASTJET` block is the
+highest-risk code here to edit, and it is now checkable locally:
+
+```bash
+tools/syntaxCheck.sh                          # PbPb_pfCandAnalyzer.C
+tools/syntaxCheck.sh src/scanning/pp/pp_scan.C
+```
+
+Exit 0 is clean. It is `-fsyntax-only`, so it catches typos, wrong argument
+counts, out-of-scope symbols and include-order mistakes — not logic errors and
+nothing that only appears at link time. It caught a real include-order bug on
+its first run (`writeProvenance.h` was included before the config headers whose
+globals it reads).
+
+Needs FastJet headers; `configure` alone suffices, no build required:
+
+```bash
+cd ~/Programs && curl -LO https://fastjet.fr/repo/fastjet-3.4.3.tar.gz
+tar xzf fastjet-3.4.3.tar.gz && cd fastjet-3.4.3
+./configure --prefix=$HOME/Programs/fastjet
+```
+
+The script generates a driver adding `using namespace std;`, because ROOT's
+interpreter has it in effect and `eventMap.h` relies on that (bare
+`vector<Float_t>`). Without it g++ reports dozens of spurious errors.
 
 Jet collection is chosen at load time and swaps the *tree*, not the histograms:
 
