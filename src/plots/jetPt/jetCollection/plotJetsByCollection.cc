@@ -91,6 +91,17 @@ void normalizeByNEvent(){
   h_flow->Scale(1./h_vz_flow->Integral());
   h_pf->Scale(1./h_vz_pf->Integral());
 
+  // The C4 histograms are the RCP denominators and must be put on the same
+  // per-event footing. They were fetched along with their h_vz but never
+  // scaled, so RCP was a per-event yield over a RAW yield -- wrong by the C4
+  // event count (~5.8e4), which is why it read ~1e-3 instead of ~70. Worse for
+  // this plot's purpose, the three files have slightly different C4 event
+  // counts, so each collection was divided by a different constant and even
+  // the collection-to-collection comparison was distorted.
+  h_calo_C4->Scale(1./h_vz_calo_C4->Integral());
+  h_flow_C4->Scale(1./h_vz_flow_C4->Integral());
+  h_pf_C4->Scale(1./h_vz_pf_C4->Integral());
+
 }
 
 
@@ -249,7 +260,7 @@ void drawRCP(){
   canv_RCP = new TCanvas("canv_RCP","canv_RCP",700,700);
   canv_RCP->cd();
   pad_RCP_upper = new TPad("pad_RCP_upper","pad_RCP_upper",0,0.,1,1);
-  pad_RCP_upper->SetLeftMargin(0.15);
+  pad_RCP_upper->SetLeftMargin(0.19);
   pad_RCP_upper->Draw();
   pad_RCP_upper->cd();
   RCP_calo->GetYaxis()->SetTitleSize(0.045);
@@ -258,9 +269,23 @@ void drawRCP(){
   RCP_calo->GetXaxis()->SetTitleSize(0.045);
   RCP_calo->GetXaxis()->SetLabelSize(0.035);
   RCP_calo->GetXaxis()->SetTitle("Jet p_{T} [GeV]");
+  // colours are inherited from stylizeHistograms(); without a legend the RCP
+  // canvas gave no way to tell the three collections apart
+  RCP_calo->SetTitle("");
+  RCP_calo->GetYaxis()->SetTitleOffset(1.55);
   RCP_calo->Draw();
   RCP_flow->Draw("same");
   RCP_pf->Draw("same");
+
+  TLegend *legRCP = new TLegend(0.55, 0.70, 0.92, 0.88);
+  legRCP->SetBorderSize(0); legRCP->SetFillStyle(0); legRCP->SetTextSize(0.032);
+  legRCP->AddEntry(RCP_pf,   "akCs4PF Jets",       "lp");
+  legRCP->AddEntry(RCP_calo, "akPu4Calo Jets",     "lp");
+  legRCP->AddEntry(RCP_flow, "akFlowPuCs4PF Jets", "lp");
+  legRCP->Draw();
+
+  TLatex laR; laR.SetNDC(); laR.SetTextFont(42); laR.SetTextSize(0.032);
+  laR.DrawLatex(0.19, 0.92, Form("PbPb, C%d / 50-80%%  (no N_{coll} scaling)", centBin));
   
 
 
