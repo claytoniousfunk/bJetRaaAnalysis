@@ -94,6 +94,7 @@ TF1 *fitFxn_PbPb_HLT_C4, *fitFxn_PbPb_HLT_C3, *fitFxn_PbPb_HLT_C2, *fitFxn_PbPb_
 #include "../../../headers/functions/getDatasetName/getDatasetName_PbPb.h"
 #include "../../../headers/functions/getInputFileName/getInputFileName_PbPb.h"
 #include "../../../headers/functions/configureOutputDatasetName/configureOutputDatasetName_PbPb_pfCandAnalyzer.h"
+#include "../../../headers/functions/writeProvenance.h"
 // dimuon mass calculation
 #include "../../../headers/functions/calculateDimuonMass.h"
 // shared scanning helpers
@@ -2604,6 +2605,11 @@ void PbPb_pfCandAnalyzer(int group = 1){
     for(int j = 0; j < NJetPtIndices; j++){
       h_muptrel_hiBin[j]->Write();
     }
+
+    // Record the code version and configuration this file was produced with, so
+    // a consumer never has to infer the generation from which histograms happen
+    // to be present. See headers/functions/writeProvenance.h.
+    writeProvenance(wf);
 
     wf->Close();
     return;

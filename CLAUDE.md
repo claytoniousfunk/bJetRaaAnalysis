@@ -73,9 +73,20 @@ for a window upper edge, or every window is silently one bin too wide.
 
 **Scan generation matters.** Several 2026-09-08 commits changed what existing
 histograms contain (jet pT axis raw→JEC, tagging muon last→leading). Files from
-different generations must not be compared. The marker for the new generation is
-the presence of `h_mixedMuonPtRel_recoJetPt`, which is booked unconditionally
-and simply empty in a same-event scan.
+different generations must not be compared.
+
+Scans from 2026-09-09 onward carry a `provenance` TNamed recording the git hash,
+whether the tree was dirty, and every config flag that changes the output:
+
+```
+root -l file.root
+provenance->GetTitle()
+```
+
+For older files, the marker for the post-2026-09-08 generation is the presence
+of `h_mixedMuonPtRel_recoJetPt`, which is booked unconditionally and is simply
+empty in a same-event scan. `plotFastJetMuonPtRel_sameVsMixedEvent_coarseCent.C`
+uses that marker to refuse mismatched pairs.
 
 **`scanningOuput`** is misspelled in the repo. Paths will fail silently if you
 "correct" it.
