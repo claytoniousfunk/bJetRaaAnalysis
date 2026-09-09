@@ -273,12 +273,26 @@ void drawRCP(){
 // output at all.
 const char *outDir = "../../../../figures/jetCollection/";
 
-int main(){
+// centBin comes from the command line rather than a loop: rebin() creates
+// histograms by fixed name ("h_calo", ...), so a second pass in the same
+// process would collide with the first. One bin per invocation sidesteps that
+// entirely and lets a single bin be redone on its own.
+//
+//   ./plotJetsByCollection        -> C1
+//   ./plotJetsByCollection 3      -> C3
+int main(int argc, char **argv){
 
   gROOT->SetBatch(kTRUE);
   gSystem->mkdir(outDir, kTRUE);
 
-  centBin = 1;
+  centBin = (argc > 1) ? atoi(argv[1]) : 1;
+  if(centBin < 0 || centBin > 4){
+    printf("ERROR: centBin %d out of range. This is a 4CentBins scan:\n"
+           "  0 = 0-80%% inclusive, 1 = 0-10%%, 2 = 10-30%%, 3 = 30-50%%, 4 = 50-80%%\n",
+           centBin);
+    return 2;
+  }
+  printf("centBin = %d\n", centBin);
   normalizeByHighPt = false;
   useRawJets = false;
   
@@ -297,8 +311,13 @@ int main(){
 
   canv->SaveAs(Form("%sjetsByCollection_C%d%s.pdf", outDir, centBin,
                     useRawJets ? "_rawPt" : ""));
-  canv_RCP->SaveAs(Form("%sjetsByCollection_RCP_C%d%s.pdf", outDir, centBin,
-                        useRawJets ? "_rawPt" : ""));
+  // RCP is this bin divided by C4, so for centBin 4 it is identically 1 and
+  // carries no information -- not worth writing a panel of ones.
+  if(centBin != 4)
+    canv_RCP->SaveAs(Form("%sjetsByCollection_RCP_C%d%s.pdf", outDir, centBin,
+                          useRawJets ? "_rawPt" : ""));
+  else
+    printf("  (RCP skipped: C4/C4 is identically 1)\n");
   printf("wrote figures to %s\n", outDir);
 
   return 0;   // was -1, which reports failure to any calling script
