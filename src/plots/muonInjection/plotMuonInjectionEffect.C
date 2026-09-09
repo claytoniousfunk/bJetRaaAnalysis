@@ -177,12 +177,20 @@ void drawPair(TH1D *hNo, TH1D *hInj, TH1D *hConst,
   styleH(rI, hexInj, markInj);
   if(rC) styleH(rC, hexConst, markConst);
 
-  double rmax = 1.5;
+  // Range from bins where the DENOMINATOR is genuinely populated (>2% of its
+  // own peak). An earlier version capped the scan at 6, which was tuned for
+  // ratios near unity -- but injection multiplies the tagged yield by ~9, so
+  // that ceiling pushed almost every real point off-scale and left the panel
+  // showing one bin. The blow-ups worth excluding come from an empty noInject
+  // denominator, not from a large honest ratio, so gate on the denominator
+  // instead of on the ratio value.
+  double rmax = 1.2, noPeak = hNo->GetMaximum();
   for(int b = 1; b <= rI->GetNbinsX(); b++){
     double x = rI->GetBinCenter(b);
     if(x < xMin || x > xMax) continue;
+    if(hNo->GetBinContent(b) < 0.02*noPeak) continue;
     double v = rI->GetBinContent(b) + rI->GetBinError(b);
-    if(v > rmax && v < 6.) rmax = v;
+    if(v > rmax) rmax = v;
   }
   rI->GetXaxis()->SetRangeUser(xMin, xMax);
   rI->SetTitle("");
