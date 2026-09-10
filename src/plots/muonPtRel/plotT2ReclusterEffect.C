@@ -97,10 +97,10 @@ void drawShape(TH1D *hOld, TH1D *hNew, double mOld, double mNew,
 
   TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.044);
   la.DrawLatex(0.21, 0.885, headLine);
-  la.SetTextFont(62);
-  la.DrawLatex(0.21, 0.845, Form("#LTx#GT: %.2f #rightarrow %.2f  (%+.0f%%)",
-                                 mOld, mNew,
-                                 mOld > 0. ? 100.*(mNew/mOld - 1.) : 0.));
+  // The mean shift used to be spelled out here in bold as
+  // "<x>: a -> b (+c%)". Removed 2026-09-10 as too distracting: it competed
+  // with the histograms for attention and repeated what the legend's per-curve
+  // means already carry. The shift is still printed to the terminal.
 
   pB->cd();
   TH1D *r = makeRatio(hNew, hOld, Form("r_%s", outName), RatioErr::kBoth);

@@ -153,8 +153,8 @@ void drawPair(TH1D *hNo, TH1D *hInj, TH1D *hConst,
   hInj->Draw("E same");
   if(hConst) hConst->Draw("E same");
 
-  // sits below the three header lines, which run down to 0.785
-  TLegend *leg = new TLegend(0.40,0.52,0.95,0.75);
+  // sits below the two header lines, which run down to 0.835
+  TLegend *leg = new TLegend(0.40,0.58,0.95,0.80);
   leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.038);
   leg->AddEntry(hNo,  Form("no inject  (#mu=%.3f)", hNo->GetMean()), "lp");
   leg->AddEntry(hInj, Form("inject  (#mu=%.3f)",    hInj->GetMean()), "lp");
@@ -164,12 +164,11 @@ void drawPair(TH1D *hNo, TH1D *hInj, TH1D *hConst,
   TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.042);
   la.DrawLatex(0.21, 0.885, headLine);
   la.DrawLatex(0.21, 0.835, subLine);
-  // the headline number: how far the mean moved
-  la.SetTextFont(62);
-  la.DrawLatex(0.21, 0.785, Form("#LT%s#GT: %.3f #rightarrow %.3f  (%+.1f%%)",
-                                 xTitle, hNo->GetMean(), hInj->GetMean(),
-                                 hNo->GetMean() != 0. ?
-                                 100.*(hInj->GetMean()/hNo->GetMean() - 1.) : 0.));
+  // The mean shift used to be spelled out here in bold as
+  // "<x>: a -> b (+c%)". Removed 2026-09-10 as too distracting: it competed
+  // with the histograms for attention and repeated what the legend's per-curve
+  // means already carry. The full table, including the shift, still goes to the
+  // terminal.
 
   pB->cd();
   TH1D *rI = ratioOf(hInj, hNo, Form("rI_%s", outName));
