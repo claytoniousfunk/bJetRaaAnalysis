@@ -367,12 +367,16 @@ void PbPb_scan(int group = 1){
       Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2L3Residual_AK4PF.txt");
     }
     JetCorrector JEC(Files);
+    string JEU_path = "";
+    
+    JetUncertainty JEU;
     if(useCaloJetsOverride){
-      JetUncertainty JEU("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4Calo.txt");
+      JEU_path = "../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4Calo.txt";
     }
     else{
-      JetUncertainty JEU("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4PF.txt");
+      JEU_path = "../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4PF.txt";
     }
+    JetUncertainty JEU(JEU_path.c_str());
     /// print out some info
     readConfig();
 
