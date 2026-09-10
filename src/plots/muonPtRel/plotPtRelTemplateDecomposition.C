@@ -145,10 +145,6 @@ const char *nameD  = "h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn";  // measur
 // and the axis is pulled onto it, which is what the data has and what the
 // post-cluster-matched version below does not.
 const char *nameT2 = "h_injMuonPtRel_donorJetPt_inject";               // fake mu + real jet, reclustered
-// The superseded T2: same pairing, but the muon matched to an akCs4PF reco jet
-// AFTER clustering, so that jet pT excludes the tagging muon entirely and its
-// entries sit at too low a jet pT. Kept as a thin dashed reference.
-const char *nameT2old = "h_mixedMuonPtRel_recoJetPt";
 // Mixed-event candidates drawn from a 100-event pool and clustered into a
 // synthetic event: those jets are combinatorial, so this is the genuine
 // (fake mu, fake jet) term. Its muon is already a jet constituent.
@@ -290,16 +286,14 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
   if(!fM || fM->IsZombie()){ printf("ERROR: cannot open MC file\n  %s\n", mcPath); return; }
 
   // ---- report which templates the input actually carries -------------------
-  bool haveT2 = false, haveT3 = false, haveT2old = false;
+  bool haveT2 = false, haveT3 = false;
   { TH2D *h=nullptr;
     fS->GetObject(Form("%s_C1",nameT2),h); haveT2 = (h!=nullptr); h=nullptr;
-    fS->GetObject(Form("%s_C1",nameT3),h); haveT3 = (h!=nullptr); h=nullptr;
-    fS->GetObject(Form("%s_C1",nameT2old),h); haveT2old = (h!=nullptr); }
+    fS->GetObject(Form("%s_C1",nameT3),h); haveT3 = (h!=nullptr); }
 
   printf("\n=== template availability in the input scan ===\n");
   printf("  D  measured mu + jet     %-40s present\n", nameD);
   printf("  T2 fake mu + real jet   %-40s %s\n", nameT2, haveT2 ? "present" : "*** MISSING ***");
-  printf("     (superseded ref)     %-40s %s\n", nameT2old, haveT2old ? "present" : "absent");
   printf("  T3 fake mu + fake jet   %-40s %s\n", nameT3, haveT3 ? "present" : "*** MISSING ***");
   if(!haveT2)
     printf("\n  NOTE: %s was added to PbPb_pfCandAnalyzer.C on 2026-09-08; scans\n"
@@ -314,8 +308,8 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
 
   // ---- per-event rate table ------------------------------------------------
   printf("\n=== per-event tagged-muon rate, ptRel in [%.1f,%.1f] ===\n", ptRelFitLo, ptRelFitHi);
-  printf("%-8s %-12s %10s %10s %10s %10s %10s %8s\n",
-         "class","jet pT","N_trig","D","T2 inj","T3","T2 old","S/D");
+  printf("%-8s %-12s %10s %10s %10s %10s %8s\n",
+         "class","jet pT","N_trig","D","T2","T3","S/D");
 
   for(int ci = 0; ci < NClass; ci++){
 
@@ -340,7 +334,6 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       TH1D *hD  = projectClass(fS, nameD,  ci, pi, "D");
       TH1D *hT2 = haveT2 ? projectClass(fS, nameT2, ci, pi, "T2") : nullptr;
       TH1D *hT3 = haveT3 ? projectClass(fS, nameT3, ci, pi, "T3") : nullptr;
-      TH1D *hT2o = haveT2old ? projectClass(fS, nameT2old, ci, pi, "T2o") : nullptr;
       if(!hD){ printf("  class %s pT[%.0f,%.0f]: no data histogram, skipping\n",
                       classLabel[ci], ptLo[pi], ptHi[pi]); continue; }
 
@@ -349,7 +342,6 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       hD->Scale(1./nEvtTrig);
       if(hT2)  hT2->Scale(1./nEvtAll);
       if(hT3)  hT3->Scale(1./nEvtTrig);
-      if(hT2o) hT2o->Scale(1./nEvtTrig);
 
       // S = D - T2 - T3 + T4
       TH1D *hS = (TH1D*) hD->Clone(Form("hS_c%d_p%d", ci, pi));
@@ -359,12 +351,11 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
 
       double iD  = fitRangeIntegral(hD);
       double iS  = fitRangeIntegral(hS);
-      printf("%-8s %4.0f-%-7.0f %10.0f %10.2e %10.2e %10.2e %10.2e %8.3f\n",
+      printf("%-8s %4.0f-%-7.0f %10.0f %10.2e %10.2e %10.2e %8.3f\n",
              classLabel[ci], ptLo[pi], ptHi[pi], nEvtTrig,
              iD,
              hT2 ? fitRangeIntegral(hT2) : 0.,
              hT3 ? fitRangeIntegral(hT3) : 0.,
-             hT2o ? fitRangeIntegral(hT2o) : 0.,
              iD > 0. ? iS/iD : 0.);
 
       // ---- MC reference ----------------------------------------------------
@@ -412,8 +403,8 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       // Must come after every integral above: those are per-event counts, and
       // dividing by bin width first would silently change what they mean. The
       // ratio panel is unaffected either way, since the widths cancel.
-      { TH1D *toScale[6] = {hD, hT2, hT3, hT2o, hS, hMCtop};
-        for(int q = 0; q < 6; q++) if(toScale[q]) toScale[q]->Scale(1.0, "width"); }
+      { TH1D *toScale[5] = {hD, hT2, hT3, hS, hMCtop};
+        for(int q = 0; q < 5; q++) if(toScale[q]) toScale[q]->Scale(1.0, "width"); }
 
       // ---- draw ------------------------------------------------------------
       TCanvas *c = new TCanvas(Form("c_c%d_p%d", ci, pi), "", 700, 800);
@@ -428,10 +419,6 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       styleH(hD, colD, 20); styleH(hS, colS, 21);
       if(hT2) styleH(hT2, colT2, 24);
       if(hT3) styleH(hT3, colT3, 25);
-      // superseded template: thin dashed line, no markers, so it reads as a
-      // reference rather than a fourth measurement
-      if(hT2o){ styleH(hT2o, colT2, 1); hT2o->SetMarkerSize(0);
-                hT2o->SetLineStyle(2); hT2o->SetLineWidth(2); }
       // MC drawn as a line, not points: it is a prediction overlaid on the
       // measurement, and giving it markers makes it read as another dataset.
       if(hMCtop){ styleH(hMCtop, colMC, 1); hMCtop->SetLineWidth(3); }
@@ -456,8 +443,8 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       // linear axis that does not include zero misreads the relative sizes of
       // the templates, which is the whole point of this panel.
       double ylow = 0.;
-      { TH1D *drawn[6] = {hD, hT2, hT3, hT2o, hS, hMCtop};
-        for(int q = 0; q < 6; q++){
+      { TH1D *drawn[5] = {hD, hT2, hT3, hS, hMCtop};
+        for(int q = 0; q < 5; q++){
           if(!drawn[q]) continue;
           int b1 = drawn[q]->FindBin(ptRelFitLo + 1e-6);
           int b2 = drawn[q]->FindBin(ptRelFitHi - 1e-6);
@@ -470,7 +457,6 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       hD->Draw("E");
       if(hMCtop) hMCtop->Draw("HIST same");
       if(hT2) hT2->Draw("E same");
-      if(hT2o) hT2o->Draw("HIST same");
       if(hT3) hT3->Draw("E same");
       hS->Draw("E same");
 
@@ -479,7 +465,6 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       leg->AddEntry(hD,  "D: measured #mu + jet", "lp");
       if(hT2) leg->AddEntry(hT2, "T2: fake #mu + real jet (reclustered)", "lp");
       if(hT3) leg->AddEntry(hT3, "T3: fake #mu + fake jet", "lp");
-      if(hT2o) leg->AddEntry(hT2o, "T2: old, matched post-cluster", "l");
       leg->AddEntry(hS,  Form("S = %s", applied.Data()), "lp");
       if(hMCtop) leg->AddEntry(hMCtop, "MC (area matched to S)", "l");
       leg->Draw();
