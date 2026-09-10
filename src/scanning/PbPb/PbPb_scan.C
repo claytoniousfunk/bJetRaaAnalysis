@@ -368,8 +368,7 @@ void PbPb_scan(int group = 1){
     }
     JetCorrector JEC(Files);
     string JEU_path = "";
-    
-    JetUncertainty JEU;
+     
     if(useCaloJetsOverride){
       JEU_path = "../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4Calo.txt";
     }
