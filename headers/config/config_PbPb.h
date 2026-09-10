@@ -33,12 +33,12 @@ bool apply_JER_smear = false;
 bool apply_JEU_shift_up = false;
 bool apply_JEU_shift_down = false;
 // select dataset
-bool doSingleMuonSample = true;
-bool doMinBiasSample = false;
+bool doSingleMuonSample = false;
+bool doMinBiasSample = true;
 bool doHardProbesSample = false;
 bool doNoRhoModificationSample = false;
 bool doWithRhoModificationSample = false;
 // reweight functions (for bkg subtraction)
 bool doHiBinReweightToHardProbesJet80 = false;
-bool useCaloJetsOverride = false; // overrides typical PF jet collection with caloJets
+bool useCaloJetsOverride = true; // overrides typical PF jet collection with caloJets
 bool useFlowJetsOverride = false;
