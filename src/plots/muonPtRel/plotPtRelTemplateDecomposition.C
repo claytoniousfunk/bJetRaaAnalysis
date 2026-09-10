@@ -17,9 +17,10 @@
 // are cases where the MUON is uncorrelated with the jet; they differ only in
 // whether the jet is real:
 //
-//   T2 = h_mixedMuonPtRel_recoJetPt       mixed-event PF muon + reco jet
-//   T3 = h_injMuonPtRel_donorJetPt_inject mixed-event PF muon clustered INTO a
-//                                         donor event and reclustered
+//   T2 = h_injMuonPtRel_donorJetPt_inject mixed-event PF muon clustered INTO the
+//                                         next event and reclustered -- real jets
+//   T3 = h_fastJetMuonPtRel_..._RC        mixed muon in a synthetic mixed event --
+//                                         combinatorial jets
 //
 //   S = D - T2 - T3
 //
@@ -38,11 +39,11 @@
 //
 // NORMALISATION -- two denominators, not one. D and T2 are filled only inside
 // if(evtTriggerDecision), so their rate is per TRIGGERED event and they are
-// divided by h_vz_triggerOn. The injection fills are ungated, so T3 is divided
+// divided by h_vz_triggerOn. The injection fills are ungated, so T2 is divided
 // by h_vz. That is not an inconsistency: the injected muon comes from the mixed
 // pool and the jets from a donor event, so neither depends on whether THIS
 // event fired the trigger, and the per-event rate equals the per-triggered-event
-// rate. Dividing all three by h_vz instead would inflate T3 by 1/f_trig -- 8.7x
+// rate. Dividing all three by h_vz instead would inflate T2 by 1/f_trig -- 8.7x
 // in 0-10% rising to 40x in 50-80%, so it would not even cancel across
 // centrality classes.
 //
@@ -137,15 +138,21 @@ const char *mcPath =
   "weightCut_2026-2-12.root";
 
 const char *nameD  = "h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn";  // measured: all pairings
-const char *nameT2 = "h_mixedMuonPtRel_recoJetPt";                     // fake mu + real jet
-// T3 is now the muon-injection template: the mixed muon is added to the next
-// centrality-matched event's PF candidates and everything is RECLUSTERED, so
-// the muon contributes its pT and pulls the jet axis onto itself -- the same
-// geometry the data has. The old template matched the muon to jets clustered
-// WITHOUT it, which put its weight near 5 GeV instead of near the data's 1.6.
-const char *nameT3 = "h_injMuonPtRel_donorJetPt_inject";               // fake mu + fake jet, reclustered
-// the superseded version, drawn as a thin reference line so the change is visible
-const char *nameT3old = "h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC";
+// T2 is the muon-injection template: a mixed-event muon is added to the NEXT
+// centrality-matched event's PF candidates and everything is reclustered. The
+// donor is a REAL event, so its jets are real jets -- this is the (fake mu,
+// real jet) pairing. Because the muon is clustered in, the jet pT contains it
+// and the axis is pulled onto it, which is what the data has and what the
+// post-cluster-matched version below does not.
+const char *nameT2 = "h_injMuonPtRel_donorJetPt_inject";               // fake mu + real jet, reclustered
+// The superseded T2: same pairing, but the muon matched to an akCs4PF reco jet
+// AFTER clustering, so that jet pT excludes the tagging muon entirely and its
+// entries sit at too low a jet pT. Kept as a thin dashed reference.
+const char *nameT2old = "h_mixedMuonPtRel_recoJetPt";
+// Mixed-event candidates drawn from a 100-event pool and clustered into a
+// synthetic event: those jets are combinatorial, so this is the genuine
+// (fake mu, fake jet) term. Its muon is already a jet constituent.
+const char *nameT3 = "h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC";      // fake mu + fake jet
 const char *nameMC = "h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_allJets"; // + "_C%dT0"
 
 const char *outDir = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/ptRelDecomposition";
@@ -283,17 +290,17 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
   if(!fM || fM->IsZombie()){ printf("ERROR: cannot open MC file\n  %s\n", mcPath); return; }
 
   // ---- report which templates the input actually carries -------------------
-  bool haveT2 = false, haveT3 = false, haveT3old = false;
+  bool haveT2 = false, haveT3 = false, haveT2old = false;
   { TH2D *h=nullptr;
     fS->GetObject(Form("%s_C1",nameT2),h); haveT2 = (h!=nullptr); h=nullptr;
     fS->GetObject(Form("%s_C1",nameT3),h); haveT3 = (h!=nullptr); h=nullptr;
-    fS->GetObject(Form("%s_C1",nameT3old),h); haveT3old = (h!=nullptr); }
+    fS->GetObject(Form("%s_C1",nameT2old),h); haveT2old = (h!=nullptr); }
 
   printf("\n=== template availability in the input scan ===\n");
   printf("  D  measured mu + jet     %-40s present\n", nameD);
   printf("  T2 fake mu + real jet   %-40s %s\n", nameT2, haveT2 ? "present" : "*** MISSING ***");
+  printf("     (superseded ref)     %-40s %s\n", nameT2old, haveT2old ? "present" : "absent");
   printf("  T3 fake mu + fake jet   %-40s %s\n", nameT3, haveT3 ? "present" : "*** MISSING ***");
-  printf("     (superseded ref)     %-40s %s\n", nameT3old, haveT3old ? "present" : "absent");
   if(!haveT2)
     printf("\n  NOTE: %s was added to PbPb_pfCandAnalyzer.C on 2026-09-08; scans\n"
            "        older than that do not carry it, and in those the T3 histogram\n"
@@ -308,7 +315,7 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
   // ---- per-event rate table ------------------------------------------------
   printf("\n=== per-event tagged-muon rate, ptRel in [%.1f,%.1f] ===\n", ptRelFitLo, ptRelFitHi);
   printf("%-8s %-12s %10s %10s %10s %10s %10s %8s\n",
-         "class","jet pT","N_trig","D","T2","T3 inj","T3 old","S/D");
+         "class","jet pT","N_trig","D","T2 inj","T3","T2 old","S/D");
 
   for(int ci = 0; ci < NClass; ci++){
 
@@ -333,15 +340,16 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       TH1D *hD  = projectClass(fS, nameD,  ci, pi, "D");
       TH1D *hT2 = haveT2 ? projectClass(fS, nameT2, ci, pi, "T2") : nullptr;
       TH1D *hT3 = haveT3 ? projectClass(fS, nameT3, ci, pi, "T3") : nullptr;
-      TH1D *hT3o = haveT3old ? projectClass(fS, nameT3old, ci, pi, "T3o") : nullptr;
+      TH1D *hT2o = haveT2old ? projectClass(fS, nameT2old, ci, pi, "T2o") : nullptr;
       if(!hD){ printf("  class %s pT[%.0f,%.0f]: no data histogram, skipping\n",
                       classLabel[ci], ptLo[pi], ptHi[pi]); continue; }
 
-      // trigger-gated numerators over triggered events; ungated over all events
+      // trigger-gated numerators over triggered events; ungated over all events.
+      // Only the injection template (T2) is ungated -- see the header.
       hD->Scale(1./nEvtTrig);
-      if(hT2)  hT2->Scale(1./nEvtTrig);
-      if(hT3)  hT3->Scale(1./nEvtAll);
-      if(hT3o) hT3o->Scale(1./nEvtTrig);   // the old template WAS gated
+      if(hT2)  hT2->Scale(1./nEvtAll);
+      if(hT3)  hT3->Scale(1./nEvtTrig);
+      if(hT2o) hT2o->Scale(1./nEvtTrig);
 
       // S = D - T2 - T3 + T4
       TH1D *hS = (TH1D*) hD->Clone(Form("hS_c%d_p%d", ci, pi));
@@ -356,7 +364,7 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
              iD,
              hT2 ? fitRangeIntegral(hT2) : 0.,
              hT3 ? fitRangeIntegral(hT3) : 0.,
-             hT3o ? fitRangeIntegral(hT3o) : 0.,
+             hT2o ? fitRangeIntegral(hT2o) : 0.,
              iD > 0. ? iS/iD : 0.);
 
       // ---- MC reference ----------------------------------------------------
@@ -404,7 +412,7 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       // Must come after every integral above: those are per-event counts, and
       // dividing by bin width first would silently change what they mean. The
       // ratio panel is unaffected either way, since the widths cancel.
-      { TH1D *toScale[6] = {hD, hT2, hT3, hT3o, hS, hMCtop};
+      { TH1D *toScale[6] = {hD, hT2, hT3, hT2o, hS, hMCtop};
         for(int q = 0; q < 6; q++) if(toScale[q]) toScale[q]->Scale(1.0, "width"); }
 
       // ---- draw ------------------------------------------------------------
@@ -422,8 +430,8 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       if(hT3) styleH(hT3, colT3, 25);
       // superseded template: thin dashed line, no markers, so it reads as a
       // reference rather than a fourth measurement
-      if(hT3o){ styleH(hT3o, colT3, 1); hT3o->SetMarkerSize(0);
-                hT3o->SetLineStyle(2); hT3o->SetLineWidth(2); }
+      if(hT2o){ styleH(hT2o, colT2, 1); hT2o->SetMarkerSize(0);
+                hT2o->SetLineStyle(2); hT2o->SetLineWidth(2); }
       // MC drawn as a line, not points: it is a prediction overlaid on the
       // measurement, and giving it markers makes it read as another dataset.
       if(hMCtop){ styleH(hMCtop, colMC, 1); hMCtop->SetLineWidth(3); }
@@ -448,7 +456,7 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       // linear axis that does not include zero misreads the relative sizes of
       // the templates, which is the whole point of this panel.
       double ylow = 0.;
-      { TH1D *drawn[6] = {hD, hT2, hT3, hT3o, hS, hMCtop};
+      { TH1D *drawn[6] = {hD, hT2, hT3, hT2o, hS, hMCtop};
         for(int q = 0; q < 6; q++){
           if(!drawn[q]) continue;
           int b1 = drawn[q]->FindBin(ptRelFitLo + 1e-6);
@@ -462,16 +470,16 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       hD->Draw("E");
       if(hMCtop) hMCtop->Draw("HIST same");
       if(hT2) hT2->Draw("E same");
-      if(hT3o) hT3o->Draw("HIST same");
+      if(hT2o) hT2o->Draw("HIST same");
       if(hT3) hT3->Draw("E same");
       hS->Draw("E same");
 
       TLegend *leg = new TLegend(0.40,0.575,0.985,0.90);
       leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.031);
       leg->AddEntry(hD,  "D: measured #mu + jet", "lp");
-      if(hT2) leg->AddEntry(hT2, "T2: fake #mu + real jet", "lp");
-      if(hT3) leg->AddEntry(hT3, "T3: fake #mu + fake jet (reclustered)", "lp");
-      if(hT3o) leg->AddEntry(hT3o, "T3: old, matched post-cluster", "l");
+      if(hT2) leg->AddEntry(hT2, "T2: fake #mu + real jet (reclustered)", "lp");
+      if(hT3) leg->AddEntry(hT3, "T3: fake #mu + fake jet", "lp");
+      if(hT2o) leg->AddEntry(hT2o, "T2: old, matched post-cluster", "l");
       leg->AddEntry(hS,  Form("S = %s", applied.Data()), "lp");
       if(hMCtop) leg->AddEntry(hMCtop, "MC (area matched to S)", "l");
       leg->Draw();
