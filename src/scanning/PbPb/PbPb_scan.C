@@ -339,7 +339,8 @@ void PbPb_scan(int group = 1){
 						   muPtMaxCut,
 						   fillMu5,
 						   fillMu7,
-						   fillMu12);
+						   fillMu12,
+						   useCaloJetsOverride);
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
@@ -357,10 +358,21 @@ void PbPb_scan(int group = 1){
   
     // JET ENERGY CORRECTIONS
     vector<string> Files;
-    Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2Relative_AK4PF.txt"); // L2Relative correction
-    Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2L3Residual_AK4PF.txt"); // L2L3Residual correction
+    if(useCaloJetsOverride){
+      Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2Relative_AK4Calo.txt");
+      Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2L3Residual_AK4Calo.txt");
+    }
+    else{
+      Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2Relative_AK4PF.txt");
+      Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2L3Residual_AK4PF.txt");
+    }
     JetCorrector JEC(Files);
-    JetUncertainty JEU("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4PF.txt");
+    if(useCaloJetsOverride){
+      JetUncertainty JEU("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4Calo.txt");
+    }
+    else{
+      JetUncertainty JEU("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4PF.txt");
+    }
     /// print out some info
     readConfig();
 
@@ -657,7 +669,8 @@ void PbPb_scan(int group = 1){
     cout << "	Initializing variables ... " << endl;
     em->init();
     cout << "	Loading jet..." << endl;
-    em->loadJet("akCs4PFJetAnalyzer/t");
+    if(useCaloJetsOverride) em->loadJet("akPu4CaloJetAnalyzer/t");
+    else em->loadJet("akCs4PFJetAnalyzer/t");
     cout << "	Loading muon..." << endl;
     em->loadMuon("ggHiNtuplizerGED/EventTree");
     cout << "	Loading muon triggers..." << endl;

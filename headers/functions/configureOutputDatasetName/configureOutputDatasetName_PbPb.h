@@ -20,7 +20,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
 				   double muPtMaxCut,
 				   bool fillMu5,
 				   bool fillMu7,
-				   bool fillMu12)
+				   bool fillMu12,
+				   bool useCaloJetsOverride)
 {
 
   TString result = "output";
@@ -32,6 +33,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   else if(doHardProbesSample) datasetIndicator = "_HardProbes";
   else{};
   result.Append(datasetIndicator);
+
+  if(useCaloJetsOverride) result.Append("_caloJets");
 
   // general information
   if(applyMinBiasTrigger) result.Append("_MinBiasHLT");
