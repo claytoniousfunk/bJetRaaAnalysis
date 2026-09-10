@@ -5,11 +5,15 @@
 // these are 30M (calo) and 37M (PF) events in ultraFine bins. Flow is dropped
 // here; add it back by pointing a third file at the same machinery.
 //
-// PT FLOOR = 70 GeV, and this is not arbitrary. The calo scan's RAW jets start
-// at 35-40 GeV, but the calo JEC is large at low pT (~1.7x at 25 GeV against
-// ~1.14x for PF), so on the corrected scale the first populated calo bin is
-// 65-70. Below that calo is structurally empty while PF is not, and a ratio
-// there compares a real spectrum against nothing. PF alone reaches down to 20.
+// PT FLOOR = 50 GeV. The calo scan was regenerated on 2026-09-10 using the
+// forest's built-in jet pT (em->jetpt) instead of a manually applied JEC
+// (PbPb_scan.C, c1486f6e), and its first populated bin moved from 65-70 down to
+// 50-55. PF still reaches to 20, so 50 is set by calo.
+//
+// CAVEAT, deferred by request: the PF file predates that commit and so still
+// carries the manually applied Autumn18_HI_V8 JEC, while calo now carries the
+// forest's built-in correction. The two sides are therefore on different JEC
+// conventions. Flagged here rather than investigated.
 //
 // RCP = (class per-event yield) / (50-80% per-event yield), each collection
 // against its OWN peripheral bin. No N_coll scaling, so the absolute value is
@@ -42,12 +46,12 @@ const char *pfFile =
 const char *histBase = "h_inclRecoJetPt";   // JEC-corrected inclusive reco jets
 const char *outDir   = "../../../../figures/jetCollection/";
 
-// 70 GeV floor, widening with pT to keep the 50-80% denominator populated --
-// it is the thinnest sample here (2247 calo jets in 60-80 against 43052 in
-// 0-10%), and RCP is only as good as its denominator.
-const double edgePt[]  = {70, 85, 100, 130, 180, 300};
+// 50 GeV floor, widening with pT to keep the 50-80% denominator populated --
+// it is much the thinnest sample here, and RCP is only as good as its
+// denominator.
+const double edgePt[]  = {50, 60, 75, 95, 130, 300};
 const int    nEdgePt   = (int)(sizeof(edgePt)/sizeof(double)) - 1;
-const double pinAtPt   = 180.;   // pin in the last bin, 180-300
+const double pinAtPt   = 130.;   // pin in the last bin, 130-300
 
 const int PERIPH = 3;   // index of the 50-80% class, the RCP denominator
 
