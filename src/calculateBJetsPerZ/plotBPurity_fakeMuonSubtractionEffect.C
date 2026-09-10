@@ -115,7 +115,16 @@ const char *fakeFile =
 // The two background templates of the ptRel decomposition
 // (plotPtRelTemplateDecomposition.C). Both describe a muon that is NOT from the
 // jet it was tagged to; they differ only in whether the jet is real.
-const char *bkgT2 = "h_mixedMuonPtRel_recoJetPt";                 // fake mu + real reco jet
+// T2 is the reclustered (fake mu, real jet) template: the mixed muon is added to
+// the next centrality-matched event's PF candidates and everything is
+// reclustered, so the jet pT contains the muon and the axis is pulled onto it.
+// Replaces h_mixedMuonPtRel_recoJetPt, which matched the muon to a reco jet
+// AFTER clustering and so sat at <ptRel> ~ 5 GeV, largely outside the fit range.
+//
+// Unlike every other histogram used here it is NOT trigger-gated, which the
+// subtraction has to correct for -- see trigFraction below.
+const char *bkgT2 = "h_injMuonPtRel_donorJetPt_inject";           // fake mu + real jet, reclustered
+const bool  bkgT2isUngated = true;
 const char *bkgT3 = "h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC";  // fake mu + mixed fastJet
 
 const char *outDir = "../../figures/bPurity/";
@@ -149,7 +158,9 @@ const double bGS_multiplier = 1.2;   // gluon-splitting enhancement factor
 const char *noSubHex   = "#0072B2";   // Okabe-Ito blue
 const char *withSubHex = "#D55E00";   // Okabe-Ito vermillion
 
-const double ratioMin = 0.8, ratioMax = 1.2;
+// Widened from 0.8 after the reclustered T2 went in: the central classes now
+// reach 0.77, which the old floor clipped off the panel entirely.
+const double ratioMin = 0.65, ratioMax = 1.2;
 
 TFile *fData = nullptr, *fDiJet = nullptr, *fBJet = nullptr, *fMuJet = nullptr, *fFake = nullptr;
 
@@ -168,6 +179,23 @@ static TH2D* mergeFakeCoarse(int classIdx, const char *base, double &Nevents, in
     Nevents += v->Integral();
   }
   return sum;
+}
+
+// Fraction of events in a coarse class that fired the muon trigger, from the
+// fake file. Needed because the data histogram and the T3 template are both
+// filled only in triggered events while the injection template is filled in
+// every event: without this the injection term is too large by 1/f, which runs
+// from ~8.7 in 0-10% to ~40 in 50-80% and so does not cancel across centrality.
+static double trigFraction(int classIdx){
+  double nAll = 0., nTrig = 0.;
+  for(int si = sliceLo[classIdx]; si <= sliceHi[classIdx]; si++){
+    TH1D *a = nullptr, *b = nullptr;
+    fFake->GetObject(Form("h_vz_C%d", si), a);
+    fFake->GetObject(Form("h_vz_triggerOn_C%d", si), b);
+    if(!a || !b) return -1.;
+    nAll += a->Integral(); nTrig += b->Integral();
+  }
+  return (nAll > 0.) ? nTrig/nAll : -1.;
 }
 
 // Replicates templateFitter()'s PbPb / isData=1 / 2-template-fit path.
@@ -230,6 +258,16 @@ static void fitBPurity(int classIdx, double lowPt, double highPt, bool doFakeSub
       h_bkg[t] = H->ProjectionX(Form("h_bkg%d_%d", t, tag), b1, b2);
       h_bkg[t]->SetDirectory(nullptr);
       h_bkg[t]->Scale(1./Nbkg[t]);
+      // The data histogram counts pairs from triggered events only but is
+      // divided by ALL events, so its rate carries an implicit factor f. A
+      // template filled in every event must be multiplied by the same f to be
+      // subtractable from it.
+      if(t == 0 && bkgT2isUngated){
+        double f = trigFraction(classIdx);
+        if(f <= 0.){ printf("ERROR: no h_vz_triggerOn for C%d\n", centBin);
+                     purity = purityErr = -1.; return; }
+        h_bkg[t]->Scale(f);
+      }
       delete H;
     }
 
