@@ -98,6 +98,21 @@
 //    rate. Do not read the ratio's overall level as a yield statement.
 //
 // ---------------------------------------------------------------------------
+// PANELS -- three, top to bottom
+// ---------------------------------------------------------------------------
+//   top     the per-event decomposition: D, T2, T3, S, and the area-matched MC
+//   middle  D/MC and S/MC against the SAME MC curve drawn above
+//   bottom  S/D, the surviving real-muon-real-jet fraction bin by bin
+//
+// The bottom panel is the table's S/D column resolved in ptRel instead of
+// integrated over 0-5 GeV. Worth having separately because the integral hides
+// where the subtraction acts: the templates are not flat, so a class can sit at
+// S/D = 0.75 overall while the low-ptRel bins that drive the b-purity fit are
+// barely touched, or scraped to zero. It is also the only panel that does not
+// need MC, so it renders even where the MC reference is missing or the area
+// match was skipped.
+//
+// ---------------------------------------------------------------------------
 // Usage: root -l -b -q 'plotPtRelTemplateDecomposition.C'
 // Run from: src/plots/muonPtRel/
 //
@@ -115,6 +130,7 @@
 #include "TLegend.h"
 #include "TLatex.h"
 #include "TLine.h"
+#include "TMath.h"
 #include "TStyle.h"
 #include "TString.h"
 #include <cstdio>
@@ -343,11 +359,25 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       if(hT2)  hT2->Scale(1./nEvtAll);
       if(hT3)  hT3->Scale(1./nEvtTrig);
 
-      // S = D - T2 - T3 + T4
+      // S = D - T2 - T3
       TH1D *hS = (TH1D*) hD->Clone(Form("hS_c%d_p%d", ci, pi));
       hS->SetDirectory(nullptr);
       if(hT2) hS->Add(hT2, -1.);
       if(hT3) hS->Add(hT3, -1.);
+
+      // B = T2 + T3, the total subtracted background, kept separately for the
+      // S/D panel. S/D cannot be formed by dividing the two histograms: S is
+      // built FROM D, so the two share D's fluctuation entirely and a Divide()
+      // would count that error twice, once in each argument, as though they
+      // were independent measurements. Written as S/D = 1 - B/D the shared part
+      // drops out and only B/D carries an error -- and B, being built from
+      // mixed-pool muons and donor events, genuinely is independent of D.
+      TH1D *hB = nullptr;
+      if(hT2){ hB = (TH1D*) hT2->Clone(Form("hB_c%d_p%d", ci, pi)); hB->SetDirectory(nullptr); }
+      if(hT3){
+        if(hB) hB->Add(hT3);
+        else  { hB = (TH1D*) hT3->Clone(Form("hB_c%d_p%d", ci, pi)); hB->SetDirectory(nullptr); }
+      }
 
       double iD  = fitRangeIntegral(hD);
       double iS  = fitRangeIntegral(hS);
@@ -403,16 +433,30 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       // Must come after every integral above: those are per-event counts, and
       // dividing by bin width first would silently change what they mean. The
       // ratio panel is unaffected either way, since the widths cancel.
-      { TH1D *toScale[5] = {hD, hT2, hT3, hS, hMCtop};
-        for(int q = 0; q < 5; q++) if(toScale[q]) toScale[q]->Scale(1.0, "width"); }
+      // hB is included even though it is never drawn: the S/D panel divides it
+      // by hD, and leaving one of the pair unscaled would put the bin widths
+      // back into a ratio they are supposed to cancel out of.
+      { TH1D *toScale[6] = {hD, hT2, hT3, hS, hMCtop, hB};
+        for(int q = 0; q < 6; q++) if(toScale[q]) toScale[q]->Scale(1.0, "width"); }
 
       // ---- draw ------------------------------------------------------------
-      TCanvas *c = new TCanvas(Form("c_c%d_p%d", ci, pi), "", 700, 800);
-      TPad *pTop = new TPad("pTop","",0,0.34,1,1);
-      TPad *pBot = new TPad("pBot","",0,0,1,0.34);
+      // THREE PADS. ROOT quotes every text size as a fraction of its own pad's
+      // height, so the same number renders at different absolute sizes in pads
+      // of different heights -- the sizes below are not arbitrary, they were
+      // solved so that all three panels land on a common absolute size on a
+      // 900 px canvas. The bottom pad keeps the numbers it had, because it kept
+      // its absolute height (0.34 x 800 = 272 px, now 0.30 x 900 = 270 px); the
+      // top pad's were rescaled by 528/432 when it shrank from 0.66 to 0.48.
+      // If you move a boundary, rescale that pad's sizes by the inverse of the
+      // height change or the panels stop matching each other.
+      TCanvas *c = new TCanvas(Form("c_c%d_p%d", ci, pi), "", 700, 900);
+      TPad *pTop = new TPad("pTop","",0,0.52,1,1);      // h = 0.48  decomposition
+      TPad *pMid = new TPad("pMid","",0,0.30,1,0.52);   // h = 0.22  data / MC
+      TPad *pBot = new TPad("pBot","",0,0,1,0.30);      // h = 0.30  S / D
       pTop->SetBottomMargin(0.02); pTop->SetLeftMargin(0.15); pTop->SetTopMargin(0.07);
+      pMid->SetTopMargin(0.02);    pMid->SetLeftMargin(0.15); pMid->SetBottomMargin(0.02);
       pBot->SetTopMargin(0.02);    pBot->SetLeftMargin(0.15); pBot->SetBottomMargin(0.32);
-      pTop->Draw(); pBot->Draw();
+      pTop->Draw(); pMid->Draw(); pBot->Draw();
 
       // top: the per-event decomposition
       pTop->cd();
@@ -426,8 +470,8 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       hD->GetXaxis()->SetRangeUser(ptRelFitLo, ptRelFitHi);
       hD->GetXaxis()->SetLabelSize(0);
       hD->GetYaxis()->SetTitle("d#it{N} / d#it{p}_{T}^{rel} per event");
-      hD->GetYaxis()->SetTitleSize(0.055); hD->GetYaxis()->SetTitleOffset(1.25);
-      hD->GetYaxis()->SetLabelSize(0.045);
+      hD->GetYaxis()->SetTitleSize(0.067); hD->GetYaxis()->SetTitleOffset(1.25);
+      hD->GetYaxis()->SetLabelSize(0.055);
       hD->SetTitle("");
       double ymax = hD->GetMaximum();
       // area-matched MC can peak above the data if its shape is more sharply
@@ -461,7 +505,7 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       hS->Draw("E same");
 
       TLegend *leg = new TLegend(0.40,0.575,0.985,0.90);
-      leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.031);
+      leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.038);
       leg->AddEntry(hD,  "D: measured #mu + jet", "lp");
       if(hT2) leg->AddEntry(hT2, "T2: fake #mu + real jet (reclustered)", "lp");
       if(hT3) leg->AddEntry(hT3, "T3: fake #mu + fake jet", "lp");
@@ -469,22 +513,22 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       if(hMCtop) leg->AddEntry(hMCtop, "MC (area matched to S)", "l");
       leg->Draw();
 
-      TLatex tx; tx.SetNDC(); tx.SetTextSize(0.045);
+      TLatex tx; tx.SetNDC(); tx.SetTextSize(0.055);
       tx.DrawLatex(0.18, 0.87, Form("PbPb %s", classLabel[ci]));
       tx.DrawLatex(0.18, 0.81, Form("%.0f < jet #it{p}_{T} < %.0f GeV", ptLo[pi], ptHi[pi]));
       if(!haveT2 || !haveT3){
-        tx.SetTextColor(kRed+1); tx.SetTextSize(0.038);
+        tx.SetTextColor(kRed+1); tx.SetTextSize(0.046);
         tx.DrawLatex(0.18, 0.74, "PARTIAL: templates missing");
         tx.SetTextColor(kBlack);
       }
 
-      // bottom: BOTH data curves against the SAME MC shown on the top panel.
+      // middle: BOTH data curves against the SAME MC shown on the top panel.
       // Using hMCtop as the common denominator, rather than unit-normalising
       // each ratio separately, is what makes the two curves comparable: S/MC
       // averages to 1 by construction (that is how hMCtop was scaled), so
       // D/MC sits above it by exactly the fraction the subtraction removed.
       // Unit-normalising each would force both to average 1 and hide that.
-      pBot->cd();
+      pMid->cd();
       TH1D *hRatD = nullptr, *hRatS = nullptr;
       if(hMCtop){
         hRatD = (TH1D*) hD->Clone(Form("hRatD_c%d_p%d", ci, pi)); hRatD->SetDirectory(nullptr);
@@ -512,12 +556,16 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       if(!hRatD){ hRatFrame->SetDirectory(nullptr); hRatFrame->Reset(); styleH(hRatFrame, colD, 20); }
       hRatFrame->GetXaxis()->SetRangeUser(ptRelFitLo, ptRelFitHi);
       hRatFrame->SetTitle("");
-      hRatFrame->GetXaxis()->SetTitle("#it{p}_{T}^{rel} [GeV]");
-      hRatFrame->GetXaxis()->SetTitleSize(0.105); hRatFrame->GetXaxis()->SetTitleOffset(1.25);
-      hRatFrame->GetXaxis()->SetLabelSize(0.090);
+      // the x axis now belongs to the S/D panel below; this one is a middle pad
+      hRatFrame->GetXaxis()->SetLabelSize(0);
+      hRatFrame->GetXaxis()->SetTitleSize(0);
       hRatFrame->GetYaxis()->SetTitle("data / MC");
-      hRatFrame->GetYaxis()->SetTitleSize(0.095); hRatFrame->GetYaxis()->SetTitleOffset(0.72);
-      hRatFrame->GetYaxis()->SetLabelSize(0.085); hRatFrame->GetYaxis()->SetNdivisions(505);
+      // Offset is quoted in units of the title size, so the 0.72 that works in
+      // the taller pads below drives the title into the tick labels here --
+      // bigger relative size, same relative offset, less room. 0.52 puts it
+      // back in line with the other two panels.
+      hRatFrame->GetYaxis()->SetTitleSize(0.120); hRatFrame->GetYaxis()->SetTitleOffset(0.52);
+      hRatFrame->GetYaxis()->SetLabelSize(0.105); hRatFrame->GetYaxis()->SetNdivisions(505);
 
       // Range set only from bins where the MC denominator is actually populated
       // (>2% of its peak). Out in the tail MC falls to nearly nothing while the
@@ -546,21 +594,92 @@ void plotPtRelTemplateDecomposition(const char *scanFile = nullptr,
       if(hRatS) hRatS->Draw("E same");
 
       if(hRatD){
-        TLegend *legR = new TLegend(0.18,0.80,0.60,0.97);
-        legR->SetBorderSize(0); legR->SetFillStyle(0); legR->SetTextSize(0.080);
+        TLegend *legR = new TLegend(0.18,0.78,0.60,0.97);
+        legR->SetBorderSize(0); legR->SetFillStyle(0); legR->SetTextSize(0.109);
         legR->SetNColumns(2);
         legR->AddEntry(hRatD, "D / MC", "lp");
         legR->AddEntry(hRatS, "S / MC", "lp");
         legR->Draw();
       }
       else{
-        TLatex tw; tw.SetNDC(); tw.SetTextSize(0.09); tw.SetTextColor(kRed+1);
-        tw.DrawLatex(0.20, 0.55, "no MC reference for this bin");
+        TLatex tw; tw.SetNDC(); tw.SetTextSize(0.123); tw.SetTextColor(kRed+1);
+        tw.DrawLatex(0.20, 0.45, "no MC reference for this bin");
+      }
+
+      // bottom: S/D, the surviving fraction, resolved in ptRel.
+      //
+      // Formed as 1 - B/D rather than by dividing hS by hD. See the hB comment
+      // above: S is built from D, so dividing them treats one common
+      // fluctuation as two independent ones and inflates the error. The value
+      // is identical either way; only the error bar differs.
+      //
+      // Unlike the panel above this one needs no MC, so it is drawn whenever
+      // any template was subtracted at all.
+      pBot->cd();
+      TH1D *hSD = (TH1D*) hD->Clone(Form("hSD_c%d_p%d", ci, pi));
+      hSD->SetDirectory(nullptr);
+      hSD->Reset();
+      if(hB){
+        for(int b = 1; b <= hSD->GetNbinsX(); b++){
+          double d = hD->GetBinContent(b), ed = hD->GetBinError(b);
+          double bg = hB->GetBinContent(b), eb = hB->GetBinError(b);
+          // D <= 0 makes the fraction undefined, not zero. Park it out of frame
+          // so the bin reads as absent rather than as a measured S/D of zero --
+          // the same convention as the empty-MC bins in the panel above.
+          if(d <= 0.){ hSD->SetBinContent(b, -999); hSD->SetBinError(b, 0.); continue; }
+          hSD->SetBinContent(b, 1. - bg/d);
+          hSD->SetBinError(b, bg > 0. ?
+            (bg/d)*TMath::Sqrt(TMath::Power(eb/bg,2) + TMath::Power(ed/d,2)) : ed/d);
+        }
+      }
+      styleH(hSD, colS, 21);
+      hSD->GetXaxis()->SetRangeUser(ptRelFitLo, ptRelFitHi);
+      hSD->SetTitle("");
+      hSD->GetXaxis()->SetTitle("#it{p}_{T}^{rel} [GeV]");
+      hSD->GetXaxis()->SetTitleSize(0.105); hSD->GetXaxis()->SetTitleOffset(1.25);
+      hSD->GetXaxis()->SetLabelSize(0.090);
+      hSD->GetYaxis()->SetTitle("S / D");
+      hSD->GetYaxis()->SetTitleSize(0.095); hSD->GetYaxis()->SetTitleOffset(0.72);
+      hSD->GetYaxis()->SetLabelSize(0.085); hSD->GetYaxis()->SetNdivisions(505);
+
+      // Frame from the points themselves, gated on a populated D so an empty
+      // tail bin cannot set the scale. Allowed to open below zero: S/D < 0 is
+      // the subtraction removing more than the data held, which is the failure
+      // mode this panel exists to show, and clamping at 0 would disguise it as
+      // a complete subtraction.
+      double sdLo = 0., sdHi = 1.0, dPeak = hD->GetMaximum();
+      { int b1 = hSD->FindBin(ptRelFitLo + 1e-6), b2 = hSD->FindBin(ptRelFitHi - 1e-6);
+        for(int b = b1; b <= b2; b++){
+          if(hD->GetBinContent(b) < 0.02*dPeak) continue;
+          double v = hSD->GetBinContent(b);
+          if(v < -900.) continue;
+          if(v - hSD->GetBinError(b) < sdLo) sdLo = v - hSD->GetBinError(b);
+          if(v + hSD->GetBinError(b) > sdHi) sdHi = v + hSD->GetBinError(b);
+        } }
+      hSD->SetMinimum(sdLo < 0. ? sdLo - 0.10 : 0.);
+      hSD->SetMaximum(sdHi + 0.15);
+      hSD->Draw(hB ? "E" : "AXIS");
+
+      // 1 = nothing subtracted, 0 = the templates account for all of the data.
+      // Both are reference values worth being able to read off directly.
+      TLine *lSD1 = new TLine(ptRelFitLo, 1.0, ptRelFitHi, 1.0);
+      lSD1->SetLineStyle(2); lSD1->SetLineColor(kGray+2); lSD1->Draw();
+      // sdLo, not hSD->GetMinimum(): that returns the smallest BIN CONTENT, and
+      // the absent bins are parked at -999, so it would be negative always.
+      if(sdLo < 0.){
+        TLine *lSD0 = new TLine(ptRelFitLo, 0.0, ptRelFitHi, 0.0);
+        lSD0->SetLineStyle(3); lSD0->SetLineColor(kGray+1); lSD0->Draw();
+      }
+      if(hB) hSD->Draw("E same");
+      else{
+        TLatex tn; tn.SetNDC(); tn.SetTextSize(0.09); tn.SetTextColor(kRed+1);
+        tn.DrawLatex(0.20, 0.55, "no templates subtracted: S #equiv D");
       }
 
       c->SaveAs(Form("%s/ptRelDecomposition_C%d_jetPt%.0f-%.0f%s.pdf",
                      outDir, ci+1, ptLo[pi], ptHi[pi], outSuffix));
       delete c;
+      delete hB;
     }
   }
 
