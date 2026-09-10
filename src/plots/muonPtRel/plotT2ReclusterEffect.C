@@ -22,8 +22,11 @@
 //   ptRel  the fit variable. Plotted over the FULL 0-10 GeV axis, not the 0-5
 //          window the decomposition uses -- the old template's weight sits above
 //          5 GeV, so cropping there would hide most of the change.
-//   jetPt  the migration: adding the muon's pT should move entries out of the
-//          lowest jet pT bins into higher ones.
+//   dR     muon to jet axis. Once the muon is clustered in it dominates the
+//          jet and the axis is pulled onto it, so dR should collapse.
+//          Both dR histograms are "nearest jet, no dR cut", so both carry a
+//          large tail beyond the 0-0.5 axis (muons with no jet near them);
+//          the shapes here are of the in-range part only.
 //
 // NORMALISATION for the printed rates: the old template is trigger-gated and so
 // divided by h_vz_triggerOn; the injection fills are ungated and divided by
@@ -44,6 +47,9 @@ const char *scanPath =
 
 const char *nameOld = "h_mixedMuonPtRel_recoJetPt";
 const char *nameNew = "h_injMuonPtRel_donorJetPt_inject";
+// dR counterparts of the same two constructions
+const char *nameOldDR = "h_muonDR_inclusiveClosestJet";
+const char *nameNewDR = "h_injMuonDR_donorJetPt_inject";
 
 const char *outDir = "../../../figures/ptRelDecomposition/";
 
@@ -52,8 +58,8 @@ const double edgePtRel[] = {0.0,0.4,0.8,1.2,1.6,2.0,2.5,3.0,3.5,4.0,
                             4.5,5.0,5.5,6.0,7.0,8.0,10.0};
 const int    nEdgePtRel  = (int)(sizeof(edgePtRel)/sizeof(double)) - 1;
 
-const double edgeJetPt[] = {20,30,40,50,60,80,100,130,180,300};
-const int    nEdgeJetPt  = (int)(sizeof(edgeJetPt)/sizeof(double)) - 1;
+const double edgeDR[] = {0,0.05,0.10,0.15,0.20,0.25,0.30,0.35,0.40,0.45,0.50};
+const int    nEdgeDR  = (int)(sizeof(edgeDR)/sizeof(double)) - 1;
 
 // one canvas: two shapes overlaid, unit-normalised, with a new/old ratio panel
 // mOld/mNew are passed in rather than taken from the drawn histograms: those
@@ -120,10 +126,9 @@ void plotT2ReclusterEffect()
   if(!f || f->IsZombie()){ printf("ERROR: cannot open %s\n", scanPath); return; }
 
   printf("T2 template, post-cluster matched vs reclustered\n");
-  printf("%-9s %10s %10s %9s | %12s %12s %8s | %7s %7s %7s\n",
-         "class", "<ptRel>old", "<ptRel>new", "shift",
-         "rate old", "rate new", "ratio",
-         "jPTold", "jPTnew", "shift");
+  printf("%-9s %10s %10s %9s | %12s %12s %8s\n",
+         "class", "<x> old", "<x> new", "shift",
+         "rate old", "rate new", "ratio");
 
   for(int ci = 0; ci < NCoarse; ci++){
 
@@ -145,16 +150,10 @@ void plotT2ReclusterEffect()
     double rOld = pOldRaw->Integral(0, pOldRaw->GetNbinsX()+1) / nTrig;
     double rNew = pNewRaw->Integral(0, pNewRaw->GetNbinsX()+1) / nAll;
 
-    // jet pT means, for the migration line of the table
-    TH1D *jmo = hOld2->ProjectionY(Form("jmo_%d", ci)); jmo->SetDirectory(nullptr);
-    TH1D *jmn = hNew2->ProjectionY(Form("jmn_%d", ci)); jmn->SetDirectory(nullptr);
-    printf("%-9s %10.3f %10.3f %8.0f%% | %12.3e %12.3e %8.2f | %7.1f %7.1f %+6.0f%%\n",
+    printf("%-9s %10.3f %10.3f %8.0f%% | %12.3e %12.3e %8.2f   (ptRel)\n",
            coarseLabel[ci], mOld, mNew,
            mOld > 0. ? 100.*(mNew/mOld - 1.) : 0., rOld, rNew,
-           rOld > 0. ? rNew/rOld : 0.,
-           jmo->GetMean(), jmn->GetMean(),
-           jmo->GetMean() > 0. ? 100.*(jmn->GetMean()/jmo->GetMean() - 1.) : 0.);
-    delete jmo; delete jmn;
+           rOld > 0. ? rNew/rOld : 0.);
 
     TH1D *pOld = rebinTo(pOldRaw, nEdgePtRel, edgePtRel, Form("po_%d", ci));
     TH1D *pNew = rebinTo(pNewRaw, nEdgePtRel, edgePtRel, Form("pn_%d", ci));
@@ -168,20 +167,32 @@ void plotT2ReclusterEffect()
               Form("PbPb %s, T2 template", coarseLabel[ci]),
               0., 10., Form("t2Recluster_ptRel_%s", coarseTag[ci]));
 
-    // ---- jet pT, integrated over all ptRel (the migration) ----
-    TH1D *jOldRaw = hOld2->ProjectionY(Form("joR_%d", ci));  jOldRaw->SetDirectory(nullptr);
-    TH1D *jNewRaw = hNew2->ProjectionY(Form("jnR_%d", ci));  jNewRaw->SetDirectory(nullptr);
-    double jmOld = jOldRaw->GetMean(), jmNew = jNewRaw->GetMean();
-    TH1D *jOld = rebinTo(jOldRaw, nEdgeJetPt, edgeJetPt, Form("jo_%d", ci));
-    TH1D *jNew = rebinTo(jNewRaw, nEdgeJetPt, edgeJetPt, Form("jn_%d", ci));
-    delete jOldRaw; delete jNewRaw;
-    if(jOld->Integral() > 0.) jOld->Scale(1./jOld->Integral());
-    if(jNew->Integral() > 0.) jNew->Scale(1./jNew->Integral());
-    divideByBinwidth(jOld); divideByBinwidth(jNew);
+    // ---- dR, from the matching pair of nearest-jet histograms ----
+    TH2D *dOld2 = coarseSum2(f, nameOldDR, ci, "odr");
+    TH2D *dNew2 = coarseSum2(f, nameNewDR, ci, "ndr");
+    if(dOld2 && dNew2){
+      TH1D *dOldRaw = dOld2->ProjectionX(Form("doR_%d", ci)); dOldRaw->SetDirectory(nullptr);
+      TH1D *dNewRaw = dNew2->ProjectionX(Form("dnR_%d", ci)); dNewRaw->SetDirectory(nullptr);
+      // in-range means: both histograms park "no jet anywhere near" in the
+      // overflow, so a mean including it would be meaningless
+      double dmOld = dOldRaw->GetMean(), dmNew = dNewRaw->GetMean();
 
-    drawShape(jOld, jNew, jmOld, jmNew, "jet #it{p}_{T} [GeV]",
-              Form("PbPb %s, T2 template", coarseLabel[ci]),
-              20., 300., Form("t2Recluster_jetPt_%s", coarseTag[ci]));
+      TH1D *dOld = rebinTo(dOldRaw, nEdgeDR, edgeDR, Form("do_%d", ci));
+      TH1D *dNew = rebinTo(dNewRaw, nEdgeDR, edgeDR, Form("dn_%d", ci));
+      delete dOldRaw; delete dNewRaw;
+      if(dOld->Integral() > 0.) dOld->Scale(1./dOld->Integral());
+      if(dNew->Integral() > 0.) dNew->Scale(1./dNew->Integral());
+      divideByBinwidth(dOld); divideByBinwidth(dNew);
+
+      printf("%-9s %10.3f %10.3f %8.0f%%   (dR)\n", coarseLabel[ci], dmOld, dmNew,
+             dmOld > 0. ? 100.*(dmNew/dmOld - 1.) : 0.);
+
+      drawShape(dOld, dNew, dmOld, dmNew, "#it{#Delta}#it{R}(#mu,jet)",
+                Form("PbPb %s, T2 template", coarseLabel[ci]),
+                0., 0.5, Form("t2Recluster_dR_%s", coarseTag[ci]));
+      delete dOld2; delete dNew2;
+    }
+    else printf("  %s: dR histograms missing\n", coarseLabel[ci]);
 
     delete hOld2; delete hNew2;
   }
