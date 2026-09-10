@@ -927,8 +927,8 @@ void PbPb_scan(int group = 1){
 	JEC.SetJetEta(em->jeteta[i]);
 	JEC.SetJetPhi(em->jetphi[i]);
 
-	double x = JEC.GetCorrectedPT();  // use manual JEC
-	//double x = em->jetpt[i]; // use built-in JEC
+	//double x = JEC.GetCorrectedPT();  // use manual JEC
+	double x = em->jetpt[i]; // use built-in JEC
 	double rawJetPt_i = em->rawpt[i]; // uncorrected pT, for the rawPtCut histograms
 	double y = em->jeteta[i]; // recoJetEta
 	double z = em->jetphi[i]; // recoJetPhi
