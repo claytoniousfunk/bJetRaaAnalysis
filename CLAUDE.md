@@ -150,7 +150,9 @@ are no calo-specific histograms. `useCaloJetsOverride` needs its own scan.
 
 `S = D − T2 − T3`, where `D` is the measured μ+jet ptRel and
 
-- `T2` = `h_mixedMuonPtRel_recoJetPt` — mixed-event μ + sameEvent recoJet
+- `T2` = `h_injMuonPtRel_donorJetPt_inject` — mixed-event μ **reclustered into**
+  the next centrality-matched event's PF candidates. Ungated, so consumers must
+  scale it by the trigger fraction when everything else is gated.
 - `T3` = `h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC` — mixed μ + mixed fastJet
 
 Known open problems, all documented in
@@ -166,6 +168,7 @@ Known open problems, all documented in
 3. **Double subtraction.** T2's denominator is all reco jets, genuine + fake, so
    its fake-jet part overlaps T3.
 4. **50-80% b-purity moves the wrong way** under subtraction (purity rises).
-5. The b-purity **fit range moves the baseline more than the subtraction does**
-   (0-10%, 80-90 GeV: 0.767 / 0.828 / 0.843 at 0-3 / 0-4 / 0-5 GeV), so it is
-   not a neutral choice.
+5. The b-purity **fit range moves the unsubtracted baseline** (0-10%, 80-90 GeV:
+   0.767 / 0.821 / 0.843 at 0-3 / 0-4 / 0-5 GeV) but, since the reclustered T2
+   went in, barely moves the subtracted result (0.621 / 0.632 / 0.618). Current
+   range is 0-4.
