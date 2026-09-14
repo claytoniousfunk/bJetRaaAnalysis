@@ -26,7 +26,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
 				   double muPtMaxCut,
 				   bool fillMu5,
 				   bool fillMu7,
-				   bool fillMu12)
+				   bool fillMu12,
+				   bool useCaloJetsOverride)
 {
 
   TString result = "output";
@@ -38,6 +39,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   else if(doHighEGJetSample) datasetIndicator = "_HighEGJet";
   else{};
   result.Append(datasetIndicator);
+
+  if(useCaloJetsOverride) result.Append("_caloJets");
 
   // general information
   if(applyJet15Trigger) result.Append("_Jet15HLT");

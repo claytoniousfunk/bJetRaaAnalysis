@@ -38,4 +38,5 @@ bool apply_JEU_shift_down = false;
 bool doSingleMuonSample = false;
 bool doMinBiasSample = true;
 bool doHighEGJetSample = false;
-
+// jet mods
+bool useCaloJetsOverride = true; // overrides typical PF jet collection with caloJets

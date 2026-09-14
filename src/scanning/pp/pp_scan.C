@@ -284,7 +284,7 @@ void pp_scan(int group = 1){
     applyAntiMu5Jet30Trigger,applyAntiMu5Jet40Trigger,applyAntiMu5Jet60Trigger,
     applyMu12TriggerEfficiencyCorrection,doJetTrkMaxFilter,doEtaPhiMask,doWDecayFilter,
     doJESCorrection,doBJetNeutrinoEnergyShift,doJERCorrection,
-    apply_JER_smear,apply_JEU_shift_up,apply_JEU_shift_down,muPtCut,muPtMaxCut,fillMu5,fillMu7,fillMu12);
+							 apply_JER_smear,apply_JEU_shift_up,apply_JEU_shift_down,muPtCut,muPtMaxCut,fillMu5,fillMu7,fillMu12, useCaloJetsOverride);
   TString outputFile = Form("%s%s/pp_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
 
   if(gSystem->AccessPathName(Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()))){
@@ -362,7 +362,8 @@ void pp_scan(TString inputFile, TString outputFile){
 						   muPtMaxCut,
 						   fillMu5,
 						   fillMu7,
-						   fillMu12);
+						   fillMu12,
+						   useCaloJetsOverride);
 
     TString output = outputFile;
 
@@ -569,7 +570,8 @@ void pp_scan(TString inputFile, TString outputFile){
     cout << "	Initializing variables ... " << endl;
     em->init();
     cout << "	Loading jet..." << endl;
-    em->loadJet("ak4PFJetAnalyzer/t");
+    if(useCaloJetsOverride) em->loadJet("ak4CaloJetAnalyzer/t");
+    else em->loadJet("ak4PFJetAnalyzer/t");
     cout << "	Loading muon..." << endl;
     em->loadMuon("ggHiNtuplizerGED/EventTree");
     cout << "	Loading muon triggers..." << endl;
@@ -788,9 +790,9 @@ void pp_scan(TString inputFile, TString outputFile){
 	JEC.SetJetPhi(em->jetphi[i]);
 
 	//double x = em->rawpt[i];  // use manual JEC
-	double x = JEC.GetCorrectedPT();  // use manual JEC
+	//double x = JEC.GetCorrectedPT();  // use manual JEC
 	double rawJetPt_i = em->rawpt[i]; // uncorrected pT, for h_inclRawJetPt
-	//double x = em->jetpt[i]; // use built-in JEC
+	double x = em->jetpt[i]; // use built-in JEC
 	double y = em->jeteta[i]; // recoJetEta
 	double z = em->jetphi[i]; // recoJetPhi
 	double jetTrkMax_i = em->jetTrkMax[i];
