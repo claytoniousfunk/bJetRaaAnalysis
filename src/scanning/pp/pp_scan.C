@@ -719,22 +719,28 @@ void pp_scan(TString inputFile, TString outputFile){
 
       // apply trigger if activated in config
       if(applyJet15Trigger){
-	if(em->HLT_HIAK4PFJet15_v1 == 0) continue;
+	if(useCaloJetOverride) if(em->HLT_HIAK4CaloJet15_v1 == 0) continue;
+	  else if(em->HLT_HIAK4PFJet15_v1 == 0) continue;
       }
       if(applyJet30Trigger){
-	if(em->HLT_HIAK4PFJet30_v1 == 0) continue;
+	if(useCaloJetOverride) if(em->HLT_HIAK4CaloJet30_v1 == 0) continue;
+	  else if(em->HLT_HIAK4PFJet30_v1 == 0) continue;
       }
       if(applyJet40Trigger){
-	if(em->HLT_HIAK4PFJet40_v1 == 0) continue;
+	if(useCaloJetOverride) if(em->HLT_HIAK4CaloJet40_v1 == 0) continue;
+	  else if(em->HLT_HIAK4PFJet40_v1 == 0) continue;
       }
       if(applyJet60Trigger){
-	if(em->HLT_HIAK4PFJet60_v1 == 0) continue;
+	if(useCaloJetOverride) if(em->HLT_HIAK4CaloJet60_v1 == 0) continue;
+	  else if(em->HLT_HIAK4PFJet60_v1 == 0) continue;
       }
       if(applyJet80Trigger){
-	if(em->HLT_HIAK4PFJet80_v1 == 0) continue;
+	if(useCaloJetOverride) if(em->HLT_HIAK4CaloJet80_v1 == 0) continue;
+	  else if(em->HLT_HIAK4PFJet80_v1 == 0) continue;
       }
       if(applyJet100Trigger){
-	if(em->HLT_HIAK4PFJet100_v1 == 0) continue;
+	if(useCaloJetOverride) if(em->HLT_HIAK4CaloJet100_v1 == 0) continue;
+	  else if(em->HLT_HIAK4PFJet100_v1 == 0) continue;
       }
       if(applyAntiMu5Jet30Trigger){
 	if(em->HLT_HIL3Mu5_AK4PFJet30_v1 == 1) continue; // 1 because its an anti-trigger
