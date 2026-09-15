@@ -251,6 +251,16 @@ TH1D *h_dimuonMass_sameSign;
 TH1D *h_inclMuPt;
 
 
+// Flavour for calo jets. ak4CaloJetAnalyzer/t has no jtPartonFlavor,
+// jtHadronFlavor or bHadronNumber (checked on the PYTHIA withGS forest,
+// 2026-09-15), so calo jets fall back to refparton_flavor. That branch marks a
+// jet with no matched parton as -999, where jtPartonFlavor uses 0; map it to 0
+// so those jets still land in xJets rather than in no category at all.
+inline int caloJetPartonFlavor(int refpartonFlavor)
+{
+  return refpartonFlavor < -900 ? 0 : refpartonFlavor;
+}
+
 ///////////////////////  start the program
 void PYTHIA_scan(TString inputFile, TString outputFile); // forward declaration
 
@@ -1125,10 +1135,13 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 
       if(recoJetPt_i > leadingRecoJetPt) leadingRecoJetPt = recoJetPt_i;
 
-      int partonFlavor = em->partonFlavor[i];
-      int hadronFlavor = em->hadronFlavor[i];
-      int jetFlavorInt = partonFlavor;
-      int bHadronNumber = em->bHadronNumber[i];
+      // Calo jets have no flavour branches of their own; see caloJetPartonFlavor.
+      // refparton_flavor carries no gluon-splitting information, so for calo
+      // jets bHadronNumber is held at 0: no jet is labelled 17 and the bGS
+      // template stays empty.
+      int partonFlavor  = useCaloJetsOverride ? caloJetPartonFlavor(em->refparton_flavor[i]) : (int) em->partonFlavor[i];
+      int jetFlavorInt  = partonFlavor;
+      int bHadronNumber = useCaloJetsOverride ? 0 : em->bHadronNumber[i];
 
       if(fabs(jetFlavorInt) == 5 && bHadronNumber == 2) jetFlavorInt = 17; // 17 = bJet from gluon-splitting
   
@@ -1727,8 +1740,9 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 
      
       if(hasRecoJetMatch) {
-	jetFlavorInt = em->partonFlavor[recoJetFlavorFlag];
-	bHadronNumber = em->bHadronNumber[recoJetFlavorFlag];
+	jetFlavorInt = useCaloJetsOverride ? caloJetPartonFlavor(em->refparton_flavor[recoJetFlavorFlag])
+	                                   : (int) em->partonFlavor[recoJetFlavorFlag];
+	bHadronNumber = useCaloJetsOverride ? 0 : em->bHadronNumber[recoJetFlavorFlag];
 	if(fabs(jetFlavorInt) == 5 && bHadronNumber == 2) jetFlavorInt = 17;
 	//cout << "jetFlavorInt = " << jetFlavorInt << endl;
       }
