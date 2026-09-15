@@ -145,10 +145,12 @@ public :
  
   // jet trigger info
   int HLT_HIAK4PFJet15_v1, HLT_HIAK4PFJet30_v1, HLT_HIAK4PFJet40_v1, HLT_HIAK4PFJet60_v1, HLT_HIAK4PFJet80_v1, HLT_HIAK4PFJet100_v1, HLT_HIAK4PFJet120_v1;
-  int HLT_HIAK4CaloJet80_v1;
+  int HLT_HIAK4CaloJet15_v1, HLT_HIAK4CaloJet30_v1, HLT_HIAK4CaloJet40_v1, HLT_HIAK4CaloJet60_v1, HLT_HIAK4CaloJet80_v1, HLT_HIAK4CaloJet100_v1, HLT_HIAK4CaloJet120_v1;
+
   int HLT_HIPuAK4CaloJet40Eta5p1_v1, HLT_HIPuAK4CaloJet60Eta5p1_v1, HLT_HIPuAK4CaloJet80Eta5p1_v1, HLT_HIPuAK4CaloJet100Eta5p1_v1;
   int HLT_HIPuAK4CaloJet40Eta5p1_v1_Prescl, HLT_HIPuAK4CaloJet60Eta5p1_v1_Prescl, HLT_HIPuAK4CaloJet80Eta5p1_v1_Prescl, HLT_HIPuAK4CaloJet100Eta5p1_v1_Prescl;
   int HLT_HIAK4PFJet15_v1_Prescl, HLT_HIAK4PFJet30_v1_Prescl, HLT_HIAK4PFJet40_v1_Prescl, HLT_HIAK4PFJet60_v1_Prescl, HLT_HIAK4PFJet80_v1_Prescl, HLT_HIAK4PFJet100_v1_Prescl, HLT_HIAK4PFJet120_v1_Prescl;
+  int HLT_HIAK4CaloJet15_v1_Prescl, HLT_HIAK4CaloJet30_v1_Prescl, HLT_HIAK4CaloJet40_v1_Prescl, HLT_HIAK4CaloJet60_v1_Prescl, HLT_HIAK4CaloJet80_v1_Prescl, HLT_HIAK4CaloJet100_v1_Prescl, HLT_HIAK4CaloJet120_v1_Prescl;
   int HLT_HICsAK4PFJet60Eta1p5_v1, HLT_HICsAK4PFJet80Eta1p5_v1, HLT_HICsAK4PFJet100Eta1p5_v1;
   int HLT_HICsAK4PFJet60Eta1p5_v1_Prescl, HLT_HICsAK4PFJet80Eta1p5_v1_Prescl, HLT_HICsAK4PFJet100Eta1p5_v1_Prescl;
 
@@ -453,10 +455,6 @@ void eventMap::loadHLT(const char* name){
   evtTree->SetBranchAddress("HLT_HIL3Mu5_AK4PFJet40_v1_Prescl",&HLT_HIL3Mu5_AK4PFJet40_v1_Prescl);
   evtTree->SetBranchAddress("HLT_HIL3Mu5_AK4PFJet60_v1",&HLT_HIL3Mu5_AK4PFJet60_v1);
   evtTree->SetBranchAddress("HLT_HIL3Mu5_AK4PFJet60_v1_Prescl",&HLT_HIL3Mu5_AK4PFJet60_v1_Prescl);
-  //evtTree->SetBranchAddress("HLT_HIAK4PFJet15_v1",&HLT_HIAK4PFJet15_v1);
-  //evtTree->SetBranchAddress("HLT_HIAK4PFJet30_v1",&HLT_HIAK4PFJet30_v1);
-  //evtTree->SetBranchAddress("HLT_HIAK4PFJet40_v1",&HLT_HIAK4PFJet40_v1);
-  //evtTree->SetBranchAddress("HLT_HIAK4PFJet40_v1_Prescl",&HLT_HIAK4PFJet40_v1_Prescl);
   evtTree->SetBranchAddress("HLT_HIAK4PFJet15_v1",&HLT_HIAK4PFJet15_v1);
   evtTree->SetBranchAddress("HLT_HIAK4PFJet15_v1_Prescl",&HLT_HIAK4PFJet15_v1_Prescl);
   evtTree->SetBranchAddress("HLT_HIAK4PFJet30_v1",&HLT_HIAK4PFJet30_v1);
@@ -469,6 +467,18 @@ void eventMap::loadHLT(const char* name){
   evtTree->SetBranchAddress("HLT_HIAK4PFJet80_v1_Prescl",&HLT_HIAK4PFJet80_v1_Prescl);
   evtTree->SetBranchAddress("HLT_HIAK4PFJet100_v1",&HLT_HIAK4PFJet100_v1);
   evtTree->SetBranchAddress("HLT_HIAK4PFJet100_v1_Prescl",&HLT_HIAK4PFJet100_v1_Prescl);
+  evtTree->SetBranchAddress("HLT_HIAK4CaloJet15_v1",&HLT_HIAK4CaloJet15_v1);
+  evtTree->SetBranchAddress("HLT_HIAK4CaloJet15_v1_Prescl",&HLT_HIAK4CaloJet15_v1_Prescl);
+  evtTree->SetBranchAddress("HLT_HIAK4CaloJet30_v1",&HLT_HIAK4CaloJet30_v1);
+  evtTree->SetBranchAddress("HLT_HIAK4CaloJet30_v1_Prescl",&HLT_HIAK4CaloJet30_v1_Prescl);
+  evtTree->SetBranchAddress("HLT_HIAK4CaloJet40_v1",&HLT_HIAK4CaloJet40_v1);
+  evtTree->SetBranchAddress("HLT_HIAK4CaloJet40_v1_Prescl",&HLT_HIAK4CaloJet40_v1_Prescl);
+  evtTree->SetBranchAddress("HLT_HIAK4CaloJet60_v1",&HLT_HIAK4CaloJet60_v1);
+  evtTree->SetBranchAddress("HLT_HIAK4CaloJet60_v1_Prescl",&HLT_HIAK4CaloJet60_v1_Prescl);
+  evtTree->SetBranchAddress("HLT_HIAK4CaloJet80_v1",&HLT_HIAK4CaloJet80_v1);
+  evtTree->SetBranchAddress("HLT_HIAK4CaloJet80_v1_Prescl",&HLT_HIAK4CaloJet80_v1_Prescl);
+  evtTree->SetBranchAddress("HLT_HIAK4CaloJet100_v1",&HLT_HIAK4CaloJet100_v1);
+  evtTree->SetBranchAddress("HLT_HIAK4CaloJet100_v1_Prescl",&HLT_HIAK4CaloJet100_v1_Prescl);
   //evtTree->SetBranchAddress("HLT_HIAK4PFJet120_v1",&HLT_HIAK4PFJet120_v1);
   //evtTree->SetBranchAddress("HLT_HIAK4CaloJet80_v1",&HLT_HIAK4CaloJet80_v1);
   evtTree->SetBranchAddress("HLT_HICsAK4PFJet60Eta1p5_v1",&HLT_HICsAK4PFJet60Eta1p5_v1);
