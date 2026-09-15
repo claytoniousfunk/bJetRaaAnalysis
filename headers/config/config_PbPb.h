@@ -15,7 +15,7 @@ bool doJetTrkMaxFilter = true;
 bool doEtaPhiMask = false;
 bool doWDecayFilter = true;
 // High Level Triggers (HLTs)
-bool applyJet60Trigger = false;
+bool applyJet60Trigger = true;
 bool applyJet80Trigger = false;
 bool applyJet100Trigger = false;
 bool applyMinBiasTrigger = false;
@@ -34,11 +34,11 @@ bool apply_JEU_shift_up = false;
 bool apply_JEU_shift_down = false;
 // select dataset
 bool doSingleMuonSample = false;
-bool doMinBiasSample = true;
-bool doHardProbesSample = false;
+bool doMinBiasSample = false;
+bool doHardProbesSample = true;
 bool doNoRhoModificationSample = false;
 bool doWithRhoModificationSample = false;
 // reweight functions (for bkg subtraction)
 bool doHiBinReweightToHardProbesJet80 = false;
-bool useCaloJetsOverride = false; // overrides typical PF jet collection with caloJets
+bool useCaloJetsOverride = true; // overrides typical PF jet collection with caloJets
 bool useFlowJetsOverride = false;
