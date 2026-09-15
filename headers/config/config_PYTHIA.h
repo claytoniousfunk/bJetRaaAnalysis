@@ -50,16 +50,16 @@ double mu_eta = 0.0;
 double sigma_eta = 0.005;
 // triggers
 bool applyJet60Trigger = false;
-bool applyJet80Trigger = true;
+bool applyJet80Trigger = false;
 bool applyJet100Trigger = false;
 bool applyMu12TriggerEfficiencyCorrection = false;
-bool applyMu5Jet30Trigger = true;
+bool applyMu5Jet30Trigger = false;
 bool applyMu5Jet40Trigger = false;
 bool applyMu5Jet60Trigger = false;
 bool fillMu5 = false;
 bool fillMu7 = false;
 bool fillMu12 = true;
 // jet mods
-bool useCaloJetsOverride = false; // overrides typical PF jet collection with caloJets
+bool useCaloJetsOverride = true; // overrides typical PF jet collection with caloJets
 
 
