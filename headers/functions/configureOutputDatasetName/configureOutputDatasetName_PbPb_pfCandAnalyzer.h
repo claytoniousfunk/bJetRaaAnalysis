@@ -28,7 +28,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
 				   bool doHiBinReweightToHardProbesJet80,
 				   bool useCaloJetsOverride,
 				   bool useFlowJetsOverride,
-				   int N_fastJetMixedEventResamples)
+				   int N_fastJetMixedEventResamples,
+				   double pseudoJetCandPt_min)
 {
 
   TString result = "output";
@@ -82,6 +83,10 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
     result.Append(Form("_fastJetResamples-%i",N_fastJetMixedEventResamples));
   }
   else result.Append("_sameEventPFClustering");
+  // PF-candidate pT floor for the random cones and FastJet inputs. Dropped from
+  // the name on 2026-09-07 and restored: the RC and dPT maps depend on it
+  // directly, and without it a 2 GeV scan is indistinguishable from a 0 GeV one.
+  result.Append(Form("_pseudoJetCandPtMin-%.1f", pseudoJetCandPt_min));
   if(skipSingleConstituentJets) result.Append("_skipSingleConstituentJets");
 
   TDatime dt;

@@ -81,6 +81,7 @@ inline void writeProvenance(TFile *wf)
   snprintf(b, sizeof(b), "doConstituentSubtraction    : %d\n", (int)doConstituentSubtraction);      s += b;
   snprintf(b, sizeof(b), "doSignalSelectedRC          : %d (jetPtCut %.1f, raw %d)\n",
            (int)doSignalSelectedRC, signalJetPtCut, (int)signalJetPtCutIsRaw);                      s += b;
+  snprintf(b, sizeof(b), "pseudoJetCandPt_min         : %.2f GeV\n", pseudoJetCandPt_min);          s += b;
 
   s += "--- jet collection ---\n";
   snprintf(b, sizeof(b), "useCaloJetsOverride         : %d\n", (int)useCaloJetsOverride);           s += b;

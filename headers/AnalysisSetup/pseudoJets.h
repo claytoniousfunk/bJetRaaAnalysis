@@ -1,7 +1,7 @@
 #pragma once
 // pfCandidateAnalysis variables
 
-bool doEventMixing = true;
+bool doEventMixing = false;
 
 bool doFastJetClustering = true;      // true = run anti-kT R=0.4 on PF candidates via FastJet (requires -DDO_FASTJET at compile time)
 
@@ -48,7 +48,7 @@ int N_mixedEventsInPool = 100;
 // loop runs exactly once regardless of this value.
 int N_fastJetMixedEventResamples = 100;
 
-double pseudoJetCandPt_min = 0.0;
+double pseudoJetCandPt_min = 2.0;
 
 double subleadingPFCandPt_min = 15.0;
 

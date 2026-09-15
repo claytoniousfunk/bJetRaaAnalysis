@@ -27,7 +27,10 @@ jobname = 'PbPb_pfCandAnalyzer'
 # input list -- must be the same one PbPb_pfCandAnalyzer.C selects via its
 # doMinBiasSample / doHardProbesSample / doSingleMuonSample flags, because the
 # job index is matched against `ifile` inside the analyzer.
-dblist = '../../../fileNames/fileNames_HISingleMuon_withPFCandidates_partial.txt'
+#dblist = '../../../fileNames/fileNames_HISingleMuon_withPFCandidates_partial.txt'
+# must match the list PbPb_pfCandAnalyzer.C picks from config_PbPb.h: the jobs
+# pass a line index, so this only sets how many jobs there are
+dblist = '../../../fileNames/fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt'
 
 # How the analyzer is run.
 #
