@@ -299,6 +299,7 @@ void pp_scan(int group = 1){
 // condor entry point: called by jobManager with explicit file paths
 void pp_scan(TString inputFile, TString outputFile){
 
+  if(useCaloJetsOverride) doJetTrkMaxFilter = false; // force to false, jetTrk filter = 0 for every event in caloJet tree
 
   if(fillMu5){
     muPtCut = 7.0;
