@@ -24,7 +24,6 @@
 #include "TDatime.h"
 #include <vector>
 #include "TCanvas.h"
-#include <dirent.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
