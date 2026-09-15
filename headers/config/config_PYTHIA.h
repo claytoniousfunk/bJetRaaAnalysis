@@ -59,5 +59,7 @@ bool applyMu5Jet60Trigger = false;
 bool fillMu5 = false;
 bool fillMu7 = false;
 bool fillMu12 = true;
+// jet mods
+bool useCaloJetsOverride = false; // overrides typical PF jet collection with caloJets
 
 

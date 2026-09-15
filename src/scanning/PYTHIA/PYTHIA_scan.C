@@ -252,20 +252,24 @@ TH1D *h_dimuonMass_sameSign;
 TH1D *h_inclMuPt;
 
 
+///////////////////////  start the program
+void PYTHIA_scan(TString inputFile, TString outputFile); // forward declaration
+
+// standalone entry point: PYTHIA_scan(N) reads forest N from the list and writes to EOS
 void PYTHIA_scan(int group = 1){
 
-  TString inputDataset = "";
-  TString inputFileName = "";
+  // full HiForest, not the skims -- the same list PYTHIA_skim_simple.C read from
+  std::string inputFileList = "../../../fileNames/fileNames_PYTHIA_DiJet_withGS.txt";
 
-
-  inputDataset = "/eos/user/c/cbennett/skims/output_skim_PYTHIA_DiJet_withGS_withExtraJetTriggers/";
-  //inputDataset = "/eos/user/c/cbennett/skims/output_skim_PYTHIA_DiJet_withGS_withJetTriggers/";
-  inputFileName = "PYTHIA_DiJet_skim_output";
-
-  TString input = "";
-  input = Form("%s%s_%i.root",inputDataset.Data(),inputFileName.Data(),group);
-
-  std::cout << "input dataset = " << input << std::endl;
+  std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
+  if(!instr.is_open()){ cout << "filelist not found!! Exiting..." << endl; return; }
+  std::string filename; Int_t ifile = 0;
+  while(instr >> filename){ ifile++; if(ifile == group) break; }
+  if(ifile < group){
+    cout << "File index " << group << " out of range (list has " << ifile << " files). Exiting." << endl;
+    return;
+  }
+  TString inputFile = TString(filename.c_str());
 
   TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
 
@@ -323,10 +327,41 @@ void PYTHIA_scan(int group = 1){
 						 muPtMaxCut,
 						 fillMu5,
 						 fillMu7,
-						 fillMu12);
+						 fillMu12,
+						 useCaloJetsOverride);
 
-  TString output = Form("%s%s/PYTHIA_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
+  TString outputFile = Form("%s%s/PYTHIA_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
 
+  if(gSystem->AccessPathName(Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()))){
+    std::cout << "\033[1;31m Output directory not found: \033[0m "
+              << Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()) << std::endl;
+    return;
+  }
+
+  PYTHIA_scan(inputFile, outputFile);
+}
+
+// condor entry point: called by jobManager with explicit file paths
+void PYTHIA_scan(TString inputFile, TString outputFile){
+
+  if(fillMu5){
+    muPtCut = 7.0;
+    muPtMaxCut = 9.0;
+  }
+  else if(fillMu7){
+    muPtCut = 9.0;
+    muPtMaxCut = 15.0;
+  }
+  else if(fillMu12){
+    muPtCut = 15.0;
+    muPtMaxCut = 999.0;
+  }
+  else{};
+
+  TString input = inputFile;
+  std::cout << "input dataset = " << input << std::endl;
+
+  TString output = outputFile;
   std::cout << "output dataset = " << output << std::endl;
   
   // TString input = Form("/eos/user/c/cbennett/skims/output_PYTHIA_DiJet_withGS/PYTHIA_DiJet_skim_output_%i.root",group);
@@ -605,20 +640,21 @@ void PYTHIA_scan(int group = 1){
   TFile *f = TFile::Open(input);
   cout << "File opened!" << endl;
   auto em = new eventMap(f);
-  em->isMC = 1;
-  em->AASetup = 0;
+  em->isMC = isMC_status;
+  em->AASetup = AASetup_status;
   cout << "Initializing variables ... " << endl;
   em->init();
   cout << "Loading jet..." << endl;
-  em->loadJet(jetTreeString);
+  if(useCaloJetsOverride) em->loadJet("ak4CaloJetAnalyzer/t");
+  else em->loadJet("ak4PFJetAnalyzer/t");
   cout << "Loading muon..." << endl;
-  em->loadMuon(muonTreeString);
+  em->loadMuon("ggHiNtuplizerGED/EventTree");
   cout << "Loading muon triggers..." << endl;
-  em->loadMuonTrigger(hltString);
-  cout << "Loading tracks..." << endl;
+  em->loadHLT("hltanalysis/HltTree");
+  //cout << "Loading tracks..." << endl;
   //em->loadTrack();
   cout << "Loading gen particles..." << endl;
-  em->loadGenParticle();
+  em->loadGenParticle("HiGenParticleAna/hi");
   cout << "Variables initilized!" << endl << endl ;
 
   int NEvents = em->evtTree->GetEntries();
@@ -717,13 +753,28 @@ void PYTHIA_scan(int group = 1){
     //cout << "Event #" << evi << " passed the global cuts!" << endl;
     // apply jet-trigger if activated in config
     if(applyJet60Trigger){
-      if(em->HLT_HIAK4PFJet60_v1 == 0) continue;
+      if(useCaloJetsOverride){
+	if(em->HLT_HIAK4CaloJet60_v1 == 0) continue;
+      }
+      else{
+	if(em->HLT_HIAK4PFJet60_v1 == 0) continue;
+      }
     }
     if(applyJet80Trigger){
-      if(em->HLT_HIAK4PFJet80_v1 == 0) continue;
+      if(useCaloJetsOverride){
+	if(em->HLT_HIAK4CaloJet80_v1 == 0) continue;
+      }
+      else{
+	if(em->HLT_HIAK4PFJet80_v1 == 0) continue;
+      }
     }
     if(applyJet100Trigger){
-      if(em->HLT_HIAK4PFJet100_v1 == 0) continue;
+      if(useCaloJetsOverride){
+	if(em->HLT_HIAK4CaloJet100_v1 == 0) continue;
+      }
+      else{
+	if(em->HLT_HIAK4PFJet100_v1 == 0) continue;
+      }
     }
     if(applyMu5Jet30Trigger){
       if(em->HLT_HIL3Mu5_AK4PFJet30_v1 == 0) continue;
@@ -920,7 +971,7 @@ void PYTHIA_scan(int group = 1){
       JEC.SetJetEta(em->jeteta[j]);
       JEC.SetJetPhi(em->jetphi[j]);
       
-      double testJetPt_j = JEC.GetCorrectedPT();
+      double testJetPt_j = useCaloJetsOverride ? em->jetpt[j] : JEC.GetCorrectedPT();
       double testJetEta_j = em->jeteta[j];
       double testJetPhi_j = em->jetphi[j];
       int testJetFlavor_j = em->matchedPartonFlavor[j];
@@ -944,7 +995,7 @@ void PYTHIA_scan(int group = 1){
 	JEC.SetJetEta(em->jeteta[j]);
 	JEC.SetJetPhi(em->jetphi[j]);
       
-	double testJetPt_j = JEC.GetCorrectedPT();
+	double testJetPt_j = useCaloJetsOverride ? em->jetpt[j] : JEC.GetCorrectedPT();
 	double testJetEta_j = em->jeteta[j];
 	double testJetPhi_j = em->jetphi[j];
 	int testJetFlavor_j = em->matchedPartonFlavor[j];
@@ -995,7 +1046,8 @@ void PYTHIA_scan(int group = 1){
       JEC.SetJetEta(em->jeteta[i]);
       JEC.SetJetPhi(em->jetphi[i]);
 
-      double recoJetPt_i = JEC.GetCorrectedPT();  // apply manual JEC
+      // built-in JEC for calo jets (no AK4Calo MC JEC file here), manual AK4PF MC JEC otherwise
+      double recoJetPt_i = useCaloJetsOverride ? em->jetpt[i] : JEC.GetCorrectedPT();
       double recoJetPt_JERSmear_i = recoJetPt_i;
       double recoJetPt_JEUShiftUp_i = recoJetPt_i;
       double recoJetPt_JEUShiftDown_i = recoJetPt_i;

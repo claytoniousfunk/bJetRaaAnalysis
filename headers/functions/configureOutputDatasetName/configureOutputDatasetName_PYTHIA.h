@@ -38,7 +38,8 @@ TString configureOutputDatasetName(TString generator,
 				   double muPtMaxCut,
 				   bool fillMu5,
 				   bool fillMu7,
-				   bool fillMu12)
+				   bool fillMu12,
+				   bool useCaloJetsOverride)
 {
 
   TString result = "output";
@@ -47,6 +48,9 @@ TString configureOutputDatasetName(TString generator,
   TString datasetIndicator = "";
   if(doDiJetSample) datasetIndicator = "_DiJet";
   result.Append(datasetIndicator);
+
+  if(useCaloJetsOverride) result.Append("_caloJets");
+
   if(applyJet60Trigger) result.Append("_Jet60HLT");
   if(applyJet80Trigger) result.Append("_Jet80HLT");
   if(applyJet100Trigger) result.Append("_Jet100HLT");
