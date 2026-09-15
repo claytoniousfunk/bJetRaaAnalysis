@@ -302,6 +302,7 @@ void PYTHIA_scan(int group = 1){
 						 doDRReweight,
 						 doWeightCut,
 						 doJetAxisSmearing,
+						 doWDecayFilter,
 						 mu_phi,
 						 sigma_phi,
 						 mu_eta,

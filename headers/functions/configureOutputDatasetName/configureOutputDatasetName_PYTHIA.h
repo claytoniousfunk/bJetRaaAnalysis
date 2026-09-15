@@ -14,6 +14,7 @@ TString configureOutputDatasetName(TString generator,
 				   bool doDRReweight,
 				   bool doWeightCut,
 				   bool doJetAxisSmearing,
+				   bool doWDecayFilter,
 				   double mu_phi,
 				   double sigma_phi,
 				   double mu_eta,
@@ -50,6 +51,7 @@ TString configureOutputDatasetName(TString generator,
   result.Append(datasetIndicator);
 
   if(useCaloJetsOverride) result.Append("_caloJets");
+  result.Append(Form("_pThat-%2.0f",pThat));
 
   if(applyJet60Trigger) result.Append("_Jet60HLT");
   if(applyJet80Trigger) result.Append("_Jet80HLT");
@@ -57,8 +59,6 @@ TString configureOutputDatasetName(TString generator,
   if(applyMu5Jet30Trigger) result.Append("_Mu5Jet30HLT");
   if(applyMu5Jet40Trigger) result.Append("_Mu5Jet40HLT");
   if(applyMu5Jet60Trigger) result.Append("_Mu5Jet60HLT");
-  // general information
-  result.Append(Form("_pThat-%2.0f",pThat));
   if(fillMu5) result.Append(Form("_mu5_pTmu-%1.0fto%1.0f_hybridSoft",muPtCut,muPtMaxCut));
   else if(fillMu7) result.Append(Form("_mu7_pTmu-%1.0fto%2.0f_hybridSoft",muPtCut,muPtMaxCut));
   else if(fillMu12) result.Append(Form("_mu12_pTmu-%2.0fto%3.0f_tight",muPtCut,muPtMaxCut));
@@ -76,17 +76,18 @@ TString configureOutputDatasetName(TString generator,
   if(doEtaPhiMask) result.Append("_etaPhiMask");
   if(doDRReweight) result.Append("_dRReweight");
   if(doJetAxisSmearing) result.Append(Form("_jetAxisSmear_muPhi-%1.3f_sigmaPhi-%1.3f_muEta-%1.3f_sigmaEta-%1.3f",mu_phi,sigma_phi,mu_eta,sigma_eta));
+  if(doWDecayFilter) result.Append("_WDecayFilter");
   // lesser-likely customizations
   if(doWeightCut) result.Append("_weightCut");
   if(doHadronPtRelReweight) result.Append("_hadronPtRelReweight");
   if(doHadronPtRelReweightToMuon) result.Append("_hadronPtRelReweightToMuon");
   if(doBJetEnergyShift) result.Append("_bJetEnergyShift");
-  if(doBJetNeutrinoEnergyShift) result.Append("_BJetNeutrinoEnergyShift");
   if(doJERCorrection) result.Append("_JERCorrection");
   if(doJESCorrection) result.Append("_JESCorrection");
   if(apply_JER_smear) result.Append("_applyJERSmear");
   if(apply_JEU_shift_up) result.Append("_applyJEUShiftUp");
   if(apply_JEU_shift_down) result.Append("_applyJEUShiftDown");
+  if(doBJetNeutrinoEnergyShift) result.Append("_BJetNeutrinoEnergyShift");
   
   
   TDatime dt;
