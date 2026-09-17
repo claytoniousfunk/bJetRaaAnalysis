@@ -27,7 +27,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
 				   bool fillMu5,
 				   bool fillMu7,
 				   bool fillMu12,
-				   bool useCaloJetsOverride)
+				   bool useCaloJetsOverride,
+				   bool useManualJEC)
 {
 
   TString result = "output";
@@ -41,6 +42,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   result.Append(datasetIndicator);
 
   if(useCaloJetsOverride) result.Append("_caloJets");
+  // jet pT from the JEC text files rather than the forest jtpt
+  if(useManualJEC) result.Append("_manualJEC");
 
   // general information
   if(applyJet15Trigger) result.Append("_Jet15HLT");

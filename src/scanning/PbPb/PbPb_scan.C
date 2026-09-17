@@ -340,7 +340,8 @@ void PbPb_scan(int group = 1){
 						   fillMu5,
 						   fillMu7,
 						   fillMu12,
-						   useCaloJetsOverride);
+						   useCaloJetsOverride,
+						   useManualJEC);
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
@@ -928,7 +929,8 @@ void PbPb_scan(int group = 1){
 	JEC.SetJetPhi(em->jetphi[i]);
 
 	//double x = JEC.GetCorrectedPT();  // use manual JEC
-	double x = em->jetpt[i]; // use built-in JEC
+	// manual JEC on rawpt, or the forest jtpt (config_PbPb.h: useManualJEC)
+	double x = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[i];
 	double rawJetPt_i = em->rawpt[i]; // uncorrected pT, for the rawPtCut histograms
 	double y = em->jeteta[i]; // recoJetEta
 	double z = em->jetphi[i]; // recoJetPhi

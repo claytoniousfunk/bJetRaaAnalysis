@@ -284,7 +284,7 @@ void pp_scan(int group = 1){
     applyAntiMu5Jet30Trigger,applyAntiMu5Jet40Trigger,applyAntiMu5Jet60Trigger,
     applyMu12TriggerEfficiencyCorrection,doJetTrkMaxFilter,doEtaPhiMask,doWDecayFilter,
     doJESCorrection,doBJetNeutrinoEnergyShift,doJERCorrection,
-							 apply_JER_smear,apply_JEU_shift_up,apply_JEU_shift_down,muPtCut,muPtMaxCut,fillMu5,fillMu7,fillMu12, useCaloJetsOverride);
+							 apply_JER_smear,apply_JEU_shift_up,apply_JEU_shift_down,muPtCut,muPtMaxCut,fillMu5,fillMu7,fillMu12, useCaloJetsOverride, useManualJEC);
   TString outputFile = Form("%s%s/pp_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
 
   if(gSystem->AccessPathName(Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()))){
@@ -364,7 +364,8 @@ void pp_scan(TString inputFile, TString outputFile){
 						   fillMu5,
 						   fillMu7,
 						   fillMu12,
-						   useCaloJetsOverride);
+						   useCaloJetsOverride,
+						   useManualJEC);
 
     TString output = outputFile;
 
@@ -372,8 +373,17 @@ void pp_scan(TString inputFile, TString outputFile){
 
     // JET ENERGY CORRECTIONS
     vector<string> Files;
-    Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2Relative_AK4PF.txt"); // L2Relative correction
-    Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2L3Residual_AK4PF.txt"); // L2L3Residual correction
+    // calo jets need the AK4Calo files: the AK4PF ones are ~1.1x where the calo
+    // correction is ~1.3-1.8x, so loading PF files here was only harmless while
+    // the jet pT came from the forest jtpt
+    if(useCaloJetsOverride){
+      Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2Relative_AK4Calo.txt"); // L2Relative correction
+      Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2L3Residual_AK4Calo.txt"); // L2L3Residual correction
+    }
+    else{
+      Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2Relative_AK4PF.txt"); // L2Relative correction
+      Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2L3Residual_AK4PF.txt"); // L2L3Residual correction
+    }
     // Files.push_back("../../../JetEnergyCorrections/Fall17_17Nov2017F_V6_DATA_L2Relative_AK4PF.txt"); // L2Relative correction
     // Files.push_back("../../../JetEnergyCorrections/Fall17_17Nov2017F_V6_DATA_L2L3Residual_AK4PF.txt"); // L2L3Residual correction
     JetCorrector JEC(Files);
@@ -823,7 +833,8 @@ void pp_scan(TString inputFile, TString outputFile){
 	//double x = em->rawpt[i];  // use manual JEC
 	//double x = JEC.GetCorrectedPT();  // use manual JEC
 	double rawJetPt_i = em->rawpt[i]; // uncorrected pT, for h_inclRawJetPt
-	double x = em->jetpt[i]; // use built-in JEC
+	// manual JEC on rawpt, or the forest jtpt (config_pp.h: useManualJEC)
+	double x = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[i];
 	double y = em->jeteta[i]; // recoJetEta
 	double z = em->jetphi[i]; // recoJetPhi
 	double jetTrkMax_i = em->jetTrkMax[i];

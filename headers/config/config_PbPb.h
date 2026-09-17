@@ -41,4 +41,9 @@ bool doWithRhoModificationSample = false;
 // reweight functions (for bkg subtraction)
 bool doHiBinReweightToHardProbesJet80 = false;
 bool useCaloJetsOverride = true; // overrides typical PF jet collection with caloJets
+// Correct rawpt with the JEC text files (Autumn18 HI, calo or PF to match the
+// collection) instead of taking the forest's jtpt. The PbPb calo forest's
+// jtpt/rawpt is ~1.09-1.11, PF-sized, against 1.2-1.6 for the AK4Calo files.
+// Adds "_manualJEC" to the output name.
+bool useManualJEC = true;
 bool useFlowJetsOverride = false;
