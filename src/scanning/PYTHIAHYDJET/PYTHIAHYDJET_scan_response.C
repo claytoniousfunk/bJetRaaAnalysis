@@ -253,12 +253,16 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 
     JetCorrector JEC(Files);
 
+    string JEU_path = "";
+    
     if(useCaloJetsOverride){
-      JetUncertainty JEU("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4Calo.txt");
+      JEU_path = "../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4Calo.txt";
     }
     else{
-      JetUncertainty JEU("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4PF.txt");
+      JEU_path = "../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4PF.txt";
     }
+    
+    JetUncertainty JEU(JEU_path.c_str());
 
     // WEIGHT FUNCTIONS
 
