@@ -609,7 +609,8 @@ void pp_scan(TString inputFile, TString outputFile){
     if(useCaloJetsOverride) em->loadJet("ak4CaloJetAnalyzer/t");
     else em->loadJet("ak4PFJetAnalyzer/t");
     cout << "	Loading muon..." << endl;
-    em->loadMuon("ggHiNtuplizerGED/EventTree");
+    if(!doMinBiasSample) em->loadMuon("ggHiNtuplizerGED/EventTree");
+    else em->loadMuon("ggHiNtuplizer/EventTree");
     cout << "	Loading muon triggers..." << endl;
     em->loadHLT("hltanalysis/HltTree");
     //cout << "	Loading tracks..." << endl;
