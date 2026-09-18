@@ -479,7 +479,12 @@ void PYTHIAHYDJET_scan_response(int group = 1){
     cout << "	Initializing variables ... " << endl;
     em->init();
     cout << "	Loading jet..." << endl;
-    if(useCaloJetsOverride) ? em->loadJet("akPu4CaloJetAnalyzer/t") : em->loadJet("akCs4PFJetAnalyzer/t");
+    if(useCaloJetsOverride){
+      em->loadJet("akPu4CaloJetAnalyzer/t");
+    }
+    else{
+      em->loadJet("akCs4PFJetAnalyzer/t");
+    }
     cout << "Loading muon triggers..." << endl;
     em->loadHLT("hltanalysis/HltTree");
     cout << "	Loading gen particles..." << endl;
