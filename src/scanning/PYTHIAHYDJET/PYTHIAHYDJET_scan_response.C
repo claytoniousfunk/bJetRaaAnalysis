@@ -141,932 +141,950 @@ void PYTHIAHYDJET_scan_response(int group = 1){
   std::cout << "turning on pThat correlation filter...\n";
   doPThatCorrelationFilter = true;
   
+  // TString inputDataset = "";
+  // TString inputFileName = "";
 
-  TString inputDataset = "";
-  TString inputFileName = "";
+  // //inputDataset = "/eos/user/c/cbennett/skims/output_skim_PH_DiJet_pTjet-5_withJetTriggers/";
+  // inputDataset = "/eos/user/c/cbennett/skims/output_skim_PH_DiJet_pTjet-5_withGenNeutrino_withRefPt/";
+  // inputFileName = "PYTHIAHYDJET_DiJet_skim_output";
+  // TString input = Form("%s%s_%i.root",inputDataset.Data(),inputFileName.Data(),group);
 
-  //inputDataset = "/eos/user/c/cbennett/skims/output_skim_PH_DiJet_pTjet-5_withJetTriggers/";
-  inputDataset = "/eos/user/c/cbennett/skims/output_skim_PH_DiJet_pTjet-5_withGenNeutrino_withRefPt/";
-  inputFileName = "PYTHIAHYDJET_DiJet_skim_output";
-  TString input = Form("%s%s_%i.root",inputDataset.Data(),inputFileName.Data(),group);
+  std::string inputFileList = "";
+  inputFileList = "../../../fileNames/fileNames_PH_DiJet_withCaloAndFlowJets_fix_partial.txt";
 
-  std::cout << "input dataset = " << input << std::endl;
+  std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
+  if(!instr.is_open()){
+    cout << "filelist not found!! Exiting..." << endl;
+    return;
+  }
+  std::string filename;
+  Int_t ifile = 0;
 
-  TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
+  while(instr>>filename){
 
-  TString outputDatasetName = "";
+    ifile++;
 
-  outputDatasetName = configureOutputDatasetName(generator,
-						 doDiJetSample,
-						 doMuJetSample,
-						 doBJetSample,
-						 doDiJetSample_batch1,
-						 doDiJetSample_batch2,
-						 doDiJetSample_batch3,
-						 doDiJetSample_batch4,
-						 doDiJetSample_batch5,
-						 doDiJetSample_batch6,
-						 doDiJetSample_batch7,
-						 doDiJetSample_batch8,
-						 doDiJetSample_batch9,
-						 doDiJetSample_batch10,
-						 doDiJetSample_batch11,
-						 doDiJetSample_batch12,
-						 doDiJetSample_batch13,
-						 doDiJetSample_batch14,
-						 doDiJetSample_batch15,
-						 pthatcut,
-						 doPThatWeight,
-						 doVzReweight,
-						 doHiBinReweight,
-						 doJetPtReweight,
-						 doGenJetPthatFilter,
-						 doLeadingXjetDumpFilter,
-						 doXdumpReweight,
-						 doJetTrkMaxFilter,
-						 doRemoveHYDJETjet,
-						 doEtaPhiMask,
-						 doDRReweight,
-						 doWeightCut,
-						 doBJetSpectraReweightToData,
-						 doHadronPtRelReweight,
-						 doBJetEnergyShift,
-						 doBJetNeutrinoEnergyShift,						 
-						 doJERCorrection,
-						 doJESCorrection,						 
-						 apply_JER_smear,
-						 apply_JEU_shift_up,
-						 apply_JEU_shift_down,
-						 hiBinShift,
-						 applyJet60Trigger,
-						 applyJet80Trigger,
-						 muPtCut,
-						 doPThatCorrelationFilter);
+    if(ifile != group) continue;
+
+    std::string input = filename.c_str();
+
+    std::cout << "input dataset = " << input << std::endl;
+
+    TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
+
+    TString outputDatasetName = "";
+
+    outputDatasetName = configureOutputDatasetName(generator,
+						   doDiJetSample,
+						   doMuJetSample,
+						   doBJetSample,
+						   doDiJetSample_batch1,
+						   doDiJetSample_batch2,
+						   doDiJetSample_batch3,
+						   doDiJetSample_batch4,
+						   doDiJetSample_batch5,
+						   doDiJetSample_batch6,
+						   doDiJetSample_batch7,
+						   doDiJetSample_batch8,
+						   doDiJetSample_batch9,
+						   doDiJetSample_batch10,
+						   doDiJetSample_batch11,
+						   doDiJetSample_batch12,
+						   doDiJetSample_batch13,
+						   doDiJetSample_batch14,
+						   doDiJetSample_batch15,
+						   pthatcut,
+						   doPThatWeight,
+						   doVzReweight,
+						   doHiBinReweight,
+						   doJetPtReweight,
+						   doGenJetPthatFilter,
+						   doLeadingXjetDumpFilter,
+						   doXdumpReweight,
+						   doJetTrkMaxFilter,
+						   doRemoveHYDJETjet,
+						   doEtaPhiMask,
+						   doDRReweight,
+						   doWeightCut,
+						   doBJetSpectraReweightToData,
+						   doHadronPtRelReweight,
+						   doBJetEnergyShift,
+						   doBJetNeutrinoEnergyShift,						 
+						   doJERCorrection,
+						   doJESCorrection,						 
+						   apply_JER_smear,
+						   apply_JEU_shift_up,
+						   apply_JEU_shift_down,
+						   hiBinShift,
+						   applyJet60Trigger,
+						   applyJet80Trigger,
+						   muPtCut,
+						   doPThatCorrelationFilter);
 
 
-  //TString output = Form("%s%s/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
-  //TString output = Form("%s%s_muTaggedJetsNoTrigger/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
-  //TString output = Form("%s%s_evenEvents/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
-  TString output = Form("%s%s_oddEvents/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
-  //TString output = Form("%s%s_ultraFineCentBins/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
+    TString output = Form("%s%s/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
+    //TString output = Form("%s%s_muTaggedJetsNoTrigger/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
+    //TString output = Form("%s%s_evenEvents/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
+    //TString output = Form("%s%s_oddEvents/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
+    //TString output = Form("%s%s_ultraFineCentBins/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
 
-  std::cout << "output dataset = " << output << std::endl;
+    std::cout << "output dataset = " << output << std::endl;
 
-  readConfig();
+    readConfig();
 
-  // JET ENERGY CORRECTIONS
-  vector<string> Files;
+    // JET ENERGY CORRECTIONS
+    vector<string> Files;
   
-  Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_L2Relative_AK4PF.txt"); // LXPLUS
+    Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_L2Relative_AK4PF.txt"); // LXPLUS
 
-  JetCorrector JEC(Files);
+    JetCorrector JEC(Files);
 
-  JetUncertainty JEU("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4PF.txt");
+    JetUncertainty JEU("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4PF.txt");
 
-  // WEIGHT FUNCTIONS
+    // WEIGHT FUNCTIONS
 
-  //  initialize histograms
-  // JETS
+    //  initialize histograms
+    // JETS
 
-  TH2D *h_matchedRecoJetPt_genJetPt[NCentralityIndices][7];
-  //TH2D *h_matchedRecoJetPtWithCut_genJetPt[NCentralityIndices][7];
-  TH2D *h_matchedRecoJetPt_genJetPt_var[NCentralityIndices][7];
-  TH2D *h_matchedRecoJetPtOverGenJetPt_genJetPt[NCentralityIndices][7];
-  TH2D *h_matchedRecoJetPtOverGenJetPt_genJetEta[NCentralityIndices][7];
-  TH2D *h_inclGenJetPt_flavor[NCentralityIndices];
-  TH2D *h_inclGenJetPt_inclGenMuonTag_flavor[NCentralityIndices];
-  TH2D *h_inclGenJetPt_inclRecoMuonTag_flavor[NCentralityIndices];
-  TH2D *h_leadingRecoJetPtOverPThat_pThat[NCentralityIndices];
-  TH1D *h_unmatchedRecoJetPt[NCentralityIndices][7];
+    TH2D *h_matchedRecoJetPt_genJetPt[NCentralityIndices][7];
+    //TH2D *h_matchedRecoJetPtWithCut_genJetPt[NCentralityIndices][7];
+    TH2D *h_matchedRecoJetPt_genJetPt_var[NCentralityIndices][7];
+    TH2D *h_matchedRecoJetPtOverGenJetPt_genJetPt[NCentralityIndices][7];
+    TH2D *h_matchedRecoJetPtOverGenJetPt_genJetEta[NCentralityIndices][7];
+    TH2D *h_inclGenJetPt_flavor[NCentralityIndices];
+    TH2D *h_inclGenJetPt_inclGenMuonTag_flavor[NCentralityIndices];
+    TH2D *h_inclGenJetPt_inclRecoMuonTag_flavor[NCentralityIndices];
+    TH2D *h_leadingRecoJetPtOverPThat_pThat[NCentralityIndices];
+    TH1D *h_unmatchedRecoJetPt[NCentralityIndices][7];
 
-  // Reco-jet-indexed matching diagnostics. Unlike h_matchedRecoJetPt_genJetPt
-  // (filled per GEN jet) and h_unmatchedRecoJetPt (filled per reco jet with a
-  // different weight), these are all filled in ONE loop over reco jets with the
-  // SAME weight and one dR condition, so
-  //     all = matchedDr + unmatchedDr
-  // holds bin by bin and fractions of reco jets are well defined.
-  TH1D *h_recoJetPt_all[NCentralityIndices];
-  TH1D *h_recoJetPt_matchedDr[NCentralityIndices];
-  TH1D *h_recoJetPt_unmatchedDr[NCentralityIndices];
-  // For every reco jet, the nearest gen jet regardless of whether it passes the
-  // cut: separates pure combinatorial jets (no gen jet anywhere near) from soft
-  // gen jets promoted upward by the underlying event (small dR, genPt << recoPt).
-  TH2D *h_recoPt_dRnearestGen[NCentralityIndices];
-  TH2D *h_recoPt_nearestGenPt[NCentralityIndices];
-  TH1D *h_unmatchedGenJetPt[NCentralityIndices];
-  // RooUnfoldResponse response_C4(NPtBins,ptMin,ptMax,"response_C4","response_C4");
-  // RooUnfoldResponse response_C3(NPtBins,ptMin,ptMax,"response_C3","response_C3");
-  // RooUnfoldResponse response_C2(NPtBins,ptMin,ptMax,"response_C2","response_C2");
-  // RooUnfoldResponse response_C1(NPtBins,ptMin,ptMax,"response_C1","response_C1");
-  // RooUnfoldResponse response_C0(NPtBins,ptMin,ptMax,"response_C0","response_C0");
-
-
-
-  // Define histograms
-  const int N1 = 10;
-  double ptAxis1[N1] = {60,70,80,90,100,120,150,200,300,500};
-  const int N2 = 32;
-  double ptAxis2[N2] = {0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200,210,220,230,240,250,260,270,280,290,300,500};
+    // Reco-jet-indexed matching diagnostics. Unlike h_matchedRecoJetPt_genJetPt
+    // (filled per GEN jet) and h_unmatchedRecoJetPt (filled per reco jet with a
+    // different weight), these are all filled in ONE loop over reco jets with the
+    // SAME weight and one dR condition, so
+    //     all = matchedDr + unmatchedDr
+    // holds bin by bin and fractions of reco jets are well defined.
+    TH1D *h_recoJetPt_all[NCentralityIndices];
+    TH1D *h_recoJetPt_matchedDr[NCentralityIndices];
+    TH1D *h_recoJetPt_unmatchedDr[NCentralityIndices];
+    // For every reco jet, the nearest gen jet regardless of whether it passes the
+    // cut: separates pure combinatorial jets (no gen jet anywhere near) from soft
+    // gen jets promoted upward by the underlying event (small dR, genPt << recoPt).
+    TH2D *h_recoPt_dRnearestGen[NCentralityIndices];
+    TH2D *h_recoPt_nearestGenPt[NCentralityIndices];
+    TH1D *h_unmatchedGenJetPt[NCentralityIndices];
+    // RooUnfoldResponse response_C4(NPtBins,ptMin,ptMax,"response_C4","response_C4");
+    // RooUnfoldResponse response_C3(NPtBins,ptMin,ptMax,"response_C3","response_C3");
+    // RooUnfoldResponse response_C2(NPtBins,ptMin,ptMax,"response_C2","response_C2");
+    // RooUnfoldResponse response_C1(NPtBins,ptMin,ptMax,"response_C1","response_C1");
+    // RooUnfoldResponse response_C0(NPtBins,ptMin,ptMax,"response_C0","response_C0");
 
 
 
-  for(int i = 0; i < NCentralityIndices; i++){
+    // Define histograms
+    const int N1 = 10;
+    double ptAxis1[N1] = {60,70,80,90,100,120,150,200,300,500};
+    const int N2 = 32;
+    double ptAxis2[N2] = {0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200,210,220,230,240,250,260,270,280,290,300,500};
 
-    if(i==0) {
-      h_unmatchedGenJetPt[i] = new TH1D(Form("h_unmatchedGenJetPt_C%i",i),Form("unmatchedGenJetPt, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
-      h_unmatchedRecoJetPt[i][0] = new TH1D(Form("h_unmatchedRecoJetPt_allJets_C%i",i),Form("unmatchedRecoJetPt, allJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
-      h_unmatchedRecoJetPt[i][1] = new TH1D(Form("h_unmatchedRecoJetPt_bJets_C%i",i),Form("unmatchedRecoJetPt, bJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
-      h_unmatchedRecoJetPt[i][2] = new TH1D(Form("h_unmatchedRecoJetPt_cJets_C%i",i),Form("unmatchedRecoJetPt, cJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
-      h_unmatchedRecoJetPt[i][3] = new TH1D(Form("h_unmatchedRecoJetPt_udJets_C%i",i),Form("unmatchedRecoJetPt, udJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
-      h_unmatchedRecoJetPt[i][4] = new TH1D(Form("h_unmatchedRecoJetPt_sJets_C%i",i),Form("unmatchedRecoJetPt, sJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
-      h_unmatchedRecoJetPt[i][5] = new TH1D(Form("h_unmatchedRecoJetPt_gJets_C%i",i),Form("unmatchedRecoJetPt, gJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
-      h_unmatchedRecoJetPt[i][6] = new TH1D(Form("h_unmatchedRecoJetPt_xJets_C%i",i),Form("unmatchedRecoJetPt, xJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
-      h_recoJetPt_all[i]         = new TH1D(Form("h_recoJetPt_all_C%i",i),Form("all reco jets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
-      h_recoJetPt_matchedDr[i]   = new TH1D(Form("h_recoJetPt_matchedDr_C%i",i),Form("reco jets with a gen jet within dR, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
-      h_recoJetPt_unmatchedDr[i] = new TH1D(Form("h_recoJetPt_unmatchedDr_C%i",i),Form("reco jets with no gen jet within dR, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
-      h_recoPt_dRnearestGen[i]   = new TH2D(Form("h_recoPt_dRnearestGen_C%i",i),Form("dR to nearest gen jet vs reco p_{T}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,100,0,1.0);
-      h_recoPt_nearestGenPt[i]   = new TH2D(Form("h_recoPt_nearestGenPt_C%i",i),Form("nearest gen jet p_{T} vs reco p_{T}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPt_genJetPt[i][0] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_allJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, allJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPt_genJetPt[i][1] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_bJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, bJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPt_genJetPt[i][2] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_cJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, cJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPt_genJetPt[i][3] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_udJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, udJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPt_genJetPt[i][4] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_sJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, sJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPt_genJetPt[i][5] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_gJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, gJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPt_genJetPt[i][6] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_xJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, xJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_inclGenJetPt_flavor[i] = new TH2D(Form("h_inclGenJetPt_flavor_C%i",i),Form("JetFlavorID vs incl. gen p_{T}^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,27,-5,22);
-      h_inclGenJetPt_inclGenMuonTag_flavor[i] = new TH2D(Form("h_inclGenJetPt_inclGenMuonTag_flavor_C%i",i),Form("JetFlavorID vs incl. gen p_{T}^{jet}, tagged with incl. gen muon, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,27,-5,22);
-      h_inclGenJetPt_inclRecoMuonTag_flavor[i] = new TH2D(Form("h_inclGenJetPt_inclRecoMuonTag_flavor_C%i",i),Form("JetFlavorID vs incl. gen p_{T}^{jet}, tagged with incl. reco muon, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,27,-5,22);
-      h_leadingRecoJetPtOverPThat_pThat[i] = new TH2D(Form("h_leadingRecoJetPtOverPThat_pThat_C%i",i),Form("(leadingRecoJetPt / pThat) vs. pThat, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,500,0,500);
-    }
-    else {
-      h_unmatchedGenJetPt[i] = new TH1D(Form("h_unmatchedGenJetPt_C%i",i),Form("unmatchedGenJetPt, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-      h_unmatchedRecoJetPt[i][0] = new TH1D(Form("h_unmatchedRecoJetPt_allJets_C%i",i),Form("unmatchedRecoJetPt, allJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-      h_unmatchedRecoJetPt[i][1] = new TH1D(Form("h_unmatchedRecoJetPt_bJets_C%i",i),Form("unmatchedRecoJetPt, bJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-      h_unmatchedRecoJetPt[i][2] = new TH1D(Form("h_unmatchedRecoJetPt_cJets_C%i",i),Form("unmatchedRecoJetPt, cJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-      h_unmatchedRecoJetPt[i][3] = new TH1D(Form("h_unmatchedRecoJetPt_udJets_C%i",i),Form("unmatchedRecoJetPt, udJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-      h_unmatchedRecoJetPt[i][4] = new TH1D(Form("h_unmatchedRecoJetPt_sJets_C%i",i),Form("unmatchedRecoJetPt, sJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-      h_unmatchedRecoJetPt[i][5] = new TH1D(Form("h_unmatchedRecoJetPt_gJets_C%i",i),Form("unmatchedRecoJetPt, gJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-      h_unmatchedRecoJetPt[i][6] = new TH1D(Form("h_unmatchedRecoJetPt_xJets_C%i",i),Form("unmatchedRecoJetPt, xJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-      h_recoJetPt_all[i]         = new TH1D(Form("h_recoJetPt_all_C%i",i),Form("all reco jets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-      h_recoJetPt_matchedDr[i]   = new TH1D(Form("h_recoJetPt_matchedDr_C%i",i),Form("reco jets with a gen jet within dR, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-      h_recoJetPt_unmatchedDr[i] = new TH1D(Form("h_recoJetPt_unmatchedDr_C%i",i),Form("reco jets with no gen jet within dR, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
-      h_recoPt_dRnearestGen[i]   = new TH2D(Form("h_recoPt_dRnearestGen_C%i",i),Form("dR to nearest gen jet vs reco p_{T}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,100,0,1.0);
-      h_recoPt_nearestGenPt[i]   = new TH2D(Form("h_recoPt_nearestGenPt_C%i",i),Form("nearest gen jet p_{T} vs reco p_{T}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPt_genJetPt[i][0] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_allJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, allJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPt_genJetPt[i][1] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_bJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, bJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPt_genJetPt[i][2] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_cJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, cJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPt_genJetPt[i][3] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_udJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, udJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPt_genJetPt[i][4] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_sJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, sJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPt_genJetPt[i][5] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_gJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, gJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPt_genJetPt[i][6] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_xJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, xJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_inclGenJetPt_flavor[i] = new TH2D(Form("h_inclGenJetPt_flavor_C%i",i),Form("JetFlavorID vs incl. gen p_{T}^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,27,-5,22);
-      h_inclGenJetPt_inclGenMuonTag_flavor[i] = new TH2D(Form("h_inclGenJetPt_inclGenMuonTag_flavor_C%i",i),Form("JetFlavorID vs incl. gen p_{T}^{jet}, tagged with incl. gen muon, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,27,-5,22);
-      h_inclGenJetPt_inclRecoMuonTag_flavor[i] = new TH2D(Form("h_inclGenJetPt_inclRecoMuonTag_flavor_C%i",i),Form("JetFlavorID vs incl. gen p_{T}^{jet}, tagged with incl. reco muon, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,27,-5,22);
-      h_leadingRecoJetPtOverPThat_pThat[i] = new TH2D(Form("h_leadingRecoJetPtOverPThat_pThat_C%i",i),Form("(leadingRecoJetPt / pThat) vs. pThat, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,100,0,500);
-    }
 
-    h_unmatchedGenJetPt[i]->Sumw2();
-    h_unmatchedRecoJetPt[i][0]->Sumw2();
-    h_unmatchedRecoJetPt[i][1]->Sumw2();
-    h_unmatchedRecoJetPt[i][2]->Sumw2();
-    h_unmatchedRecoJetPt[i][3]->Sumw2();
-    h_unmatchedRecoJetPt[i][4]->Sumw2();
-    h_unmatchedRecoJetPt[i][5]->Sumw2();
-    h_unmatchedRecoJetPt[i][6]->Sumw2();
-    h_recoJetPt_all[i]->Sumw2();
-    h_recoJetPt_matchedDr[i]->Sumw2();
-    h_recoJetPt_unmatchedDr[i]->Sumw2();
-    h_recoPt_dRnearestGen[i]->Sumw2();
-    h_recoPt_nearestGenPt[i]->Sumw2();
-    h_matchedRecoJetPt_genJetPt[i][0]->Sumw2();
-    h_matchedRecoJetPt_genJetPt[i][1]->Sumw2();
-    h_matchedRecoJetPt_genJetPt[i][2]->Sumw2();
-    h_matchedRecoJetPt_genJetPt[i][3]->Sumw2();
-    h_matchedRecoJetPt_genJetPt[i][4]->Sumw2();
-    h_matchedRecoJetPt_genJetPt[i][5]->Sumw2();
-    h_matchedRecoJetPt_genJetPt[i][6]->Sumw2();
-    h_inclGenJetPt_flavor[i]->Sumw2();
-    h_inclGenJetPt_inclGenMuonTag_flavor[i]->Sumw2();
-    h_inclGenJetPt_inclRecoMuonTag_flavor[i]->Sumw2();
-    h_leadingRecoJetPtOverPThat_pThat[i]->Sumw2();
+
+    for(int i = 0; i < NCentralityIndices; i++){
+
+      if(i==0) {
+	h_unmatchedGenJetPt[i] = new TH1D(Form("h_unmatchedGenJetPt_C%i",i),Form("unmatchedGenJetPt, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_unmatchedRecoJetPt[i][0] = new TH1D(Form("h_unmatchedRecoJetPt_allJets_C%i",i),Form("unmatchedRecoJetPt, allJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_unmatchedRecoJetPt[i][1] = new TH1D(Form("h_unmatchedRecoJetPt_bJets_C%i",i),Form("unmatchedRecoJetPt, bJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_unmatchedRecoJetPt[i][2] = new TH1D(Form("h_unmatchedRecoJetPt_cJets_C%i",i),Form("unmatchedRecoJetPt, cJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_unmatchedRecoJetPt[i][3] = new TH1D(Form("h_unmatchedRecoJetPt_udJets_C%i",i),Form("unmatchedRecoJetPt, udJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_unmatchedRecoJetPt[i][4] = new TH1D(Form("h_unmatchedRecoJetPt_sJets_C%i",i),Form("unmatchedRecoJetPt, sJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_unmatchedRecoJetPt[i][5] = new TH1D(Form("h_unmatchedRecoJetPt_gJets_C%i",i),Form("unmatchedRecoJetPt, gJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_unmatchedRecoJetPt[i][6] = new TH1D(Form("h_unmatchedRecoJetPt_xJets_C%i",i),Form("unmatchedRecoJetPt, xJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_recoJetPt_all[i]         = new TH1D(Form("h_recoJetPt_all_C%i",i),Form("all reco jets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_recoJetPt_matchedDr[i]   = new TH1D(Form("h_recoJetPt_matchedDr_C%i",i),Form("reco jets with a gen jet within dR, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_recoJetPt_unmatchedDr[i] = new TH1D(Form("h_recoJetPt_unmatchedDr_C%i",i),Form("reco jets with no gen jet within dR, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_recoPt_dRnearestGen[i]   = new TH2D(Form("h_recoPt_dRnearestGen_C%i",i),Form("dR to nearest gen jet vs reco p_{T}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,100,0,1.0);
+	h_recoPt_nearestGenPt[i]   = new TH2D(Form("h_recoPt_nearestGenPt_C%i",i),Form("nearest gen jet p_{T} vs reco p_{T}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt[i][0] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_allJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, allJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt[i][1] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_bJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, bJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt[i][2] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_cJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, cJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt[i][3] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_udJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, udJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt[i][4] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_sJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, sJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt[i][5] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_gJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, gJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt[i][6] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_xJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, xJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_inclGenJetPt_flavor[i] = new TH2D(Form("h_inclGenJetPt_flavor_C%i",i),Form("JetFlavorID vs incl. gen p_{T}^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,27,-5,22);
+	h_inclGenJetPt_inclGenMuonTag_flavor[i] = new TH2D(Form("h_inclGenJetPt_inclGenMuonTag_flavor_C%i",i),Form("JetFlavorID vs incl. gen p_{T}^{jet}, tagged with incl. gen muon, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,27,-5,22);
+	h_inclGenJetPt_inclRecoMuonTag_flavor[i] = new TH2D(Form("h_inclGenJetPt_inclRecoMuonTag_flavor_C%i",i),Form("JetFlavorID vs incl. gen p_{T}^{jet}, tagged with incl. reco muon, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,27,-5,22);
+	h_leadingRecoJetPtOverPThat_pThat[i] = new TH2D(Form("h_leadingRecoJetPtOverPThat_pThat_C%i",i),Form("(leadingRecoJetPt / pThat) vs. pThat, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,500,0,500);
+      }
+      else {
+	h_unmatchedGenJetPt[i] = new TH1D(Form("h_unmatchedGenJetPt_C%i",i),Form("unmatchedGenJetPt, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_unmatchedRecoJetPt[i][0] = new TH1D(Form("h_unmatchedRecoJetPt_allJets_C%i",i),Form("unmatchedRecoJetPt, allJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_unmatchedRecoJetPt[i][1] = new TH1D(Form("h_unmatchedRecoJetPt_bJets_C%i",i),Form("unmatchedRecoJetPt, bJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_unmatchedRecoJetPt[i][2] = new TH1D(Form("h_unmatchedRecoJetPt_cJets_C%i",i),Form("unmatchedRecoJetPt, cJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_unmatchedRecoJetPt[i][3] = new TH1D(Form("h_unmatchedRecoJetPt_udJets_C%i",i),Form("unmatchedRecoJetPt, udJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_unmatchedRecoJetPt[i][4] = new TH1D(Form("h_unmatchedRecoJetPt_sJets_C%i",i),Form("unmatchedRecoJetPt, sJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_unmatchedRecoJetPt[i][5] = new TH1D(Form("h_unmatchedRecoJetPt_gJets_C%i",i),Form("unmatchedRecoJetPt, gJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_unmatchedRecoJetPt[i][6] = new TH1D(Form("h_unmatchedRecoJetPt_xJets_C%i",i),Form("unmatchedRecoJetPt, xJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_recoJetPt_all[i]         = new TH1D(Form("h_recoJetPt_all_C%i",i),Form("all reco jets, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_recoJetPt_matchedDr[i]   = new TH1D(Form("h_recoJetPt_matchedDr_C%i",i),Form("reco jets with a gen jet within dR, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_recoJetPt_unmatchedDr[i] = new TH1D(Form("h_recoJetPt_unmatchedDr_C%i",i),Form("reco jets with no gen jet within dR, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_recoPt_dRnearestGen[i]   = new TH2D(Form("h_recoPt_dRnearestGen_C%i",i),Form("dR to nearest gen jet vs reco p_{T}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,100,0,1.0);
+	h_recoPt_nearestGenPt[i]   = new TH2D(Form("h_recoPt_nearestGenPt_C%i",i),Form("nearest gen jet p_{T} vs reco p_{T}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt[i][0] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_allJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, allJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt[i][1] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_bJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, bJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt[i][2] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_cJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, cJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt[i][3] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_udJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, udJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt[i][4] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_sJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, sJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt[i][5] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_gJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, gJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt[i][6] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_xJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, xJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_inclGenJetPt_flavor[i] = new TH2D(Form("h_inclGenJetPt_flavor_C%i",i),Form("JetFlavorID vs incl. gen p_{T}^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,27,-5,22);
+	h_inclGenJetPt_inclGenMuonTag_flavor[i] = new TH2D(Form("h_inclGenJetPt_inclGenMuonTag_flavor_C%i",i),Form("JetFlavorID vs incl. gen p_{T}^{jet}, tagged with incl. gen muon, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,27,-5,22);
+	h_inclGenJetPt_inclRecoMuonTag_flavor[i] = new TH2D(Form("h_inclGenJetPt_inclRecoMuonTag_flavor_C%i",i),Form("JetFlavorID vs incl. gen p_{T}^{jet}, tagged with incl. reco muon, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,27,-5,22);
+	h_leadingRecoJetPtOverPThat_pThat[i] = new TH2D(Form("h_leadingRecoJetPtOverPThat_pThat_C%i",i),Form("(leadingRecoJetPt / pThat) vs. pThat, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,100,0,500);
+      }
+
+      h_unmatchedGenJetPt[i]->Sumw2();
+      h_unmatchedRecoJetPt[i][0]->Sumw2();
+      h_unmatchedRecoJetPt[i][1]->Sumw2();
+      h_unmatchedRecoJetPt[i][2]->Sumw2();
+      h_unmatchedRecoJetPt[i][3]->Sumw2();
+      h_unmatchedRecoJetPt[i][4]->Sumw2();
+      h_unmatchedRecoJetPt[i][5]->Sumw2();
+      h_unmatchedRecoJetPt[i][6]->Sumw2();
+      h_recoJetPt_all[i]->Sumw2();
+      h_recoJetPt_matchedDr[i]->Sumw2();
+      h_recoJetPt_unmatchedDr[i]->Sumw2();
+      h_recoPt_dRnearestGen[i]->Sumw2();
+      h_recoPt_nearestGenPt[i]->Sumw2();
+      h_matchedRecoJetPt_genJetPt[i][0]->Sumw2();
+      h_matchedRecoJetPt_genJetPt[i][1]->Sumw2();
+      h_matchedRecoJetPt_genJetPt[i][2]->Sumw2();
+      h_matchedRecoJetPt_genJetPt[i][3]->Sumw2();
+      h_matchedRecoJetPt_genJetPt[i][4]->Sumw2();
+      h_matchedRecoJetPt_genJetPt[i][5]->Sumw2();
+      h_matchedRecoJetPt_genJetPt[i][6]->Sumw2();
+      h_inclGenJetPt_flavor[i]->Sumw2();
+      h_inclGenJetPt_inclGenMuonTag_flavor[i]->Sumw2();
+      h_inclGenJetPt_inclRecoMuonTag_flavor[i]->Sumw2();
+      h_leadingRecoJetPtOverPThat_pThat[i]->Sumw2();
 
 
     	
-    if(i==0) {
+      if(i==0) {
 
-      h_matchedRecoJetPt_genJetPt_var[i][0] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_allJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, allJets, var bins", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),N1-1,ptAxis1,N1-1,ptAxis1);
-      h_matchedRecoJetPt_genJetPt_var[i][1] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_bJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, bJets, var bins", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),N1-1,ptAxis1,N1-1,ptAxis1);
-      h_matchedRecoJetPt_genJetPt_var[i][2] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_cJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, cJets, var bins", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),N1-1,ptAxis1,N1-1,ptAxis1);
-      h_matchedRecoJetPt_genJetPt_var[i][3] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_udJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, udJets, var bins", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),N1-1,ptAxis1,N1-1,ptAxis1);
-      h_matchedRecoJetPt_genJetPt_var[i][4] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_sJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, sJets, var bins", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),N1-1,ptAxis1,N1-1,ptAxis1);
-      h_matchedRecoJetPt_genJetPt_var[i][5] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_gJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, gJets, var bins", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),N1-1,ptAxis1,N1-1,ptAxis1);
-      h_matchedRecoJetPt_genJetPt_var[i][6] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_xJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, xJets, var bins", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),N1-1,ptAxis1,N1-1,ptAxis1);
+	h_matchedRecoJetPt_genJetPt_var[i][0] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_allJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, allJets, var bins", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),N1-1,ptAxis1,N1-1,ptAxis1);
+	h_matchedRecoJetPt_genJetPt_var[i][1] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_bJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, bJets, var bins", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),N1-1,ptAxis1,N1-1,ptAxis1);
+	h_matchedRecoJetPt_genJetPt_var[i][2] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_cJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, cJets, var bins", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),N1-1,ptAxis1,N1-1,ptAxis1);
+	h_matchedRecoJetPt_genJetPt_var[i][3] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_udJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, udJets, var bins", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),N1-1,ptAxis1,N1-1,ptAxis1);
+	h_matchedRecoJetPt_genJetPt_var[i][4] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_sJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, sJets, var bins", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),N1-1,ptAxis1,N1-1,ptAxis1);
+	h_matchedRecoJetPt_genJetPt_var[i][5] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_gJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, gJets, var bins", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),N1-1,ptAxis1,N1-1,ptAxis1);
+	h_matchedRecoJetPt_genJetPt_var[i][6] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_xJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, xJets, var bins", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),N1-1,ptAxis1,N1-1,ptAxis1);
       
-      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][0] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_allJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, all flavors, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][1] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_bJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, bJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][2] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_cJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, cJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][3] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_udJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, udJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][4] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_sJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, sJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][5] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_gJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, gJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][6] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_xJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, xJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetPt[i][0] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_allJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, all flavors, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetPt[i][1] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_bJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, bJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetPt[i][2] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_cJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, cJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetPt[i][3] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_udJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, udJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetPt[i][4] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_sJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, sJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetPt[i][5] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_gJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, gJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetPt[i][6] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_xJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, xJets, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NPtBins,ptMin,ptMax);
 
-      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][0] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_allJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, all flavors, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NEtaBins,etaMin,etaMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][1] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_bJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, bJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NEtaBins,etaMin,etaMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][2] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_cJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, cJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NEtaBins,etaMin,etaMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][3] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_udJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, udJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NEtaBins,etaMin,etaMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][4] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_sJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, sJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NEtaBins,etaMin,etaMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][5] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_gJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, gJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NEtaBins,etaMin,etaMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][6] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_xJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, xJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NEtaBins,etaMin,etaMax);      
-    }
-    else{
+	h_matchedRecoJetPtOverGenJetPt_genJetEta[i][0] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_allJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, all flavors, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NEtaBins,etaMin,etaMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetEta[i][1] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_bJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, bJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NEtaBins,etaMin,etaMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetEta[i][2] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_cJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, cJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NEtaBins,etaMin,etaMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetEta[i][3] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_udJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, udJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NEtaBins,etaMin,etaMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetEta[i][4] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_sJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, sJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NEtaBins,etaMin,etaMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetEta[i][5] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_gJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, gJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NEtaBins,etaMin,etaMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetEta[i][6] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_xJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, xJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[0],centEdges[NCentralityIndices-1]),500,0,5,NEtaBins,etaMin,etaMax);      
+      }
+      else{
 
-      h_matchedRecoJetPt_genJetPt_var[i][0] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_allJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, allJets, var bins", centEdges[i-1]-10,centEdges[i]-10),N1-1,ptAxis1,N1-1,ptAxis1) ;
-      h_matchedRecoJetPt_genJetPt_var[i][1] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_bJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, bJets, var bins", centEdges[i-1]-10,centEdges[i]-10),N1-1,ptAxis1,N1-1,ptAxis1) ;
-      h_matchedRecoJetPt_genJetPt_var[i][2] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_cJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, cJets, var bins", centEdges[i-1]-10,centEdges[i]-10),N1-1,ptAxis1,N1-1,ptAxis1) ;
-      h_matchedRecoJetPt_genJetPt_var[i][3] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_udJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, udJets, var bins", centEdges[i-1]-10,centEdges[i]-10),N1-1,ptAxis1,N1-1,ptAxis1) ;
-      h_matchedRecoJetPt_genJetPt_var[i][4] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_sJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, sJets, var bins", centEdges[i-1]-10,centEdges[i]-10),N1-1,ptAxis1,N1-1,ptAxis1) ;
-      h_matchedRecoJetPt_genJetPt_var[i][5] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_gJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, gJets, var bins", centEdges[i-1]-10,centEdges[i]-10),N1-1,ptAxis1,N1-1,ptAxis1) ;
-      h_matchedRecoJetPt_genJetPt_var[i][6] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_xJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, xJets, var bins", centEdges[i-1]-10,centEdges[i]-10),N1-1,ptAxis1,N1-1,ptAxis1) ;
+	h_matchedRecoJetPt_genJetPt_var[i][0] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_allJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, allJets, var bins", centEdges[i-1]-10,centEdges[i]-10),N1-1,ptAxis1,N1-1,ptAxis1) ;
+	h_matchedRecoJetPt_genJetPt_var[i][1] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_bJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, bJets, var bins", centEdges[i-1]-10,centEdges[i]-10),N1-1,ptAxis1,N1-1,ptAxis1) ;
+	h_matchedRecoJetPt_genJetPt_var[i][2] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_cJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, cJets, var bins", centEdges[i-1]-10,centEdges[i]-10),N1-1,ptAxis1,N1-1,ptAxis1) ;
+	h_matchedRecoJetPt_genJetPt_var[i][3] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_udJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, udJets, var bins", centEdges[i-1]-10,centEdges[i]-10),N1-1,ptAxis1,N1-1,ptAxis1) ;
+	h_matchedRecoJetPt_genJetPt_var[i][4] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_sJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, sJets, var bins", centEdges[i-1]-10,centEdges[i]-10),N1-1,ptAxis1,N1-1,ptAxis1) ;
+	h_matchedRecoJetPt_genJetPt_var[i][5] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_gJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, gJets, var bins", centEdges[i-1]-10,centEdges[i]-10),N1-1,ptAxis1,N1-1,ptAxis1) ;
+	h_matchedRecoJetPt_genJetPt_var[i][6] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_xJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, hiBin %i - %i, xJets, var bins", centEdges[i-1]-10,centEdges[i]-10),N1-1,ptAxis1,N1-1,ptAxis1) ;
 
       
-      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][0] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_allJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, all flavors, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][1] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_bJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, bJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][2] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_cJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, cJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][3] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_udJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, udJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][4] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_sJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, sJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][5] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_gJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, gJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,NPtBins,ptMin,ptMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][6] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_xJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, xJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,NPtBins,ptMin,ptMax); 
+	h_matchedRecoJetPtOverGenJetPt_genJetPt[i][0] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_allJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, all flavors, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetPt[i][1] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_bJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, bJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetPt[i][2] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_cJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, cJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetPt[i][3] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_udJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, udJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetPt[i][4] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_sJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, sJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetPt[i][5] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_gJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, gJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetPt[i][6] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetPt_xJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetPt, xJets, hiBin %i - %i",centEdges[i-1],centEdges[i]),500,0,5,NPtBins,ptMin,ptMax); 
 
-      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][0] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_allJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, all flavors, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[i-1],centEdges[i]),500,0,5,NEtaBins,etaMin,etaMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][1] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_bJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, bJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[i-1],centEdges[i]),500,0,5,NEtaBins,etaMin,etaMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][2] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_cJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, cJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[i-1],centEdges[i]),500,0,5,NEtaBins,etaMin,etaMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][3] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_udJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, udJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[i-1],centEdges[i]),500,0,5,NEtaBins,etaMin,etaMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][4] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_sJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, sJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[i-1],centEdges[i]),500,0,5,NEtaBins,etaMin,etaMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][5] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_gJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, gJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[i-1],centEdges[i]),500,0,5,NEtaBins,etaMin,etaMax);
-      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][6] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_xJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, xJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[i-1],centEdges[i]),500,0,5,NEtaBins,etaMin,etaMax); 
+	h_matchedRecoJetPtOverGenJetPt_genJetEta[i][0] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_allJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, all flavors, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[i-1],centEdges[i]),500,0,5,NEtaBins,etaMin,etaMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetEta[i][1] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_bJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, bJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[i-1],centEdges[i]),500,0,5,NEtaBins,etaMin,etaMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetEta[i][2] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_cJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, cJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[i-1],centEdges[i]),500,0,5,NEtaBins,etaMin,etaMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetEta[i][3] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_udJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, udJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[i-1],centEdges[i]),500,0,5,NEtaBins,etaMin,etaMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetEta[i][4] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_sJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, sJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[i-1],centEdges[i]),500,0,5,NEtaBins,etaMin,etaMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetEta[i][5] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_gJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, gJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[i-1],centEdges[i]),500,0,5,NEtaBins,etaMin,etaMax);
+	h_matchedRecoJetPtOverGenJetPt_genJetEta[i][6] = new TH2D(Form("h_matchedRecoJetPtOverGenJetPt_genJetEta_xJets_C%i",i),Form("matchedRecoJetPt/genJetPt vs genJetEta, xJets, hiBin %i - %i, p_{T}^{jet} > 50 GeV",centEdges[i-1],centEdges[i]),500,0,5,NEtaBins,etaMin,etaMax); 
+      }
+
+      h_matchedRecoJetPt_genJetPt_var[i][0]->Sumw2();
+      h_matchedRecoJetPt_genJetPt_var[i][1]->Sumw2();
+      h_matchedRecoJetPt_genJetPt_var[i][2]->Sumw2();
+      h_matchedRecoJetPt_genJetPt_var[i][3]->Sumw2();
+      h_matchedRecoJetPt_genJetPt_var[i][4]->Sumw2();
+      h_matchedRecoJetPt_genJetPt_var[i][5]->Sumw2();
+      h_matchedRecoJetPt_genJetPt_var[i][6]->Sumw2();
+
+      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][0]->Sumw2();
+      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][1]->Sumw2();
+      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][2]->Sumw2();
+      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][3]->Sumw2();
+      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][4]->Sumw2();
+      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][5]->Sumw2();
+      h_matchedRecoJetPtOverGenJetPt_genJetPt[i][6]->Sumw2();
+
+      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][0]->Sumw2();
+      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][1]->Sumw2();
+      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][2]->Sumw2();
+      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][3]->Sumw2();
+      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][4]->Sumw2();
+      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][5]->Sumw2();
+      h_matchedRecoJetPtOverGenJetPt_genJetEta[i][6]->Sumw2();
+
     }
 
-    h_matchedRecoJetPt_genJetPt_var[i][0]->Sumw2();
-    h_matchedRecoJetPt_genJetPt_var[i][1]->Sumw2();
-    h_matchedRecoJetPt_genJetPt_var[i][2]->Sumw2();
-    h_matchedRecoJetPt_genJetPt_var[i][3]->Sumw2();
-    h_matchedRecoJetPt_genJetPt_var[i][4]->Sumw2();
-    h_matchedRecoJetPt_genJetPt_var[i][5]->Sumw2();
-    h_matchedRecoJetPt_genJetPt_var[i][6]->Sumw2();
-
-    h_matchedRecoJetPtOverGenJetPt_genJetPt[i][0]->Sumw2();
-    h_matchedRecoJetPtOverGenJetPt_genJetPt[i][1]->Sumw2();
-    h_matchedRecoJetPtOverGenJetPt_genJetPt[i][2]->Sumw2();
-    h_matchedRecoJetPtOverGenJetPt_genJetPt[i][3]->Sumw2();
-    h_matchedRecoJetPtOverGenJetPt_genJetPt[i][4]->Sumw2();
-    h_matchedRecoJetPtOverGenJetPt_genJetPt[i][5]->Sumw2();
-    h_matchedRecoJetPtOverGenJetPt_genJetPt[i][6]->Sumw2();
-
-    h_matchedRecoJetPtOverGenJetPt_genJetEta[i][0]->Sumw2();
-    h_matchedRecoJetPtOverGenJetPt_genJetEta[i][1]->Sumw2();
-    h_matchedRecoJetPtOverGenJetPt_genJetEta[i][2]->Sumw2();
-    h_matchedRecoJetPtOverGenJetPt_genJetEta[i][3]->Sumw2();
-    h_matchedRecoJetPtOverGenJetPt_genJetEta[i][4]->Sumw2();
-    h_matchedRecoJetPtOverGenJetPt_genJetEta[i][5]->Sumw2();
-    h_matchedRecoJetPtOverGenJetPt_genJetEta[i][6]->Sumw2();
-
-  }
 
 
+    TFile *f = TFile::Open(input);
+    cout << "	File opened!" << endl;
+    auto em = new eventMap(f);
+    em->isMC = isMC_status;
+    em->AASetup = AASetup_status;
+    cout << "	Initializing variables ... " << endl;
+    em->init();
+    cout << "	Loading jet..." << endl;
+    em->loadJet("akCs4PFJetAnalyzer/t");
+    cout << "Loading muon triggers..." << endl;
+    em->loadHLT("hltanalysis/HltTree");
+    cout << "	Loading gen particles..." << endl;
+    em->loadGenParticle("HiGenParticleAna/hi");
+    cout << "	Variables initilized!" << endl << endl ;
+    int NEvents = em->evtTree->GetEntries();
+    cout << "	Number of events = " << NEvents << endl;
 
-  TFile *f = TFile::Open(input);
-  cout << "	File opened!" << endl;
-  auto em = new eventMap(f);
-  em->isMC = isMC_status;
-  em->AASetup = AASetup_status;
-  cout << "	Initializing variables ... " << endl;
-  em->init();
-  cout << "	Loading jet..." << endl;
-  em->loadJet(jetTreeString);
-  cout << "Loading muon triggers..." << endl;
-  em->loadHLT(hltString);
-  cout << "	Loading gen particles..." << endl;
-  em->loadGenParticle("genParticleTree");
-  cout << "	Variables initilized!" << endl << endl ;
-  int NEvents = em->evtTree->GetEntries();
-  cout << "	Number of events = " << NEvents << endl;
 
+    // define event filters
+    em->regEventFilter(NeventFilters, eventFilters);
 
-  // define event filters
-  em->regEventFilter(NeventFilters, eventFilters);
+    TRandom *randomGenerator = new TRandom2();
 
-  TRandom *randomGenerator = new TRandom2();
+    // jet-energy resolution fit function
+    TF1 *JER_fxn[NCentralityIndices];
+    // pp
+    JER_fxn[0] = new TF1("JER_fxn_pp","sqrt([0]*[0] + [1]*[1]/x + [2]*[2]/(x*x))",30,500);
+    JER_fxn[0]->SetParameter(0,0.0640995);
+    JER_fxn[0]->SetParameter(1,0.917851);
+    JER_fxn[0]->SetParameter(2,-0.00211695);
+    // C4
+    JER_fxn[4] = new TF1("JER_fxn_C4","sqrt([0]*[0] + [1]*[1]/x + [2]*[2]/(x*x))",30,500);
+    JER_fxn[4]->SetParameter(0,0.0606347);
+    JER_fxn[4]->SetParameter(1,1.08087);
+    JER_fxn[4]->SetParameter(2,-0.374138);
+    // C3
+    JER_fxn[3] = new TF1("JER_fxn_C3","sqrt([0]*[0] + [1]*[1]/x + [2]*[2]/(x*x))",30,500);
+    JER_fxn[3]->SetParameter(0,0.0576787);
+    JER_fxn[3]->SetParameter(1,1.1762);
+    JER_fxn[3]->SetParameter(2,-5.67268);
+    // C2
+    JER_fxn[2] = new TF1("JER_fxn_C2","sqrt([0]*[0] + [1]*[1]/x + [2]*[2]/(x*x))",30,500);
+    JER_fxn[2]->SetParameter(0,0.0547384);
+    JER_fxn[2]->SetParameter(1,1.306);
+    JER_fxn[2]->SetParameter(2,-11.1249);
+    // C1
+    JER_fxn[1] = new TF1("JER_fxn_C1","sqrt([0]*[0] + [1]*[1]/x + [2]*[2]/(x*x))",30,500);
+    JER_fxn[1]->SetParameter(0,0.0598659);
+    JER_fxn[1]->SetParameter(1,1.30631);
+    JER_fxn[1]->SetParameter(2,-16.893);
 
-  // jet-energy resolution fit function
-  TF1 *JER_fxn[NCentralityIndices];
-  // pp
-  JER_fxn[0] = new TF1("JER_fxn_pp","sqrt([0]*[0] + [1]*[1]/x + [2]*[2]/(x*x))",30,500);
-  JER_fxn[0]->SetParameter(0,0.0640995);
-  JER_fxn[0]->SetParameter(1,0.917851);
-  JER_fxn[0]->SetParameter(2,-0.00211695);
-  // C4
-  JER_fxn[4] = new TF1("JER_fxn_C4","sqrt([0]*[0] + [1]*[1]/x + [2]*[2]/(x*x))",30,500);
-  JER_fxn[4]->SetParameter(0,0.0606347);
-  JER_fxn[4]->SetParameter(1,1.08087);
-  JER_fxn[4]->SetParameter(2,-0.374138);
-  // C3
-  JER_fxn[3] = new TF1("JER_fxn_C3","sqrt([0]*[0] + [1]*[1]/x + [2]*[2]/(x*x))",30,500);
-  JER_fxn[3]->SetParameter(0,0.0576787);
-  JER_fxn[3]->SetParameter(1,1.1762);
-  JER_fxn[3]->SetParameter(2,-5.67268);
-  // C2
-  JER_fxn[2] = new TF1("JER_fxn_C2","sqrt([0]*[0] + [1]*[1]/x + [2]*[2]/(x*x))",30,500);
-  JER_fxn[2]->SetParameter(0,0.0547384);
-  JER_fxn[2]->SetParameter(1,1.306);
-  JER_fxn[2]->SetParameter(2,-11.1249);
-  // C1
-  JER_fxn[1] = new TF1("JER_fxn_C1","sqrt([0]*[0] + [1]*[1]/x + [2]*[2]/(x*x))",30,500);
-  JER_fxn[1]->SetParameter(0,0.0598659);
-  JER_fxn[1]->SetParameter(1,1.30631);
-  JER_fxn[1]->SetParameter(2,-16.893);
+    // define vz & hiBin reweighting functions
+    if(fillMu5){
+      loadFitFxn_vz_mu5();
+      loadFitFxn_hiBin_mu5();
+    }
+    else if(fillMu7){
+      loadFitFxn_vz_mu7();
+      loadFitFxn_hiBin_mu7();
+    }
+    else if(fillMu12){
+      loadFitFxn_vz_mu12();
+      loadFitFxn_hiBin_mu12();
+    }
+    else{};
+    // load JER correction fit fxn
+    loadFitFxn_PYTHIA_JERCorrection();
+    loadFitFxn_PYTHIAHYDJET_pThatCorrelation();
+    loadFitFxn_PYTHIAHYDJET_BJetSpectraReweightToData();
 
-  // define vz & hiBin reweighting functions
-  if(fillMu5){
-    loadFitFxn_vz_mu5();
-    loadFitFxn_hiBin_mu5();
-  }
-  else if(fillMu7){
-    loadFitFxn_vz_mu7();
-    loadFitFxn_hiBin_mu7();
-  }
-  else if(fillMu12){
-    loadFitFxn_vz_mu12();
-    loadFitFxn_hiBin_mu12();
-  }
-  else{};
-  // load JER correction fit fxn
-  loadFitFxn_PYTHIA_JERCorrection();
-  loadFitFxn_PYTHIAHYDJET_pThatCorrelation();
-  loadFitFxn_PYTHIAHYDJET_BJetSpectraReweightToData();
+    TFile *f_neutrino_energy_fraction_map = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/neutrino_energy_fraction_map.root");
+    TH2D *neutrino_energy_fraction_map;
+    TH1D *neutrino_energy_fraction_map_proj;
+    f_neutrino_energy_fraction_map->GetObject("neutrino_energy_fraction_map",neutrino_energy_fraction_map);
 
-  TFile *f_neutrino_energy_fraction_map = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/neutrino_energy_fraction_map.root");
-  TH2D *neutrino_energy_fraction_map;
-  TH1D *neutrino_energy_fraction_map_proj;
-  f_neutrino_energy_fraction_map->GetObject("neutrino_energy_fraction_map",neutrino_energy_fraction_map);
+    TFile *f_neutrino_energy_map = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/neutrino_energy_map.root");
+    TH2D *neutrino_energy_map;
+    TH1D *neutrino_energy_map_proj;
+    f_neutrino_energy_map->GetObject("neutrino_energy_map",neutrino_energy_map);
 
-  TFile *f_neutrino_energy_map = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/neutrino_energy_map.root");
-  TH2D *neutrino_energy_map;
-  TH1D *neutrino_energy_map_proj;
-  f_neutrino_energy_map->GetObject("neutrino_energy_map",neutrino_energy_map);
-
-  TFile *f_neutrino_tag_fraction = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/neutrino_tag_fraction.root");
-  TH1D *neutrino_tag_fraction;
-  f_neutrino_tag_fraction->GetObject("neutrino_tag_fraction",neutrino_tag_fraction);
+    TFile *f_neutrino_tag_fraction = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/neutrino_tag_fraction.root");
+    TH1D *neutrino_tag_fraction;
+    f_neutrino_tag_fraction->GetObject("neutrino_tag_fraction",neutrino_tag_fraction);
 
 
   
-  // event loop
-  int evi_frac = 0;
-  for(int evi = 0; evi < NEvents ; evi++){
+    // event loop
+    int evi_frac = 0;
+    for(int evi = 0; evi < NEvents ; evi++){
 
 
-    if(evi==0) cout << "Processing events..." << endl;
+      if(evi==0) cout << "Processing events..." << endl;
 
-    // // only take even events
-    // if(evi % 2 == 1) continue;
+      // // only take even events
+      // if(evi % 2 == 1) continue;
 
-    // only take odd events
-    if(evi % 2 == 0) continue;
+      // only take odd events
+      // if(evi % 2 == 0) continue;
     
-    em->getEvent(evi);
+      em->getEvent(evi);
 
-    if((100*evi / NEvents) % 5 == 0 && 100*evi / NEvents > evi_frac) cout << "evt frac: " << evi_frac << "%" << endl;
-    evi_frac = 100 * evi/NEvents;
+      if((100*evi / NEvents) % 5 == 0 && 100*evi / NEvents > evi_frac) cout << "evt frac: " << evi_frac << "%" << endl;
+      evi_frac = 100 * evi/NEvents;
 
-    // global event cuts
-    //cout << "Applying global event cuts..." << endl;
-    if(em->pthat <= pthatcut) continue;
-    if(fabs(em->vz) > 15.0) continue;
-    if(em->hiBin > 190) continue;
-    if(em->checkEventFilter()) continue;
-    //cout << "Event #" << evi << " passed the global cuts!" << endl;
+      // global event cuts
+      //cout << "Applying global event cuts..." << endl;
+      if(em->pthat <= pthatcut) continue;
+      if(fabs(em->vz) > 15.0) continue;
+      if(em->hiBin > 190) continue;
+      if(em->checkEventFilter()) continue;
+      //cout << "Event #" << evi << " passed the global cuts!" << endl;
 
-    if(applyJet60Trigger){
-      if(em->HLT_HICsAK4PFJet60Eta1p5_v1 == 0) continue;
-    }
-    if(applyJet80Trigger){
-      //std::cout << "jet80 (event "<< evi << ") = " << em->HLT_HICsAK4PFJet80Eta1p5_v1 << std::endl;
-      if(em->HLT_HICsAK4PFJet80Eta1p5_v1 == 0) continue;
-    }
+      if(applyJet60Trigger){
+	if(em->HLT_HICsAK4PFJet60Eta1p5_v1 == 0) continue;
+      }
+      if(applyJet80Trigger){
+	//std::cout << "jet80 (event "<< evi << ") = " << em->HLT_HICsAK4PFJet80Eta1p5_v1 << std::endl;
+	if(em->HLT_HICsAK4PFJet80Eta1p5_v1 == 0) continue;
+      }
 
-    // apply HLT
-    int triggerDecision = em->HLT_HIL3Mu12_v1;
-    int triggerDecision_Prescl = em->HLT_HIL3Mu12_v1_Prescl;
-    //if(!triggerIsOn(triggerDecision,triggerDecision_Prescl)) continue;
+      // apply HLT
+      int triggerDecision = em->HLT_HIL3Mu12_v1;
+      int triggerDecision_Prescl = em->HLT_HIL3Mu12_v1_Prescl;
+      //if(!triggerIsOn(triggerDecision,triggerDecision_Prescl)) continue;
 
-    // RECO VARIABLES
+      // RECO VARIABLES
 	
-    int matchFlag[10] = {0,0,0,0,0,0,0,0,0,0};
+      int matchFlag[10] = {0,0,0,0,0,0,0,0,0,0};
 
-    int CentralityIndex = getCentBin(em->hiBin-hiBinShift);
+      int CentralityIndex = getCentBin(em->hiBin-hiBinShift);
     
-    if(CentralityIndex < 0) continue;
+      if(CentralityIndex < 0) continue;
 
-
-    
-    double w_reweight_hiBin = fitFxn_hiBin->Eval(em->hiBin-hiBinShift);
-
-	
-    //double w_reweight_vz = fitFxn_vz->Eval(em->vz);
-    double w_reweight_vz = 1.0;
-	
-    double w_pthat = 1.0;
-    if(doPThatWeight){
-      w_pthat = em->weight;
-    }
-    
-    double w = w_pthat * w_reweight_vz * w_reweight_hiBin;
-
-    double leadingMatchedRecoJetPt = -999.0;
-
-    double leadingRecoJetPt = -999.0;
-    
-    for(int i = 0; i < em->njet; i++){
-      JEC.SetJetPT(em->rawpt[i]);
-      JEC.SetJetEta(em->jeteta[i]);
-      JEC.SetJetPhi(em->jetphi[i]);
-      double recoJetPt_i = JEC.GetCorrectedPT();
-      double recoJetEta_i = em->jeteta[i];
-      double recoJetPhi_i = em->jetphi[i];
-      double refJetPt_i = em->refpt[i];
-      int recoJetFlavor_i = em->refparton_flavorForB[i];
-      double minDr_i = 100.0;
-      if(fabs(recoJetEta_i) > 1.6) continue;
-      if(recoJetPt_i > leadingRecoJetPt) leadingRecoJetPt = recoJetPt_i;
-
-      bool hasGenJetMatch_i = false;
-
-      // nearest gen jet to this reco jet, by dR, regardless of any cut
-      double dRnearest_i   = 999.0;
-      double nearestGenPt_i = -1.0;
-
-      for(int j = 0; j < em->ngj ; j++){
-
-	double genJetPt_j = em->genjetpt[j];
-	double genJetEta_j = em->genjeteta[j];
-	double genJetPhi_j = em->genjetphi[j];
-
-	if(refJetPt_i == genJetPt_j){
-	  hasGenJetMatch_i = true;
-	}
-
-	double dR_ij = getDr(recoJetEta_i, recoJetPhi_i, genJetEta_j, genJetPhi_j);
-	if(dR_ij < dRnearest_i){
-	  dRnearest_i   = dR_ij;
-	  nearestGenPt_i = genJetPt_j;
-	}
-      }
-
-      // Reco-jet-indexed diagnostics: one loop, one weight, one condition, so
-      // all = matchedDr + unmatchedDr holds bin by bin.
-      bool hasGenJetMatchDr_i = (dRnearest_i < recoGenMatchDr);
-
-      h_recoJetPt_all[0]->Fill(recoJetPt_i,w);
-      h_recoJetPt_all[CentralityIndex]->Fill(recoJetPt_i,w);
-
-      if(hasGenJetMatchDr_i){
-	h_recoJetPt_matchedDr[0]->Fill(recoJetPt_i,w);
-	h_recoJetPt_matchedDr[CentralityIndex]->Fill(recoJetPt_i,w);
-      }
-      else{
-	h_recoJetPt_unmatchedDr[0]->Fill(recoJetPt_i,w);
-	h_recoJetPt_unmatchedDr[CentralityIndex]->Fill(recoJetPt_i,w);
-      }
-
-      // dR is capped at the histogram range so overflow does not hide the
-      // "no gen jet anywhere near" population; genPt = -1 lands in underflow
-      // when the event has no gen jets at all.
-      h_recoPt_dRnearestGen[0]->Fill(recoJetPt_i, TMath::Min(dRnearest_i,0.9999), w);
-      h_recoPt_dRnearestGen[CentralityIndex]->Fill(recoJetPt_i, TMath::Min(dRnearest_i,0.9999), w);
-      h_recoPt_nearestGenPt[0]->Fill(recoJetPt_i, nearestGenPt_i, w);
-      h_recoPt_nearestGenPt[CentralityIndex]->Fill(recoJetPt_i, nearestGenPt_i, w);
-
-      if(!hasGenJetMatch_i){
-	h_unmatchedRecoJetPt[0][0]->Fill(recoJetPt_i,w);
-	h_unmatchedRecoJetPt[CentralityIndex][0]->Fill(recoJetPt_i,w);
-	if(fabs(recoJetFlavor_i) == 5){
-	  h_unmatchedRecoJetPt[0][1]->Fill(recoJetPt_i,w);
-	  h_unmatchedRecoJetPt[CentralityIndex][1]->Fill(recoJetPt_i,w);
-	}
-	else if(fabs(recoJetFlavor_i) == 4){
-	  h_unmatchedRecoJetPt[0][2]->Fill(recoJetPt_i,w);
-	  h_unmatchedRecoJetPt[CentralityIndex][2]->Fill(recoJetPt_i,w);
-	}
-	else if(fabs(recoJetFlavor_i) == 1 || fabs(recoJetFlavor_i) == 2){
-	  h_unmatchedRecoJetPt[0][3]->Fill(recoJetPt_i,w);
-	  h_unmatchedRecoJetPt[CentralityIndex][3]->Fill(recoJetPt_i,w);
-	}
-	else if(fabs(recoJetFlavor_i) == 3){
-	  h_unmatchedRecoJetPt[0][4]->Fill(recoJetPt_i,w);
-	  h_unmatchedRecoJetPt[CentralityIndex][4]->Fill(recoJetPt_i,w);
-	}
-	else if(recoJetFlavor_i == 21){
-	  h_unmatchedRecoJetPt[0][5]->Fill(recoJetPt_i,w);
-	  h_unmatchedRecoJetPt[CentralityIndex][5]->Fill(recoJetPt_i,w);
-	}
-	else if(recoJetFlavor_i == 0){
-	  h_unmatchedRecoJetPt[0][6]->Fill(recoJetPt_i,w);
-	  h_unmatchedRecoJetPt[CentralityIndex][6]->Fill(recoJetPt_i,w);
-	}
-	else{};
-      }
-    }
-    if(doPThatCorrelationFilter){
-      if(CentralityIndex == 4){
-	if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C4->Eval(em->pthat)) continue;
-      }
-      else if(CentralityIndex == 3){
-	if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C3->Eval(em->pthat)) continue;
-      }
-      else if(CentralityIndex == 2){
-	if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C2->Eval(em->pthat)) continue;
-      }
-      else if(CentralityIndex == 1){
-	if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C1->Eval(em->pthat)) continue;
-      }
-      else{
-	if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C4->Eval(em->pthat)) continue; // default to C4 if we have more centrality bins
-      };
-    }
 
     
-      
-
-    // GEN JET LOOP
-    for(int i = 0; i < em->ngj ; i++){
-
-      double w_jet = w;
-      
-      // JET VARIABLES
-      double x = em->genjetpt[i];
-      double y = em->genjeteta[i];
-      double z = em->genjetphi[i];
-
-      double matchedRecoJetPt = 0.0;
-      double matchedRawJetPt = 0.0;
-      double recoMuonPt = 0.0;
-      double recoMuonEta = 0.0;
-			
-      if(TMath::Abs(y) > etaMax) continue;
-
-      // if(doRemoveHYDJETjet){
-      // 	if(remove_HYDJET_jet(em->pthat, x)) continue;
-      // }
-	
-      // GET FLAVOR FROM RECO MATCH
-      bool hasRecoJetMatch = false;
-      bool hasRecoJetMuon = false;
-      bool hasRecoMuon = false;
-      double minDr = 100.0;
-      int recoJetFlavorFlag = 0;
-      int jetFlavorInt = 19;
+      double w_reweight_hiBin = fitFxn_hiBin->Eval(em->hiBin-hiBinShift);
 
 	
-      for(int k = 0; k < em->njet; k++){
+      //double w_reweight_vz = fitFxn_vz->Eval(em->vz);
+      double w_reweight_vz = 1.0;
+	
+      double w_pthat = 1.0;
+      if(doPThatWeight){
+	w_pthat = em->weight;
+      }
+    
+      double w = w_pthat * w_reweight_vz * w_reweight_hiBin;
 
-	double recoJetPt_k = em->jetpt[k];
-	double refJetPt_k = em->refpt[k];
-	double recoJetEta_k = em->jeteta[k];
-	double recoJetPhi_k = em->jetphi[k];
+      double leadingMatchedRecoJetPt = -999.0;
 
-	if(x == refJetPt_k){ 
+      double leadingRecoJetPt = -999.0;
+    
+      for(int i = 0; i < em->njet; i++){
+	JEC.SetJetPT(em->rawpt[i]);
+	JEC.SetJetEta(em->jeteta[i]);
+	JEC.SetJetPhi(em->jetphi[i]);
+	double recoJetPt_i = JEC.GetCorrectedPT();
+	double recoJetEta_i = em->jeteta[i];
+	double recoJetPhi_i = em->jetphi[i];
+	double refJetPt_i = em->refpt[i];
+	int recoJetFlavor_i = em->refparton_flavorForB[i];
+	double minDr_i = 100.0;
+	if(fabs(recoJetEta_i) > 1.6) continue;
+	if(recoJetPt_i > leadingRecoJetPt) leadingRecoJetPt = recoJetPt_i;
 
-	  hasRecoJetMatch = true;
-	  recoJetFlavorFlag = k;
+	bool hasGenJetMatch_i = false;
 
-	  if(em->mupt[k] > muPtCut && fabs(em->mueta[k]) < 2.) hasRecoJetMuon = true;
+	// nearest gen jet to this reco jet, by dR, regardless of any cut
+	double dRnearest_i   = 999.0;
+	double nearestGenPt_i = -1.0;
 
-	  JEC.SetJetPT(em->rawpt[k]);
-	  JEC.SetJetEta(em->jeteta[k]);
-	  JEC.SetJetPhi(em->jetphi[k]);
+	for(int j = 0; j < em->ngj ; j++){
 
-	  matchedRecoJetPt = JEC.GetCorrectedPT();
-	  if(matchedRecoJetPt > leadingMatchedRecoJetPt) leadingMatchedRecoJetPt = matchedRecoJetPt;
-	  //matchedRecoJetPt = em->jetpt[k];
-	  matchedRawJetPt = em->rawpt[k];
-	  recoMuonPt = em->mupt[k];
-	  recoMuonEta = em->mueta[k];
+	  double genJetPt_j = em->genjetpt[j];
+	  double genJetEta_j = em->genjeteta[j];
+	  double genJetPhi_j = em->genjetphi[j];
 
-	  if(recoMuonPt > muPtCut && fabs(recoMuonEta) < 2.) hasRecoMuon = true;
-
-	  if(doRemoveHYDJETjet){
-	    if(remove_HYDJET_jet(em->pthat, matchedRecoJetPt)) continue;
+	  if(refJetPt_i == genJetPt_j){
+	    hasGenJetMatch_i = true;
 	  }
 
-	  JEU.SetJetPT(matchedRecoJetPt);
-	  JEU.SetJetEta(em->jeteta[k]);
-	  JEU.SetJetPhi(em->jetphi[k]);
-
-	  // initialize
-	  double correctedPt_down = 1.0;
-	  double correctedPt_up = 1.0;
-
-	  if(apply_JEU_shift_up){
-	    correctedPt_up = matchedRecoJetPt * (1 + JEU.GetUncertainty().second);
-	    matchedRecoJetPt = correctedPt_up;
+	  double dR_ij = getDr(recoJetEta_i, recoJetPhi_i, genJetEta_j, genJetPhi_j);
+	  if(dR_ij < dRnearest_i){
+	    dRnearest_i   = dR_ij;
+	    nearestGenPt_i = genJetPt_j;
 	  }
-	  else if(apply_JEU_shift_down){
-	    correctedPt_down = matchedRecoJetPt * (1 - JEU.GetUncertainty().first);
-	    matchedRecoJetPt = correctedPt_down;
-	  }
-
-	  double mu = 1.0;
-	  double sigma = 0.2;
-	  double smear = 0.0;
-
-	  if(apply_JER_smear){
-	    sigma = 0.663*JER_fxn[CentralityIndex]->Eval(matchedRecoJetPt); // apply a 20% smear
-	    smear = randomGenerator->Gaus(mu,sigma);
-	    matchedRecoJetPt = matchedRecoJetPt * smear;
-	  }
-
-	  double mu_JERCorrection = 1.0;
-	  double sigma_JERCorrection = 0.2;
-	  double smear_JERCorrection = 0.0; // smeared pT
-	  double k_JERCorrection = 0.0; // smearing parameter
-	  if(doJERCorrection){
-	    k_JERCorrection = TMath::Sqrt(fitFxn_PYTHIA_JERCorrection->Eval(x)*fitFxn_PYTHIA_JERCorrection->Eval(x) - 1.);
-	    sigma_JERCorrection = k_JERCorrection*JER_fxn[CentralityIndex]->Eval(matchedRecoJetPt);
-	    smear_JERCorrection = randomGenerator->Gaus(mu_JERCorrection,sigma_JERCorrection);
-	    matchedRecoJetPt = matchedRecoJetPt * smear_JERCorrection;
-	  }
-
-	  double skipDoBJetNeutrinoEnergyShift_diceRoll = 0.0;
-	  double smear_doBJetNeutrinoEnergyShift = 0.0;
-	  if(doBJetNeutrinoEnergyShift){
-	    //if(doBJetNeutrinoEnergyShift && hasRecoJetMuon){
-	    skipDoBJetNeutrinoEnergyShift_diceRoll = randomGenerator->Rndm();
-	    if(skipDoBJetNeutrinoEnergyShift_diceRoll > neutrino_tag_fraction->GetBinContent(neutrino_tag_fraction->FindBin(matchedRecoJetPt))) continue;
-	    neutrino_energy_map_proj = (TH1D*) neutrino_energy_map->ProjectionX("neutrino_energy_map_proj", neutrino_energy_map->GetYaxis()->FindBin(matchedRecoJetPt),neutrino_energy_map->GetYaxis()->FindBin(matchedRecoJetPt)+1);
-	    smear_doBJetNeutrinoEnergyShift = neutrino_energy_map_proj->GetRandom();
-	    matchedRecoJetPt += smear_doBJetNeutrinoEnergyShift;
-	  }
-		
 	}
 
-      } // end recoJet loop
+	// Reco-jet-indexed diagnostics: one loop, one weight, one condition, so
+	// all = matchedDr + unmatchedDr holds bin by bin.
+	bool hasGenJetMatchDr_i = (dRnearest_i < recoGenMatchDr);
 
-      jetFlavorInt = em->refparton_flavorForB[recoJetFlavorFlag];
-			
-			
-      // fill response matrix
-      //if(hasRecoJetMatch && hasRecoJetMuon) {
-      //if(hasRecoJetMatch && hasRecoJetMuon && triggerIsOn(triggerDecision,triggerDecision_Prescl)) {
-      if(hasRecoJetMatch) {
-      //if(hasRecoJetMatch && matchedRecoJetPt >= 60.0) {
+	h_recoJetPt_all[0]->Fill(recoJetPt_i,w);
+	h_recoJetPt_all[CentralityIndex]->Fill(recoJetPt_i,w);
 
-	if(doBJetSpectraReweightToData){
-	  if(CentralityIndex == 4) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C4->Eval(matchedRecoJetPt);
-	  else if(CentralityIndex == 3) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C3->Eval(matchedRecoJetPt);
-	  else if(CentralityIndex == 2) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C2->Eval(matchedRecoJetPt);
-	  else if(CentralityIndex == 1) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C1->Eval(matchedRecoJetPt);
+	if(hasGenJetMatchDr_i){
+	  h_recoJetPt_matchedDr[0]->Fill(recoJetPt_i,w);
+	  h_recoJetPt_matchedDr[CentralityIndex]->Fill(recoJetPt_i,w);
+	}
+	else{
+	  h_recoJetPt_unmatchedDr[0]->Fill(recoJetPt_i,w);
+	  h_recoJetPt_unmatchedDr[CentralityIndex]->Fill(recoJetPt_i,w);
+	}
+
+	// dR is capped at the histogram range so overflow does not hide the
+	// "no gen jet anywhere near" population; genPt = -1 lands in underflow
+	// when the event has no gen jets at all.
+	h_recoPt_dRnearestGen[0]->Fill(recoJetPt_i, TMath::Min(dRnearest_i,0.9999), w);
+	h_recoPt_dRnearestGen[CentralityIndex]->Fill(recoJetPt_i, TMath::Min(dRnearest_i,0.9999), w);
+	h_recoPt_nearestGenPt[0]->Fill(recoJetPt_i, nearestGenPt_i, w);
+	h_recoPt_nearestGenPt[CentralityIndex]->Fill(recoJetPt_i, nearestGenPt_i, w);
+
+	if(!hasGenJetMatch_i){
+	  h_unmatchedRecoJetPt[0][0]->Fill(recoJetPt_i,w);
+	  h_unmatchedRecoJetPt[CentralityIndex][0]->Fill(recoJetPt_i,w);
+	  if(fabs(recoJetFlavor_i) == 5){
+	    h_unmatchedRecoJetPt[0][1]->Fill(recoJetPt_i,w);
+	    h_unmatchedRecoJetPt[CentralityIndex][1]->Fill(recoJetPt_i,w);
+	  }
+	  else if(fabs(recoJetFlavor_i) == 4){
+	    h_unmatchedRecoJetPt[0][2]->Fill(recoJetPt_i,w);
+	    h_unmatchedRecoJetPt[CentralityIndex][2]->Fill(recoJetPt_i,w);
+	  }
+	  else if(fabs(recoJetFlavor_i) == 1 || fabs(recoJetFlavor_i) == 2){
+	    h_unmatchedRecoJetPt[0][3]->Fill(recoJetPt_i,w);
+	    h_unmatchedRecoJetPt[CentralityIndex][3]->Fill(recoJetPt_i,w);
+	  }
+	  else if(fabs(recoJetFlavor_i) == 3){
+	    h_unmatchedRecoJetPt[0][4]->Fill(recoJetPt_i,w);
+	    h_unmatchedRecoJetPt[CentralityIndex][4]->Fill(recoJetPt_i,w);
+	  }
+	  else if(recoJetFlavor_i == 21){
+	    h_unmatchedRecoJetPt[0][5]->Fill(recoJetPt_i,w);
+	    h_unmatchedRecoJetPt[CentralityIndex][5]->Fill(recoJetPt_i,w);
+	  }
+	  else if(recoJetFlavor_i == 0){
+	    h_unmatchedRecoJetPt[0][6]->Fill(recoJetPt_i,w);
+	    h_unmatchedRecoJetPt[CentralityIndex][6]->Fill(recoJetPt_i,w);
+	  }
 	  else{};
 	}
-
-	// response_C0.Fill(matchedRecoJetPt,x,w);
-	// if(CentralityIndex == 4) response_C4.Fill(matchedRecoJetPt,x,w);
-	// else if(CentralityIndex == 3) response_C3.Fill(matchedRecoJetPt,x,w);
-	// else if(CentralityIndex == 2) response_C2.Fill(matchedRecoJetPt,x,w);
-	// else if(CentralityIndex == 1) response_C1.Fill(matchedRecoJetPt,x,w);
-	// else{};
-	
-	h_matchedRecoJetPt_genJetPt[0][0]->Fill(matchedRecoJetPt,x,w_jet);
-	h_matchedRecoJetPt_genJetPt[CentralityIndex][0]->Fill(matchedRecoJetPt,x,w_jet);
-
-	h_matchedRecoJetPt_genJetPt_var[0][0]->Fill(matchedRecoJetPt,x,w_jet);
-	h_matchedRecoJetPt_genJetPt_var[CentralityIndex][0]->Fill(matchedRecoJetPt,x,w_jet);
-
-	h_matchedRecoJetPtOverGenJetPt_genJetPt[0][0]->Fill(matchedRecoJetPt/x,x,w_jet);
-	h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][0]->Fill(matchedRecoJetPt/x,x,w_jet);
-	
-	if(x>100){
-	  h_matchedRecoJetPtOverGenJetPt_genJetEta[0][0]->Fill(matchedRecoJetPt/x,y,w_jet);
-	  h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][0]->Fill(matchedRecoJetPt/x,y,w_jet);
-	}
-
-
-	if(fabs(jetFlavorInt) == 5){
-	  h_matchedRecoJetPt_genJetPt_var[0][1]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt_var[CentralityIndex][1]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt[0][1]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt[CentralityIndex][1]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPtOverGenJetPt_genJetPt[0][1]->Fill(matchedRecoJetPt/x,x,w_jet);
-	  h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][1]->Fill(matchedRecoJetPt/x,x,w_jet);
-				
-	  if(x>100){
-	    h_matchedRecoJetPtOverGenJetPt_genJetEta[0][1]->Fill(matchedRecoJetPt/x,y,w_jet);
-	    h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][1]->Fill(matchedRecoJetPt/x,y,w_jet);
-	  }
-	} 
-	if(fabs(jetFlavorInt) == 4){
-	  h_matchedRecoJetPt_genJetPt_var[0][2]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt_var[CentralityIndex][2]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt[0][2]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt[CentralityIndex][2]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPtOverGenJetPt_genJetPt[0][2]->Fill(matchedRecoJetPt/x,x,w_jet);
-	  h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][2]->Fill(matchedRecoJetPt/x,x,w_jet);
-
-	  if(x>100){
-	    h_matchedRecoJetPtOverGenJetPt_genJetEta[0][2]->Fill(matchedRecoJetPt/x,y,w_jet);
-	    h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][2]->Fill(matchedRecoJetPt/x,y,w_jet);
-	  }
-
-	} 
-	if(fabs(jetFlavorInt) == 1 || fabs(jetFlavorInt) == 2){
-	  h_matchedRecoJetPt_genJetPt_var[0][3]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt_var[CentralityIndex][3]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt[0][3]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt[CentralityIndex][3]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPtOverGenJetPt_genJetPt[0][3]->Fill(matchedRecoJetPt/x,x,w_jet);
-	  h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][3]->Fill(matchedRecoJetPt/x,x,w_jet);
-
-	  if(x>100){
-	    h_matchedRecoJetPtOverGenJetPt_genJetEta[0][3]->Fill(matchedRecoJetPt/x,y,w_jet);
-	    h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][3]->Fill(matchedRecoJetPt/x,y,w_jet);
-	  }
-	} 
-	if(fabs(jetFlavorInt) == 3){
-	  h_matchedRecoJetPt_genJetPt_var[0][4]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt_var[CentralityIndex][4]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt[0][4]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt[CentralityIndex][4]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPtOverGenJetPt_genJetPt[0][4]->Fill(matchedRecoJetPt/x,x,w_jet);
-	  h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][4]->Fill(matchedRecoJetPt/x,x,w_jet);
-
-	  if(x>100){
-	    h_matchedRecoJetPtOverGenJetPt_genJetEta[0][4]->Fill(matchedRecoJetPt/x,y,w_jet);
-	    h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][4]->Fill(matchedRecoJetPt/x,y,w_jet);
-	  }
-
-	}  
-	if(jetFlavorInt == 21){
-	  h_matchedRecoJetPt_genJetPt_var[0][5]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt_var[CentralityIndex][5]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt[0][5]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt[CentralityIndex][5]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPtOverGenJetPt_genJetPt[0][5]->Fill(matchedRecoJetPt/x,x,w_jet);
-	  h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][5]->Fill(matchedRecoJetPt/x,x,w_jet);
-
-	  if(x>100){
-	    h_matchedRecoJetPtOverGenJetPt_genJetEta[0][5]->Fill(matchedRecoJetPt/x,y,w_jet);
-	    h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][5]->Fill(matchedRecoJetPt/x,y,w_jet);
-	  }
-
-	}  
-	if(jetFlavorInt == 0){
-	  h_matchedRecoJetPt_genJetPt_var[0][6]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt_var[CentralityIndex][6]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt[0][6]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPt_genJetPt[CentralityIndex][6]->Fill(matchedRecoJetPt,x,w_jet);
-	  h_matchedRecoJetPtOverGenJetPt_genJetPt[0][6]->Fill(matchedRecoJetPt/x,x,w_jet);
-	  h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][6]->Fill(matchedRecoJetPt/x,x,w_jet);
-
-	  if(x>100){
-	    h_matchedRecoJetPtOverGenJetPt_genJetEta[0][6]->Fill(matchedRecoJetPt/x,y,w_jet);
-	    h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][6]->Fill(matchedRecoJetPt/x,y,w_jet);
-	  }
-
-	}
-
-	if(hasRecoMuon){
-	  h_inclGenJetPt_inclRecoMuonTag_flavor[0]->Fill(x,jetFlavorInt,w_jet);
-	  h_inclGenJetPt_inclRecoMuonTag_flavor[CentralityIndex]->Fill(x,jetFlavorInt,w_jet);
-	}
       }
-      if(!hasRecoJetMatch){
-	h_unmatchedGenJetPt[0]->Fill(x,w_jet);
-	h_unmatchedGenJetPt[CentralityIndex]->Fill(x,w_jet);
-
-	// response_C0.Miss(x,w_jet);
-	// if(CentralityIndex == 4) response_C4.Miss(x,w_jet);
-	// else if(CentralityIndex == 3) response_C3.Miss(x,w_jet);
-	// else if(CentralityIndex == 2) response_C2.Miss(x,w_jet);
-	// else if(CentralityIndex == 1) response_C1.Miss(x,w_jet);
-	// else{};
+      if(doPThatCorrelationFilter){
+	if(CentralityIndex == 4){
+	  if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C4->Eval(em->pthat)) continue;
+	}
+	else if(CentralityIndex == 3){
+	  if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C3->Eval(em->pthat)) continue;
+	}
+	else if(CentralityIndex == 2){
+	  if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C2->Eval(em->pthat)) continue;
+	}
+	else if(CentralityIndex == 1){
+	  if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C1->Eval(em->pthat)) continue;
+	}
+	else{
+	  if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C4->Eval(em->pthat)) continue; // default to C4 if we have more centrality bins
+	};
       }
-			
-      h_inclGenJetPt_flavor[0]->Fill(x,jetFlavorInt,w_jet);
-      h_inclGenJetPt_flavor[CentralityIndex]->Fill(x,jetFlavorInt,w_jet);
-      // begin gen-muon loop
 
-      bool hasGenMuon = false;
+    
       
-      for(int j = 0; j < em->gpptp->size(); j++){
 
-	if(hasGenMuon) continue;
+      // GEN JET LOOP
+      for(int i = 0; i < em->ngj ; i++){
 
-	if(TMath::Abs(em->gppdgIDp->at(j)) != 13) continue;
+	double w_jet = w;
+      
+	// JET VARIABLES
+	double x = em->genjetpt[i];
+	double y = em->genjeteta[i];
+	double z = em->genjetphi[i];
 
-	if(isWDecayMuon(em->gpptp->at(j),x)) continue; // skip if "WDecay" muon (has majority of jet pt)
+	double matchedRecoJetPt = 0.0;
+	double matchedRawJetPt = 0.0;
+	double recoMuonPt = 0.0;
+	double recoMuonEta = 0.0;
+			
+	if(TMath::Abs(y) > etaMax) continue;
 
-	double genMuonPt_j = em->gpptp->at(j);
-	double genMuonEta_j = em->gpetap->at(j);
-	double genMuonPhi_j = em->gpphip->at(j);
+	// if(doRemoveHYDJETjet){
+	// 	if(remove_HYDJET_jet(em->pthat, x)) continue;
+	// }
+	
+	// GET FLAVOR FROM RECO MATCH
+	bool hasRecoJetMatch = false;
+	bool hasRecoJetMuon = false;
+	bool hasRecoMuon = false;
+	double minDr = 100.0;
+	int recoJetFlavorFlag = 0;
+	int jetFlavorInt = 19;
 
-	if(genMuonPt_j < muPtCut || fabs(genMuonEta_j) > 2.0) continue;
+	
+	for(int k = 0; k < em->njet; k++){
 
-	if(getDr(genMuonEta_j,genMuonPhi_j,y,z) < deltaRCut){
-	  hasGenMuon = true;
-	  h_inclGenJetPt_inclGenMuonTag_flavor[0]->Fill(x,jetFlavorInt,w_jet);
-	  h_inclGenJetPt_inclGenMuonTag_flavor[CentralityIndex]->Fill(x,jetFlavorInt,w_jet);
+	  double recoJetPt_k = em->jetpt[k];
+	  double refJetPt_k = em->refpt[k];
+	  double recoJetEta_k = em->jeteta[k];
+	  double recoJetPhi_k = em->jetphi[k];
+
+	  if(x == refJetPt_k){ 
+
+	    hasRecoJetMatch = true;
+	    recoJetFlavorFlag = k;
+
+	    if(em->mupt[k] > muPtCut && fabs(em->mueta[k]) < 2.) hasRecoJetMuon = true;
+
+	    JEC.SetJetPT(em->rawpt[k]);
+	    JEC.SetJetEta(em->jeteta[k]);
+	    JEC.SetJetPhi(em->jetphi[k]);
+
+	    matchedRecoJetPt = JEC.GetCorrectedPT();
+	    if(matchedRecoJetPt > leadingMatchedRecoJetPt) leadingMatchedRecoJetPt = matchedRecoJetPt;
+	    //matchedRecoJetPt = em->jetpt[k];
+	    matchedRawJetPt = em->rawpt[k];
+	    recoMuonPt = em->mupt[k];
+	    recoMuonEta = em->mueta[k];
+
+	    if(recoMuonPt > muPtCut && fabs(recoMuonEta) < 2.) hasRecoMuon = true;
+
+	    if(doRemoveHYDJETjet){
+	      if(remove_HYDJET_jet(em->pthat, matchedRecoJetPt)) continue;
+	    }
+
+	    JEU.SetJetPT(matchedRecoJetPt);
+	    JEU.SetJetEta(em->jeteta[k]);
+	    JEU.SetJetPhi(em->jetphi[k]);
+
+	    // initialize
+	    double correctedPt_down = 1.0;
+	    double correctedPt_up = 1.0;
+
+	    if(apply_JEU_shift_up){
+	      correctedPt_up = matchedRecoJetPt * (1 + JEU.GetUncertainty().second);
+	      matchedRecoJetPt = correctedPt_up;
+	    }
+	    else if(apply_JEU_shift_down){
+	      correctedPt_down = matchedRecoJetPt * (1 - JEU.GetUncertainty().first);
+	      matchedRecoJetPt = correctedPt_down;
+	    }
+
+	    double mu = 1.0;
+	    double sigma = 0.2;
+	    double smear = 0.0;
+
+	    if(apply_JER_smear){
+	      sigma = 0.663*JER_fxn[CentralityIndex]->Eval(matchedRecoJetPt); // apply a 20% smear
+	      smear = randomGenerator->Gaus(mu,sigma);
+	      matchedRecoJetPt = matchedRecoJetPt * smear;
+	    }
+
+	    double mu_JERCorrection = 1.0;
+	    double sigma_JERCorrection = 0.2;
+	    double smear_JERCorrection = 0.0; // smeared pT
+	    double k_JERCorrection = 0.0; // smearing parameter
+	    if(doJERCorrection){
+	      k_JERCorrection = TMath::Sqrt(fitFxn_PYTHIA_JERCorrection->Eval(x)*fitFxn_PYTHIA_JERCorrection->Eval(x) - 1.);
+	      sigma_JERCorrection = k_JERCorrection*JER_fxn[CentralityIndex]->Eval(matchedRecoJetPt);
+	      smear_JERCorrection = randomGenerator->Gaus(mu_JERCorrection,sigma_JERCorrection);
+	      matchedRecoJetPt = matchedRecoJetPt * smear_JERCorrection;
+	    }
+
+	    double skipDoBJetNeutrinoEnergyShift_diceRoll = 0.0;
+	    double smear_doBJetNeutrinoEnergyShift = 0.0;
+	    if(doBJetNeutrinoEnergyShift){
+	      //if(doBJetNeutrinoEnergyShift && hasRecoJetMuon){
+	      skipDoBJetNeutrinoEnergyShift_diceRoll = randomGenerator->Rndm();
+	      if(skipDoBJetNeutrinoEnergyShift_diceRoll > neutrino_tag_fraction->GetBinContent(neutrino_tag_fraction->FindBin(matchedRecoJetPt))) continue;
+	      neutrino_energy_map_proj = (TH1D*) neutrino_energy_map->ProjectionX("neutrino_energy_map_proj", neutrino_energy_map->GetYaxis()->FindBin(matchedRecoJetPt),neutrino_energy_map->GetYaxis()->FindBin(matchedRecoJetPt)+1);
+	      smear_doBJetNeutrinoEnergyShift = neutrino_energy_map_proj->GetRandom();
+	      matchedRecoJetPt += smear_doBJetNeutrinoEnergyShift;
+	    }
+		
+	  }
+
+	} // end recoJet loop
+
+	jetFlavorInt = em->refparton_flavorForB[recoJetFlavorFlag];
+			
+			
+	// fill response matrix
+	//if(hasRecoJetMatch && hasRecoJetMuon) {
+	//if(hasRecoJetMatch && hasRecoJetMuon && triggerIsOn(triggerDecision,triggerDecision_Prescl)) {
+	if(hasRecoJetMatch) {
+	  //if(hasRecoJetMatch && matchedRecoJetPt >= 60.0) {
+
+	  if(doBJetSpectraReweightToData){
+	    if(CentralityIndex == 4) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C4->Eval(matchedRecoJetPt);
+	    else if(CentralityIndex == 3) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C3->Eval(matchedRecoJetPt);
+	    else if(CentralityIndex == 2) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C2->Eval(matchedRecoJetPt);
+	    else if(CentralityIndex == 1) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C1->Eval(matchedRecoJetPt);
+	    else{};
+	  }
+
+	  // response_C0.Fill(matchedRecoJetPt,x,w);
+	  // if(CentralityIndex == 4) response_C4.Fill(matchedRecoJetPt,x,w);
+	  // else if(CentralityIndex == 3) response_C3.Fill(matchedRecoJetPt,x,w);
+	  // else if(CentralityIndex == 2) response_C2.Fill(matchedRecoJetPt,x,w);
+	  // else if(CentralityIndex == 1) response_C1.Fill(matchedRecoJetPt,x,w);
+	  // else{};
+	
+	  h_matchedRecoJetPt_genJetPt[0][0]->Fill(matchedRecoJetPt,x,w_jet);
+	  h_matchedRecoJetPt_genJetPt[CentralityIndex][0]->Fill(matchedRecoJetPt,x,w_jet);
+
+	  h_matchedRecoJetPt_genJetPt_var[0][0]->Fill(matchedRecoJetPt,x,w_jet);
+	  h_matchedRecoJetPt_genJetPt_var[CentralityIndex][0]->Fill(matchedRecoJetPt,x,w_jet);
+
+	  h_matchedRecoJetPtOverGenJetPt_genJetPt[0][0]->Fill(matchedRecoJetPt/x,x,w_jet);
+	  h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][0]->Fill(matchedRecoJetPt/x,x,w_jet);
+	
+	  if(x>100){
+	    h_matchedRecoJetPtOverGenJetPt_genJetEta[0][0]->Fill(matchedRecoJetPt/x,y,w_jet);
+	    h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][0]->Fill(matchedRecoJetPt/x,y,w_jet);
+	  }
+
+
+	  if(fabs(jetFlavorInt) == 5){
+	    h_matchedRecoJetPt_genJetPt_var[0][1]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt_var[CentralityIndex][1]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt[0][1]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt[CentralityIndex][1]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPtOverGenJetPt_genJetPt[0][1]->Fill(matchedRecoJetPt/x,x,w_jet);
+	    h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][1]->Fill(matchedRecoJetPt/x,x,w_jet);
+				
+	    if(x>100){
+	      h_matchedRecoJetPtOverGenJetPt_genJetEta[0][1]->Fill(matchedRecoJetPt/x,y,w_jet);
+	      h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][1]->Fill(matchedRecoJetPt/x,y,w_jet);
+	    }
+	  } 
+	  if(fabs(jetFlavorInt) == 4){
+	    h_matchedRecoJetPt_genJetPt_var[0][2]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt_var[CentralityIndex][2]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt[0][2]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt[CentralityIndex][2]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPtOverGenJetPt_genJetPt[0][2]->Fill(matchedRecoJetPt/x,x,w_jet);
+	    h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][2]->Fill(matchedRecoJetPt/x,x,w_jet);
+
+	    if(x>100){
+	      h_matchedRecoJetPtOverGenJetPt_genJetEta[0][2]->Fill(matchedRecoJetPt/x,y,w_jet);
+	      h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][2]->Fill(matchedRecoJetPt/x,y,w_jet);
+	    }
+
+	  } 
+	  if(fabs(jetFlavorInt) == 1 || fabs(jetFlavorInt) == 2){
+	    h_matchedRecoJetPt_genJetPt_var[0][3]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt_var[CentralityIndex][3]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt[0][3]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt[CentralityIndex][3]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPtOverGenJetPt_genJetPt[0][3]->Fill(matchedRecoJetPt/x,x,w_jet);
+	    h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][3]->Fill(matchedRecoJetPt/x,x,w_jet);
+
+	    if(x>100){
+	      h_matchedRecoJetPtOverGenJetPt_genJetEta[0][3]->Fill(matchedRecoJetPt/x,y,w_jet);
+	      h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][3]->Fill(matchedRecoJetPt/x,y,w_jet);
+	    }
+	  } 
+	  if(fabs(jetFlavorInt) == 3){
+	    h_matchedRecoJetPt_genJetPt_var[0][4]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt_var[CentralityIndex][4]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt[0][4]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt[CentralityIndex][4]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPtOverGenJetPt_genJetPt[0][4]->Fill(matchedRecoJetPt/x,x,w_jet);
+	    h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][4]->Fill(matchedRecoJetPt/x,x,w_jet);
+
+	    if(x>100){
+	      h_matchedRecoJetPtOverGenJetPt_genJetEta[0][4]->Fill(matchedRecoJetPt/x,y,w_jet);
+	      h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][4]->Fill(matchedRecoJetPt/x,y,w_jet);
+	    }
+
+	  }  
+	  if(jetFlavorInt == 21){
+	    h_matchedRecoJetPt_genJetPt_var[0][5]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt_var[CentralityIndex][5]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt[0][5]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt[CentralityIndex][5]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPtOverGenJetPt_genJetPt[0][5]->Fill(matchedRecoJetPt/x,x,w_jet);
+	    h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][5]->Fill(matchedRecoJetPt/x,x,w_jet);
+
+	    if(x>100){
+	      h_matchedRecoJetPtOverGenJetPt_genJetEta[0][5]->Fill(matchedRecoJetPt/x,y,w_jet);
+	      h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][5]->Fill(matchedRecoJetPt/x,y,w_jet);
+	    }
+
+	  }  
+	  if(jetFlavorInt == 0){
+	    h_matchedRecoJetPt_genJetPt_var[0][6]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt_var[CentralityIndex][6]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt[0][6]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt[CentralityIndex][6]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPtOverGenJetPt_genJetPt[0][6]->Fill(matchedRecoJetPt/x,x,w_jet);
+	    h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][6]->Fill(matchedRecoJetPt/x,x,w_jet);
+
+	    if(x>100){
+	      h_matchedRecoJetPtOverGenJetPt_genJetEta[0][6]->Fill(matchedRecoJetPt/x,y,w_jet);
+	      h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][6]->Fill(matchedRecoJetPt/x,y,w_jet);
+	    }
+
+	  }
+
+	  if(hasRecoMuon){
+	    h_inclGenJetPt_inclRecoMuonTag_flavor[0]->Fill(x,jetFlavorInt,w_jet);
+	    h_inclGenJetPt_inclRecoMuonTag_flavor[CentralityIndex]->Fill(x,jetFlavorInt,w_jet);
+	  }
 	}
+	if(!hasRecoJetMatch){
+	  h_unmatchedGenJetPt[0]->Fill(x,w_jet);
+	  h_unmatchedGenJetPt[CentralityIndex]->Fill(x,w_jet);
 
-      } // end gen-muon loop
+	  // response_C0.Miss(x,w_jet);
+	  // if(CentralityIndex == 4) response_C4.Miss(x,w_jet);
+	  // else if(CentralityIndex == 3) response_C3.Miss(x,w_jet);
+	  // else if(CentralityIndex == 2) response_C2.Miss(x,w_jet);
+	  // else if(CentralityIndex == 1) response_C1.Miss(x,w_jet);
+	  // else{};
+	}
+			
+	h_inclGenJetPt_flavor[0]->Fill(x,jetFlavorInt,w_jet);
+	h_inclGenJetPt_flavor[CentralityIndex]->Fill(x,jetFlavorInt,w_jet);
+	// begin gen-muon loop
 
-      // begin reco-muon loop
+	bool hasGenMuon = false;
+      
+	for(int j = 0; j < em->gpptp->size(); j++){
 
-    }
-    // END GEN JET LOOP
+	  if(hasGenMuon) continue;
 
-    if(leadingMatchedRecoJetPt > 0){
-      h_leadingRecoJetPtOverPThat_pThat[0]->Fill(leadingMatchedRecoJetPt / em->pthat, em->pthat,w);
-      h_leadingRecoJetPtOverPThat_pThat[CentralityIndex]->Fill(leadingMatchedRecoJetPt / em->pthat, em->pthat,w);
-    }
+	  if(TMath::Abs(em->gppdgIDp->at(j)) != 13) continue;
+
+	  if(isWDecayMuon(em->gpptp->at(j),x)) continue; // skip if "WDecay" muon (has majority of jet pt)
+
+	  double genMuonPt_j = em->gpptp->at(j);
+	  double genMuonEta_j = em->gpetap->at(j);
+	  double genMuonPhi_j = em->gpphip->at(j);
+
+	  if(genMuonPt_j < muPtCut || fabs(genMuonEta_j) > 2.0) continue;
+
+	  if(getDr(genMuonEta_j,genMuonPhi_j,y,z) < deltaRCut){
+	    hasGenMuon = true;
+	    h_inclGenJetPt_inclGenMuonTag_flavor[0]->Fill(x,jetFlavorInt,w_jet);
+	    h_inclGenJetPt_inclGenMuonTag_flavor[CentralityIndex]->Fill(x,jetFlavorInt,w_jet);
+	  }
+
+	} // end gen-muon loop
+
+	// begin reco-muon loop
+
+      }
+      // END GEN JET LOOP
+
+      if(leadingMatchedRecoJetPt > 0){
+	h_leadingRecoJetPtOverPThat_pThat[0]->Fill(leadingMatchedRecoJetPt / em->pthat, em->pthat,w);
+	h_leadingRecoJetPtOverPThat_pThat[CentralityIndex]->Fill(leadingMatchedRecoJetPt / em->pthat, em->pthat,w);
+      }
 	
 
-  } // END EVENT LOOP
-  delete f;
-  // WRITE
-  auto wf = TFile::Open(output,"recreate");
+    } // END EVENT LOOP
+    delete f;
+    // WRITE
+    auto wf = TFile::Open(output,"recreate");
 
-  for(int j = 0; j < NCentralityIndices; j++){
+    for(int j = 0; j < NCentralityIndices; j++){
 
-    h_inclGenJetPt_flavor[j]->Write();
-    h_inclGenJetPt_inclGenMuonTag_flavor[j]->Write();
-    h_inclGenJetPt_inclRecoMuonTag_flavor[j]->Write();
+      h_inclGenJetPt_flavor[j]->Write();
+      h_inclGenJetPt_inclGenMuonTag_flavor[j]->Write();
+      h_inclGenJetPt_inclRecoMuonTag_flavor[j]->Write();
 
-    h_unmatchedGenJetPt[j]->Write();
-    h_unmatchedRecoJetPt[j][0]->Write();
-    h_recoJetPt_all[j]->Write();
-    h_recoJetPt_matchedDr[j]->Write();
-    h_recoJetPt_unmatchedDr[j]->Write();
-    h_recoPt_dRnearestGen[j]->Write();
-    h_recoPt_nearestGenPt[j]->Write();
-    // h_unmatchedRecoJetPt[j][1]->Write();
-    // h_unmatchedRecoJetPt[j][2]->Write();
-    // h_unmatchedRecoJetPt[j][3]->Write();
-    // h_unmatchedRecoJetPt[j][4]->Write();
-    // h_unmatchedRecoJetPt[j][5]->Write();
-    // h_unmatchedRecoJetPt[j][6]->Write();
+      h_unmatchedGenJetPt[j]->Write();
+      h_unmatchedRecoJetPt[j][0]->Write();
+      h_recoJetPt_all[j]->Write();
+      h_recoJetPt_matchedDr[j]->Write();
+      h_recoJetPt_unmatchedDr[j]->Write();
+      h_recoPt_dRnearestGen[j]->Write();
+      h_recoPt_nearestGenPt[j]->Write();
+      // h_unmatchedRecoJetPt[j][1]->Write();
+      // h_unmatchedRecoJetPt[j][2]->Write();
+      // h_unmatchedRecoJetPt[j][3]->Write();
+      // h_unmatchedRecoJetPt[j][4]->Write();
+      // h_unmatchedRecoJetPt[j][5]->Write();
+      // h_unmatchedRecoJetPt[j][6]->Write();
     
-    h_matchedRecoJetPt_genJetPt[j][0]->Write();
-    h_matchedRecoJetPt_genJetPt[j][1]->Write();
-    h_matchedRecoJetPt_genJetPt[j][2]->Write();
-    h_matchedRecoJetPt_genJetPt[j][3]->Write();
-    h_matchedRecoJetPt_genJetPt[j][4]->Write();
-    h_matchedRecoJetPt_genJetPt[j][5]->Write();
-    h_matchedRecoJetPt_genJetPt[j][6]->Write();
+      h_matchedRecoJetPt_genJetPt[j][0]->Write();
+      h_matchedRecoJetPt_genJetPt[j][1]->Write();
+      h_matchedRecoJetPt_genJetPt[j][2]->Write();
+      h_matchedRecoJetPt_genJetPt[j][3]->Write();
+      h_matchedRecoJetPt_genJetPt[j][4]->Write();
+      h_matchedRecoJetPt_genJetPt[j][5]->Write();
+      h_matchedRecoJetPt_genJetPt[j][6]->Write();
 
 
 
-    h_matchedRecoJetPt_genJetPt_var[j][0]->Write();
-    h_matchedRecoJetPt_genJetPt_var[j][1]->Write();
-    h_matchedRecoJetPt_genJetPt_var[j][2]->Write();
-    h_matchedRecoJetPt_genJetPt_var[j][3]->Write();
-    h_matchedRecoJetPt_genJetPt_var[j][4]->Write();
-    h_matchedRecoJetPt_genJetPt_var[j][5]->Write();
-    h_matchedRecoJetPt_genJetPt_var[j][6]->Write();
+      h_matchedRecoJetPt_genJetPt_var[j][0]->Write();
+      h_matchedRecoJetPt_genJetPt_var[j][1]->Write();
+      h_matchedRecoJetPt_genJetPt_var[j][2]->Write();
+      h_matchedRecoJetPt_genJetPt_var[j][3]->Write();
+      h_matchedRecoJetPt_genJetPt_var[j][4]->Write();
+      h_matchedRecoJetPt_genJetPt_var[j][5]->Write();
+      h_matchedRecoJetPt_genJetPt_var[j][6]->Write();
     
-    h_matchedRecoJetPtOverGenJetPt_genJetPt[j][0]->Write();
-    h_matchedRecoJetPtOverGenJetPt_genJetPt[j][1]->Write();
-    h_matchedRecoJetPtOverGenJetPt_genJetPt[j][2]->Write();
-    h_matchedRecoJetPtOverGenJetPt_genJetPt[j][3]->Write();
-    h_matchedRecoJetPtOverGenJetPt_genJetPt[j][4]->Write();
-    h_matchedRecoJetPtOverGenJetPt_genJetPt[j][5]->Write();
-    h_matchedRecoJetPtOverGenJetPt_genJetPt[j][6]->Write();
+      h_matchedRecoJetPtOverGenJetPt_genJetPt[j][0]->Write();
+      h_matchedRecoJetPtOverGenJetPt_genJetPt[j][1]->Write();
+      h_matchedRecoJetPtOverGenJetPt_genJetPt[j][2]->Write();
+      h_matchedRecoJetPtOverGenJetPt_genJetPt[j][3]->Write();
+      h_matchedRecoJetPtOverGenJetPt_genJetPt[j][4]->Write();
+      h_matchedRecoJetPtOverGenJetPt_genJetPt[j][5]->Write();
+      h_matchedRecoJetPtOverGenJetPt_genJetPt[j][6]->Write();
 
-    h_matchedRecoJetPtOverGenJetPt_genJetEta[j][0]->Write();
-    // h_matchedRecoJetPtOverGenJetPt_genJetEta[j][1]->Write();
-    // h_matchedRecoJetPtOverGenJetPt_genJetEta[j][2]->Write();
-    // h_matchedRecoJetPtOverGenJetPt_genJetEta[j][3]->Write();
-    // h_matchedRecoJetPtOverGenJetPt_genJetEta[j][4]->Write();
-    // h_matchedRecoJetPtOverGenJetPt_genJetEta[j][5]->Write();
-    // h_matchedRecoJetPtOverGenJetPt_genJetEta[j][6]->Write();
+      h_matchedRecoJetPtOverGenJetPt_genJetEta[j][0]->Write();
+      // h_matchedRecoJetPtOverGenJetPt_genJetEta[j][1]->Write();
+      // h_matchedRecoJetPtOverGenJetPt_genJetEta[j][2]->Write();
+      // h_matchedRecoJetPtOverGenJetPt_genJetEta[j][3]->Write();
+      // h_matchedRecoJetPtOverGenJetPt_genJetEta[j][4]->Write();
+      // h_matchedRecoJetPtOverGenJetPt_genJetEta[j][5]->Write();
+      // h_matchedRecoJetPtOverGenJetPt_genJetEta[j][6]->Write();
 
-    h_leadingRecoJetPtOverPThat_pThat[j]->Write();
+      h_leadingRecoJetPtOverPThat_pThat[j]->Write();
 
+
+    }
+
+    // response_C4.Write();
+    // response_C3.Write();
+    // response_C2.Write();
+    // response_C1.Write();
+    // response_C0.Write();
+
+
+
+
+    wf->Close();
+    return;
+    // END WRITE
 
   }
-
-  // response_C4.Write();
-  // response_C3.Write();
-  // response_C2.Write();
-  // response_C1.Write();
-  // response_C0.Write();
-
-
-
-
-  wf->Close();
-  return;
-  // END WRITE
-
-
 
 }
 
