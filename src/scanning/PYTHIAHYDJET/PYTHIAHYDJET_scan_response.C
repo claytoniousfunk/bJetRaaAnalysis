@@ -219,7 +219,10 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 						   applyJet60Trigger,
 						   applyJet80Trigger,
 						   muPtCut,
-						   doPThatCorrelationFilter);
+						   doPThatCorrelationFilter,
+						   useCaloJetsOverride,
+						   onlyEvenEvents,
+						   onlyOddEvents);
 
 
     TString suffixEdit = "";
@@ -240,12 +243,22 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 
     // JET ENERGY CORRECTIONS
     vector<string> Files;
-  
-    Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_L2Relative_AK4PF.txt"); // LXPLUS
+
+    if(useCaloJetsOverride){
+      Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_L2Relative_AK4Calo.txt");
+    }
+    else{
+      Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_L2Relative_AK4PF.txt");
+    }
 
     JetCorrector JEC(Files);
 
-    JetUncertainty JEU("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4PF.txt");
+    if(useCaloJetsOverride){
+      JetUncertainty JEU("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4Calo.txt");
+    }
+    else{
+      JetUncertainty JEU("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4PF.txt");
+    }
 
     // WEIGHT FUNCTIONS
 
@@ -466,7 +479,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
     cout << "	Initializing variables ... " << endl;
     em->init();
     cout << "	Loading jet..." << endl;
-    em->loadJet("akCs4PFJetAnalyzer/t");
+    if(useCaloJetsOverride) ? em->loadJet("akPu4CaloJetAnalyzer/t") : em->loadJet("akCs4PFJetAnalyzer/t");
     cout << "Loading muon triggers..." << endl;
     em->loadHLT("hltanalysis/HltTree");
     cout << "	Loading gen particles..." << endl;
@@ -552,10 +565,14 @@ void PYTHIAHYDJET_scan_response(int group = 1){
       if(evi==0) cout << "Processing events..." << endl;
 
       // // only take even events
-      // if(evi % 2 == 1) continue;
+      if(onlyEvenEvents){
+	if(evi % 2 == 1) continue;
+      }
 
       // only take odd events
-      // if(evi % 2 == 0) continue;
+      if(onlyOddEvents){
+	if(evi % 2 == 0) continue;
+      }
     
       em->getEvent(evi);
 

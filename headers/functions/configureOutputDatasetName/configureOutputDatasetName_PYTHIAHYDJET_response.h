@@ -45,7 +45,10 @@ TString configureOutputDatasetName(TString generator,
 				   bool applyJet60Trigger,
 				   bool applyJet80Trigger,
 				   double muPtCut,
-				   bool doPThatCorrelationFilter)
+				   bool doPThatCorrelationFilter,
+				   bool useCaloJetsOverride,
+				   bool onlyEvenEvents,
+				   bool onlyOddEvents)
 {
 
   TString result = "output";
@@ -54,6 +57,11 @@ TString configureOutputDatasetName(TString generator,
   TString datasetIndicator = "";  
   datasetIndicator = "_DiJet";
   result.Append(datasetIndicator);
+
+  if(useCaloJetsOverride) result.Append("_caloJets");
+
+  if(onlyEvenEvents) result.Append("_evenEvents");
+  if(onlyOddEvents) result.Append("_oddEvents");
 
   if(doPThatWeight) result.Append(Form("_pThat-%2.0f",pThat));
   else result.Append("_pThat-unweighted");
