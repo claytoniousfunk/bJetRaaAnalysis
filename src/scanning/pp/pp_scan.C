@@ -155,9 +155,9 @@ TH1D *h_leadJetPt_jet100;
 // PRESCALES: these HLT paths are prescaled, and a prescale draw is random and
 // independent of jet pT, so it scales the measured efficiency by a constant
 // 1/prescale without distorting the turn-on SHAPE.  The plateau therefore
-// sits at 1/prescale, not 1, and must be normalised to 1 by hand.  The
+// sits at 1/prescale, not 1, and must be normalized to 1 by hand.  The
 // h_prescale_jetXX histograms record the prescale values actually seen so
-// that normalisation can be checked rather than assumed.
+// that normalization can be checked rather than assumed.
 //
 // pT REFERENCE: leadingRecoJetPt is JEC-corrected, which is the right axis
 // because the efficiency gets applied to the corrected analysis spectrum.
@@ -247,6 +247,21 @@ TH2D *h_mupt_recoJetPt_inclRecoMuonTag_triggerOn;
 TH2D *h_mueta_recoJetPt_inclRecoMuonTag_triggerOn;
 TH2D *h_muphi_recoJetPt_inclRecoMuonTag_triggerOn;
 TH2D *h_muJetDr_recoJetPt;
+
+// MUON TRIGGER EFFICIENCY: per-muon HLT_HIL3Mu12 efficiency = pass / all,
+// in muon pT vs eta. Meaningful only over an unbiased sample
+// (doMinBiasSample) or a jet-triggered one (doHighEGJetSample); over
+// SingleMuon every event fired a muon trigger. Probes are tight-ID muons with
+// |eta| < 2.4 (project eta to choose the acceptance). Only events with
+// HLT_HIL3Mu12 prescale 1 are used, unweighted, so pass/all is binomial. The
+// trigger bit cannot say which muon fired it, so all/pass drop a probe when
+// another reco muon (any quality) has pT > 10 GeV; the _noVeto versions keep
+// every probe so the size of that effect can be checked.
+TH2D *h_muTrigEff_all;
+TH2D *h_muTrigEff_pass;
+TH2D *h_muTrigEff_all_noVeto;
+TH2D *h_muTrigEff_pass_noVeto;
+TH1D *h_muTrigEff_mu12Prescale;
 TH1D *h_dimuonMass;
 TH1D *h_dimuonMass_sameSign;
 
@@ -507,6 +522,11 @@ void pp_scan(TString inputFile, TString outputFile){
     h_mueta_recoJetPt_inclRecoMuonTag_triggerOn = new TH2D("h_mueta_recoJetPt_inclRecoMuonTag_triggerOn","muon #it{#eta} vs jet #it{p}_{T}",NTrkEtaBins,trkEtaMin,trkEtaMax,NPtBins,ptMin,ptMax);
     h_muphi_recoJetPt_inclRecoMuonTag_triggerOn = new TH2D("h_muphi_recoJetPt_inclRecoMuonTag_triggerOn","muon #it{#phi} vs jet #it{p}_{T}",NPhiBins,phiMin,phiMax,NPtBins,ptMin,ptMax);
     h_muJetDr_recoJetPt = new TH2D("h_muJetDr_recoJetPt","#it{#Delta r}(muon,jet) vs jet #it{p}_{T}",NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
+    h_muTrigEff_all = new TH2D("h_muTrigEff_all","tight probe muons, mu12 prescale 1, no other #mu above 10 GeV; muon p_{T} [GeV]; muon #eta",200,0,200,48,-2.4,2.4);
+    h_muTrigEff_pass = new TH2D("h_muTrigEff_pass","tight probe muons, mu12 prescale 1, no other #mu above 10 GeV, mu12 fired; muon p_{T} [GeV]; muon #eta",200,0,200,48,-2.4,2.4);
+    h_muTrigEff_all_noVeto = new TH2D("h_muTrigEff_all_noVeto","tight probe muons, mu12 prescale 1; muon p_{T} [GeV]; muon #eta",200,0,200,48,-2.4,2.4);
+    h_muTrigEff_pass_noVeto = new TH2D("h_muTrigEff_pass_noVeto","tight probe muons, mu12 prescale 1, mu12 fired; muon p_{T} [GeV]; muon #eta",200,0,200,48,-2.4,2.4);
+    h_muTrigEff_mu12Prescale = new TH1D("h_muTrigEff_mu12Prescale","HLT_HIL3Mu12 prescale",20,0,20);
   
 
     // Sumw2 commands
@@ -566,6 +586,11 @@ void pp_scan(TString inputFile, TString outputFile){
     h_mueta_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
     h_muphi_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
     h_muJetDr_recoJetPt->Sumw2();
+    h_muTrigEff_all->Sumw2();
+    h_muTrigEff_pass->Sumw2();
+    h_muTrigEff_all_noVeto->Sumw2();
+    h_muTrigEff_pass_noVeto->Sumw2();
+    h_muTrigEff_mu12Prescale->Sumw2();
 				 
 				 
 
@@ -786,6 +811,43 @@ void pp_scan(TString inputFile, TString outputFile){
       if(applyAntiMu5Jet60Trigger){
 	if(em->HLT_HIL3Mu5_AK4PFJet60_v1 == 1) continue; // 1 because its an anti-trigger
       }
+
+      // MUON TRIGGER EFFICIENCY: after every event-level cut, before any jet
+      // or muon-tag requirement (see declaration of h_muTrigEff_all)
+      h_muTrigEff_mu12Prescale->Fill(em->HLT_HIL3Mu12_v1_Prescl,w);
+
+      if(em->HLT_HIL3Mu12_v1_Prescl == 1){
+	for(int m = 0; m < em->nMu; m++){
+
+	  double muPt_m = em->muPt->at(m);
+	  double muEta_m = em->muEta->at(m);
+
+	  if(fabs(muEta_m) > 2.4) continue;
+	  if(!isQualityMuon_tight(em->muChi2NDF->at(m),
+				  em->muInnerD0->at(m),
+				  em->muInnerDz->at(m),
+				  em->muMuonHits->at(m),
+				  em->muPixelHits->at(m),
+				  em->muIsGlobal->at(m),
+				  em->muIsPF->at(m),
+				  em->muStations->at(m),
+				  em->muTrkLayers->at(m))) continue;
+
+	  // another muon that could have fired the trigger
+	  bool hasOtherMuon = false;
+	  for(int k = 0; k < em->nMu; k++){
+	    if(k != m && em->muPt->at(k) > 10.0) hasOtherMuon = true;
+	  }
+
+	  h_muTrigEff_all_noVeto->Fill(muPt_m,muEta_m,w);
+	  if(em->HLT_HIL3Mu12_v1 == 1) h_muTrigEff_pass_noVeto->Fill(muPt_m,muEta_m,w);
+
+	  if(hasOtherMuon) continue;
+
+	  h_muTrigEff_all->Fill(muPt_m,muEta_m,w);
+	  if(em->HLT_HIL3Mu12_v1 == 1) h_muTrigEff_pass->Fill(muPt_m,muEta_m,w);
+	}
+      }
     
 
 
@@ -982,7 +1044,7 @@ void pp_scan(TString inputFile, TString outputFile){
 	if(em->HLT_HIAK4PFJet60_v1 == 1 && em->HLT_HIAK4PFJet80_v1  == 1) h_leadJetPt_jet60_and_jet80 ->Fill(leadingRecoJetPt,w);
 	if(em->HLT_HIAK4PFJet80_v1 == 1 && em->HLT_HIAK4PFJet100_v1 == 1) h_leadJetPt_jet80_and_jet100->Fill(leadingRecoJetPt,w);
 
-	// Prescale values actually seen, so the plateau normalisation (which
+	// Prescale values actually seen, so the plateau normalization (which
 	// sits at 1/prescale, not 1) can be checked rather than assumed.
 	if(em->HLT_HIAK4PFJet15_v1  == 1) h_prescale_jet15 ->Fill(em->HLT_HIAK4PFJet15_v1_Prescl);
 	if(em->HLT_HIAK4PFJet30_v1  == 1) h_prescale_jet30 ->Fill(em->HLT_HIAK4PFJet30_v1_Prescl);
@@ -1250,6 +1312,11 @@ void pp_scan(TString inputFile, TString outputFile){
     h_mueta_recoJetPt_inclRecoMuonTag_triggerOn->Write();
     h_muphi_recoJetPt_inclRecoMuonTag_triggerOn->Write();
     h_muJetDr_recoJetPt->Write();
+    h_muTrigEff_all->Write();
+    h_muTrigEff_pass->Write();
+    h_muTrigEff_all_noVeto->Write();
+    h_muTrigEff_pass_noVeto->Write();
+    h_muTrigEff_mu12Prescale->Write();
 
     wf->Close();
     return;

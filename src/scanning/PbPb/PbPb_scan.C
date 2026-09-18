@@ -193,7 +193,7 @@ TH2D *h_jetTrkMaxFractionRaw_rawJetPt[NCentralityIndices];
 // absolute efficiency comes out flat at 1. h_nEventsNoJetTrigSel records
 // whether the run was actually unbiased. Prescales scale the plateau to
 // 1/prescale without distorting the turn-on shape, so h_prescale_jetNN is
-// kept to check the normalisation rather than assume it.
+// kept to check the normalization rather than assume it.
 TH1D *h_leadJetPt_all[NCentralityIndices];
 TH1D *h_leadJetPt_jet60[NCentralityIndices];
 TH1D *h_leadJetPt_jet80[NCentralityIndices];
@@ -257,6 +257,21 @@ TH1D *h_Jet80HLT[NCentralityIndices];
 TH1D *h_Jet80HLT_Prescale[NCentralityIndices];
 TH1D *h_Jet100HLT[NCentralityIndices];
 TH1D *h_Jet100HLT_Prescale[NCentralityIndices];
+
+// MUON TRIGGER EFFICIENCY: per-muon HLT_HIL3Mu12 efficiency = pass / all,
+// in muon pT vs eta. Meaningful only over an unbiased sample
+// (doMinBiasSample); over SingleMuon every event fired a muon trigger.
+// Probes are tight-ID muons with |eta| < 2.4 (project eta to choose the
+// acceptance). Only events with HLT_HIL3Mu12 prescale 1 are used, unweighted,
+// so pass/all is binomial -- the old trigger scan weighted pass by the
+// prescale. The trigger bit cannot say which muon fired it, so all/pass drop a
+// probe when another reco muon (any quality) has pT > 10 GeV; the _noVeto
+// versions keep every probe so the size of that effect can be checked.
+TH2D *h_muTrigEff_all[NCentralityIndices];
+TH2D *h_muTrigEff_pass[NCentralityIndices];
+TH2D *h_muTrigEff_all_noVeto[NCentralityIndices];
+TH2D *h_muTrigEff_pass_noVeto[NCentralityIndices];
+TH1D *h_muTrigEff_mu12Prescale[NCentralityIndices];
 
 ///////////////////////  start the program
 void PbPb_scan(int group = 1){
@@ -495,6 +510,11 @@ void PbPb_scan(int group = 1){
 	h_Jet80HLT_Prescale[i] = new TH1D(Form("h_Jet80HLT_Prescale_C%i",i),Form("Jet80 HLT Prescale , %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),10,1,10);
 	h_Jet100HLT[i] = new TH1D(Form("h_Jet100HLT_C%i",i),Form("Jet100 HLT , %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),2,0,1);
 	h_Jet100HLT_Prescale[i] = new TH1D(Form("h_Jet100HLT_Prescale_C%i",i),Form("Jet100 HLT Prescale , %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),10,1,10);
+	h_muTrigEff_all[i] = new TH2D(Form("h_muTrigEff_all_C%i",i),Form("tight probe muons, mu12 prescale 1, no other #mu above 10 GeV, %i < hiBin < %i; muon p_{T} [GeV]; muon #eta",centEdges[0],centEdges[NCentralityIndices-1]),200,0,200,48,-2.4,2.4);
+	h_muTrigEff_pass[i] = new TH2D(Form("h_muTrigEff_pass_C%i",i),Form("tight probe muons, mu12 prescale 1, no other #mu above 10 GeV, mu12 fired, %i < hiBin < %i; muon p_{T} [GeV]; muon #eta",centEdges[0],centEdges[NCentralityIndices-1]),200,0,200,48,-2.4,2.4);
+	h_muTrigEff_all_noVeto[i] = new TH2D(Form("h_muTrigEff_all_noVeto_C%i",i),Form("tight probe muons, mu12 prescale 1, %i < hiBin < %i; muon p_{T} [GeV]; muon #eta",centEdges[0],centEdges[NCentralityIndices-1]),200,0,200,48,-2.4,2.4);
+	h_muTrigEff_pass_noVeto[i] = new TH2D(Form("h_muTrigEff_pass_noVeto_C%i",i),Form("tight probe muons, mu12 prescale 1, mu12 fired, %i < hiBin < %i; muon p_{T} [GeV]; muon #eta",centEdges[0],centEdges[NCentralityIndices-1]),200,0,200,48,-2.4,2.4);
+	h_muTrigEff_mu12Prescale[i] = new TH1D(Form("h_muTrigEff_mu12Prescale_C%i",i),Form("HLT_HIL3Mu12 prescale, %i < hiBin < %i",centEdges[0],centEdges[NCentralityIndices-1]),20,0,20);
       }
       else{
 	// ---------------------- event histograms --------------------------------
@@ -564,6 +584,11 @@ void PbPb_scan(int group = 1){
 	h_Jet80HLT_Prescale[i] = new TH1D(Form("h_Jet80HLT_Prescale_C%i",i),Form("Jet80 HLT Prescale , %i < hiBin < %i",centEdges[i-1], centEdges[i]),10,1,10);
 	h_Jet100HLT[i] = new TH1D(Form("h_Jet100HLT_C%i",i),Form("Jet100 HLT , %i < hiBin < %i",centEdges[i-1], centEdges[i]),2,0,1);
 	h_Jet100HLT_Prescale[i] = new TH1D(Form("h_Jet100HLT_Prescale_C%i",i),Form("Jet100 HLT Prescale , %i < hiBin < %i",centEdges[i-1], centEdges[i]),10,1,10);
+	h_muTrigEff_all[i] = new TH2D(Form("h_muTrigEff_all_C%i",i),Form("tight probe muons, mu12 prescale 1, no other #mu above 10 GeV, %i < hiBin < %i; muon p_{T} [GeV]; muon #eta",centEdges[i-1],centEdges[i]),200,0,200,48,-2.4,2.4);
+	h_muTrigEff_pass[i] = new TH2D(Form("h_muTrigEff_pass_C%i",i),Form("tight probe muons, mu12 prescale 1, no other #mu above 10 GeV, mu12 fired, %i < hiBin < %i; muon p_{T} [GeV]; muon #eta",centEdges[i-1],centEdges[i]),200,0,200,48,-2.4,2.4);
+	h_muTrigEff_all_noVeto[i] = new TH2D(Form("h_muTrigEff_all_noVeto_C%i",i),Form("tight probe muons, mu12 prescale 1, %i < hiBin < %i; muon p_{T} [GeV]; muon #eta",centEdges[i-1],centEdges[i]),200,0,200,48,-2.4,2.4);
+	h_muTrigEff_pass_noVeto[i] = new TH2D(Form("h_muTrigEff_pass_noVeto_C%i",i),Form("tight probe muons, mu12 prescale 1, mu12 fired, %i < hiBin < %i; muon p_{T} [GeV]; muon #eta",centEdges[i-1],centEdges[i]),200,0,200,48,-2.4,2.4);
+	h_muTrigEff_mu12Prescale[i] = new TH1D(Form("h_muTrigEff_mu12Prescale_C%i",i),Form("HLT_HIL3Mu12 prescale, %i < hiBin < %i",centEdges[i-1],centEdges[i]),20,0,20);
       }
       // sumw2 commands
       h_NJetPerEvent[i]->Sumw2();
@@ -623,6 +648,11 @@ void PbPb_scan(int group = 1){
       h_Jet80HLT_Prescale[i]->Sumw2();
       h_Jet100HLT[i]->Sumw2();
       h_Jet100HLT_Prescale[i]->Sumw2();
+      h_muTrigEff_all[i]->Sumw2();
+      h_muTrigEff_pass[i]->Sumw2();
+      h_muTrigEff_all_noVeto[i]->Sumw2();
+      h_muTrigEff_pass_noVeto[i]->Sumw2();
+      h_muTrigEff_mu12Prescale[i]->Sumw2();
     
       // loop through jet pt indices
       for(int j = 0; j < NJetPtIndices; j++){
@@ -856,6 +886,52 @@ void PbPb_scan(int group = 1){
       }
       if(applyJet100Trigger){
 	if(em->HLT_HICsAK4PFJet100Eta1p5_v1 == 0) continue;
+      }
+
+      // MUON TRIGGER EFFICIENCY: after every event-level cut, before any jet
+      // or muon-tag requirement (see declaration of h_muTrigEff_all)
+      h_muTrigEff_mu12Prescale[0]->Fill(em->HLT_HIL3Mu12_v1_Prescl,w);
+      h_muTrigEff_mu12Prescale[CentralityIndex]->Fill(em->HLT_HIL3Mu12_v1_Prescl,w);
+
+      if(em->HLT_HIL3Mu12_v1_Prescl == 1){
+	for(int m = 0; m < em->nMu; m++){
+
+	  double muPt_m = em->muPt->at(m);
+	  double muEta_m = em->muEta->at(m);
+
+	  if(fabs(muEta_m) > 2.4) continue;
+	  if(!isQualityMuon_tight(em->muChi2NDF->at(m),
+				  em->muInnerD0->at(m),
+				  em->muInnerDz->at(m),
+				  em->muMuonHits->at(m),
+				  em->muPixelHits->at(m),
+				  em->muIsGlobal->at(m),
+				  em->muIsPF->at(m),
+				  em->muStations->at(m),
+				  em->muTrkLayers->at(m))) continue;
+
+	  // another muon that could have fired the trigger
+	  bool hasOtherMuon = false;
+	  for(int k = 0; k < em->nMu; k++){
+	    if(k != m && em->muPt->at(k) > 10.0) hasOtherMuon = true;
+	  }
+
+	  h_muTrigEff_all_noVeto[0]->Fill(muPt_m,muEta_m,w);
+	  h_muTrigEff_all_noVeto[CentralityIndex]->Fill(muPt_m,muEta_m,w);
+	  if(em->HLT_HIL3Mu12_v1 == 1){
+	    h_muTrigEff_pass_noVeto[0]->Fill(muPt_m,muEta_m,w);
+	    h_muTrigEff_pass_noVeto[CentralityIndex]->Fill(muPt_m,muEta_m,w);
+	  }
+
+	  if(hasOtherMuon) continue;
+
+	  h_muTrigEff_all[0]->Fill(muPt_m,muEta_m,w);
+	  h_muTrigEff_all[CentralityIndex]->Fill(muPt_m,muEta_m,w);
+	  if(em->HLT_HIL3Mu12_v1 == 1){
+	    h_muTrigEff_pass[0]->Fill(muPt_m,muEta_m,w);
+	    h_muTrigEff_pass[CentralityIndex]->Fill(muPt_m,muEta_m,w);
+	  }
+	}
       }
 
  
@@ -1473,6 +1549,11 @@ void PbPb_scan(int group = 1){
       h_Jet80HLT_Prescale[i]->Write();
       h_Jet100HLT[i]->Write();
       h_Jet100HLT_Prescale[i]->Write();
+      h_muTrigEff_all[i]->Write();
+      h_muTrigEff_pass[i]->Write();
+      h_muTrigEff_all_noVeto[i]->Write();
+      h_muTrigEff_pass_noVeto[i]->Write();
+      h_muTrigEff_mu12Prescale[i]->Write();
     
     
       for(int j = 0; j < NJetPtIndices; j++){
