@@ -452,7 +452,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 
 
 
-    TFile *f = TFile::Open(input);
+    TFile *f = TFile::Open(input.c_str());
     cout << "	File opened!" << endl;
     auto em = new eventMap(f);
     em->isMC = isMC_status;
