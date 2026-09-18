@@ -230,6 +230,11 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 
     std::cout << "output dataset = " << output << std::endl;
 
+    if(gSystem->AccessPathName(Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data()))){
+      std::cout << "\033[1;31m Output directory not found: \033[0m " << Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data()) << std::endl;
+      return;
+    }
+
     readConfig();
 
     // JET ENERGY CORRECTIONS
