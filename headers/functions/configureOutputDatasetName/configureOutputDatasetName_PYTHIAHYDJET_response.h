@@ -66,7 +66,6 @@ TString configureOutputDatasetName(TString generator,
   if(doPThatWeight) result.Append(Form("_pThat-%2.0f",pThat));
   else result.Append("_pThat-unweighted");
   
-  result.Append(Form("_pThat-%2.0f",pThat));
   if(applyJet60Trigger) result.Append("_Jet60HLT");
   if(applyJet80Trigger) result.Append("_Jet80HLT");
   result.Append(Form("_mu12_pTmu-%2.0f_tight",muPtCut));
