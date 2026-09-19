@@ -16,7 +16,7 @@ bool doEtaPhiMask = false;
 bool doWDecayFilter = true;
 // High Level Triggers (HLTs)
 bool applyJet60Trigger = false;
-bool applyJet80Trigger = false;
+bool applyJet80Trigger = true;
 bool applyJet100Trigger = false;
 bool applyMinBiasTrigger = false;
 bool applyMu12TriggerEfficiencyCorrection = false;
@@ -34,11 +34,11 @@ bool apply_JEU_shift_up = false;
 bool apply_JEU_shift_down = false;
 // select dataset
 bool doSingleMuonSample = false;
-bool doMinBiasSample_Part1 = true;
+bool doMinBiasSample_Part1 = false;
 bool doMinBiasSample_Part2 = false;
 bool doMinBiasSample_Part3 = false;
 bool doMinBiasSample_Part4 = false;
-bool doHardProbesSample = false;
+bool doHardProbesSample = true;
 bool doNoRhoModificationSample = false;
 bool doWithRhoModificationSample = false;
 // reweight functions (for bkg subtraction)
