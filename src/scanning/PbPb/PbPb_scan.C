@@ -727,7 +727,7 @@ void PbPb_scan(int group = 1){
     if(doSingleMuonSample){
       em->regEventFilter(NeventFilters_SingleMuon, eventFilters_SingleMuon);
     }
-    else if(doMinBiasSample){
+    else if(doMinBiasSample_Part1 || doMinBiasSample_Part2 || doMinBiasSample_Part3 || doMinBiasSample_Part4){
       em->regEventFilter(NeventFilters_SingleMuon, eventFilters_SingleMuon);
     }
     else if(doHardProbesSample){
