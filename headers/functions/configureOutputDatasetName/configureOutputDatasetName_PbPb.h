@@ -1,7 +1,10 @@
 #include "TDatime.h"
 
 TString configureOutputDatasetName(bool doSingleMuonSample,
-				   bool doMinBiasSample,
+				   bool doMinBiasSample_Part1,
+				   bool doMinBiasSample_Part2,
+				   bool doMinBiasSample_Part3,
+				   bool doMinBiasSample_Part4,
 				   bool doHardProbesSample,
 				   bool applyMinBiasTrigger,
 				   bool applyJet60Trigger,
@@ -30,7 +33,10 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
 
   TString datasetIndicator = "";
   if(doSingleMuonSample) datasetIndicator = "_SingleMuon";
-  else if(doMinBiasSample) datasetIndicator = "_MinBias_Part1";
+  else if(doMinBiasSample_Part1) datasetIndicator = "_MinBias_Part1";
+  else if(doMinBiasSample_Part2) datasetIndicator = "_MinBias_Part2";
+  else if(doMinBiasSample_Part3) datasetIndicator = "_MinBias_Part3";
+  else if(doMinBiasSample_Part4) datasetIndicator = "_MinBias_Part4";
   else if(doHardProbesSample) datasetIndicator = "_HardProbes";
   else{};
   result.Append(datasetIndicator);

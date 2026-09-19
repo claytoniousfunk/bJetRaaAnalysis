@@ -17,7 +17,7 @@ bool doWDecayFilter = true;
 // High Level Triggers (HLTs)
 bool applyJet60Trigger = false;
 bool applyJet80Trigger = false;
-bool applyJet100Trigger = true;
+bool applyJet100Trigger = false;
 bool applyMinBiasTrigger = false;
 bool applyMu12TriggerEfficiencyCorrection = false;
 bool fillMu5 = false;
@@ -34,16 +34,15 @@ bool apply_JEU_shift_up = false;
 bool apply_JEU_shift_down = false;
 // select dataset
 bool doSingleMuonSample = false;
-bool doMinBiasSample = false;
-bool doHardProbesSample = true;
+bool doMinBiasSample_Part1 = true;
+bool doMinBiasSample_Part2 = false;
+bool doMinBiasSample_Part3 = false;
+bool doMinBiasSample_Part4 = false;
+bool doHardProbesSample = false;
 bool doNoRhoModificationSample = false;
 bool doWithRhoModificationSample = false;
 // reweight functions (for bkg subtraction)
 bool doHiBinReweightToHardProbesJet80 = false;
-bool useCaloJetsOverride = true; // overrides typical PF jet collection with caloJets
-// Correct rawpt with the JEC text files (Autumn18 HI, calo or PF to match the
-// collection) instead of taking the forest's jtpt. The PbPb calo forest's
-// jtpt/rawpt is ~1.09-1.11, PF-sized, against 1.2-1.6 for the AK4Calo files.
-// Adds "_manualJEC" to the output name.
-bool useManualJEC = true;
+bool useCaloJetsOverride = true;
 bool useFlowJetsOverride = false;
+bool useManualJEC = true;
