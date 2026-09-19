@@ -1,4 +1,4 @@
-const int NCentralityIndices = 17;
+const int NCentralityIndices = 19;
 const int hiBin_C0_lo = 0;
 const int hiBin_C0_hi = 10;
 const int hiBin_C1_hi = 20;
@@ -16,4 +16,6 @@ const int hiBin_C12_hi = 130;
 const int hiBin_C13_hi = 140;
 const int hiBin_C14_hi = 150;
 const int hiBin_C15_hi = 160;
-int centEdges[NCentralityIndices] = {hiBin_C0_lo, hiBin_C0_hi, hiBin_C1_hi, hiBin_C2_hi, hiBin_C3_hi, hiBin_C4_hi, hiBin_C5_hi, hiBin_C6_hi, hiBin_C7_hi, hiBin_C8_hi, hiBin_C9_hi, hiBin_C10_hi, hiBin_C11_hi, hiBin_C12_hi, hiBin_C13_hi, hiBin_C14_hi, hiBin_C15_hi};
+const int hiBin_C16_hi = 170;
+const int hiBin_C17_hi = 180;
+int centEdges[NCentralityIndices] = {hiBin_C0_lo, hiBin_C0_hi, hiBin_C1_hi, hiBin_C2_hi, hiBin_C3_hi, hiBin_C4_hi, hiBin_C5_hi, hiBin_C6_hi, hiBin_C7_hi, hiBin_C8_hi, hiBin_C9_hi, hiBin_C10_hi, hiBin_C11_hi, hiBin_C12_hi, hiBin_C13_hi, hiBin_C14_hi, hiBin_C15_hi, hiBin_C16_hi, hiBin_C17_hi};

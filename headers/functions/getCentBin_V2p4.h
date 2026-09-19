@@ -5,4 +5,4 @@
 // intervals. Keeps its historical 16-class behaviour (ultra-fine).
 #include "getCentBinImpl.h"
 
-inline int getCentBin(int hiBin){ return getCentBinUpTo(hiBin, 16); }
+inline int getCentBin(int hiBin){ return getCentBinUpTo(hiBin, 18); }
