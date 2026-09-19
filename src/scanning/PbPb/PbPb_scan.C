@@ -338,7 +338,10 @@ void PbPb_scan(int group = 1){
     TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
     TString outputDatasetName = "";
     outputDatasetName = configureOutputDatasetName(doSingleMuonSample,
-						   doMinBiasSample,
+						   doMinBiasSample_Part1,
+						   doMinBiasSample_Part2,
+						   doMinBiasSample_Part3,
+						   doMinBiasSample_Part4,
 						   doHardProbesSample,
 						   applyMinBiasTrigger,
 						   applyJet60Trigger,
