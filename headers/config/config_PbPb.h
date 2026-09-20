@@ -17,7 +17,7 @@ bool doWDecayFilter = true;
 // High Level Triggers (HLTs)
 bool applyJet60Trigger = false;
 bool applyJet80Trigger = false;
-bool applyJet100Trigger = true;
+bool applyJet100Trigger = false;
 bool applyMinBiasTrigger = false;
 bool applyMu12TriggerEfficiencyCorrection = false;
 bool fillMu5 = false;
@@ -35,8 +35,8 @@ bool apply_JEU_shift_down = false;
 // select dataset
 bool doSingleMuonSample = false;
 bool doMinBiasSample_Part1 = false;
-bool doMinBiasSample_Part2 = false;
-bool doMinBiasSample_Part3 = true;
+bool doMinBiasSample_Part2 = true;
+bool doMinBiasSample_Part3 = false;
 bool doMinBiasSample_Part4 = false;
 bool doHardProbesSample = false;
 bool doNoRhoModificationSample = false;
