@@ -35,14 +35,14 @@ bool apply_JEU_shift_down = false;
 // select dataset
 bool doSingleMuonSample = false;
 bool doMinBiasSample_Part1 = false;
-bool doMinBiasSample_Part2 = false;
+bool doMinBiasSample_Part2 = true;
 bool doMinBiasSample_Part3 = false;
 bool doMinBiasSample_Part4 = false;
-bool doHardProbesSample = true;
+bool doHardProbesSample = false;
 bool doNoRhoModificationSample = false;
 bool doWithRhoModificationSample = false;
 // reweight functions (for bkg subtraction)
 bool doHiBinReweightToHardProbesJet80 = false;
-bool useCaloJetsOverride = true;
+bool useCaloJetsOverride = false;
 bool useFlowJetsOverride = false;
 bool useManualJEC = true;
