@@ -150,7 +150,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
   // TString input = Form("%s%s_%i.root",inputDataset.Data(),inputFileName.Data(),group);
 
   std::string inputFileList = "";
-  inputFileList = "../../../fileNames/fileNames_PH_DiJet_withCaloAndFlowJets_fix_partial.txt";
+  inputFileList = "../../../fileNames/fileNames_PH_DiJet_withCaloAndFlowJets_fix2_partial.txt";
 
   std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
   if(!instr.is_open()){
