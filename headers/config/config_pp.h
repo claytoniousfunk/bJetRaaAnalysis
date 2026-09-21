@@ -39,10 +39,5 @@ bool doSingleMuonSample = false;
 bool doMinBiasSample = true;
 bool doHighEGJetSample = false;
 // jet mods
-bool useCaloJetsOverride = true; // overrides typical PF jet collection with caloJets
-// Correct rawpt with the JEC text files (calo or PF, matching the collection)
-// instead of taking the forest's jtpt. The forests disagree for calo jets: the
-// re-made ZeroBias forest applies the proper AK4Calo correction (~1.4-1.9x)
-// while the HighEGJet and SingleMuon forests apply ~1.12-1.15x, PF-sized.
-// Adds "_manualJEC" to the output name.
+bool useCaloJetsOverride = true;
 bool useManualJEC = true;
