@@ -44,10 +44,22 @@ TF1 *fitFxn_PYTHIA_JERCorrection;
 // JER-correction function
 #include "../../../headers/fitFunctions/fitFxn_PYTHIA_JERCorrection.h"
 
-// HLT fit params/fxn
-#include "../../../headers/fitParameters/HLTFitParams_PbPb.h"
+// HLT fit params/fxn -- MinBias Parts 1-4 measurement (2026-09-21)
+#include "../../../headers/fitParameters/HLTFitParams_PbPb_MinBias.h"
 TF1 *fitFxn_PbPb_HLT_C4, *fitFxn_PbPb_HLT_C3, *fitFxn_PbPb_HLT_C2, *fitFxn_PbPb_HLT_C1;
 #include "../../../headers/fitFunctions/fitFxn_PbPb_HLT.h"
+
+// The HLT efficiency is measured in the nominal classes (0-10, 10-30, 30-50,
+// 50-80%), so the fit is chosen from hiBin, not from CentralityIndex: under
+// CENT_ULTRAFINE, CentralityIndex 1-4 are the 0-5 ... 15-20% slices. Events in
+// 80-90% (hiBin 160-180) take the 50-80% fit, an extrapolation; they are
+// outside the analysis classes.
+TF1* getHLTFitFxn(int hiBin){
+  if(hiBin < 20) return fitFxn_PbPb_HLT_C1;
+  else if(hiBin < 60) return fitFxn_PbPb_HLT_C2;
+  else if(hiBin < 100) return fitFxn_PbPb_HLT_C3;
+  else return fitFxn_PbPb_HLT_C4;
+}
 
 // eta-phi mask function
 #include "../../../headers/functions/etaPhiMask.h"
@@ -400,6 +412,20 @@ void PbPb_scan(int group = 1){
     JetUncertainty JEU(JEU_path.c_str());
     /// print out some info
     readConfig();
+
+    // The HLT efficiency fits exist only for the nominal classes. Under any
+    // other centrality scheme each slice gets the fit of the nominal class it
+    // falls in (getHLTFitFxn, by hiBin), i.e. that class's average turn-on,
+    // not one measured for the slice; 80-90% takes the 50-80% fit.
+    if(CENT_SCHEME != CENT_NOMINAL){
+      std::cout << "\033[1;33m WARNING: centrality scheme is not CENT_NOMINAL (suffix \""
+                << CENT_SCHEME_SUFFIX << "\"). The HLT_HIL3Mu12 efficiency fits "
+                << "(HLTFitParams_PbPb_MinBias.h) are binned in 0-10/10-30/30-50/50-80% only; "
+                << "each slice uses the fit of its nominal class, and 80-90% uses the 50-80% fit. "
+                << "This affects the Z pair weights always, and the muon-tagged jets when "
+                << "applyMu12TriggerEfficiencyCorrection is on (currently "
+                << (applyMu12TriggerEfficiencyCorrection ? "on" : "off") << ").\033[0m" << std::endl;
+    }
 
 
     // define histograms
@@ -1089,11 +1115,7 @@ void PbPb_scan(int group = 1){
 	                                          muPtRel, muPt, muEta, muPhi, muJetDr);
 
 	if(applyMu12TriggerEfficiencyCorrection){
-	  if(CentralityIndex == 4) w_trig = w / fitFxn_PbPb_HLT_C4->Eval(muPt);
-	  else if(CentralityIndex == 3) w_trig = w / fitFxn_PbPb_HLT_C3->Eval(muPt);
-	  else if(CentralityIndex == 2) w_trig = w / fitFxn_PbPb_HLT_C2->Eval(muPt);
-	  else if(CentralityIndex == 1) w_trig = w / fitFxn_PbPb_HLT_C1->Eval(muPt);
-	  else{};
+	  w_trig = w / getHLTFitFxn(em->hiBin)->Eval(muPt);
 	}
 
 	// Fill the jet/event histograms
@@ -1432,11 +1454,8 @@ void PbPb_scan(int group = 1){
 
 	    double w_mk = w;
 
-	    if(CentralityIndex == 4) w_mk = w / (1. - (1. - fitFxn_PbPb_HLT_C4->Eval(muPt_m))*(1. - fitFxn_PbPb_HLT_C4->Eval(muPt_k)));
-	    else if(CentralityIndex == 3) w_mk = w / (1. - (1. - fitFxn_PbPb_HLT_C3->Eval(muPt_m))*(1. - fitFxn_PbPb_HLT_C3->Eval(muPt_k)));
-	    else if(CentralityIndex == 2) w_mk = w / (1. - (1. - fitFxn_PbPb_HLT_C2->Eval(muPt_m))*(1. - fitFxn_PbPb_HLT_C2->Eval(muPt_k)));
-	    else if(CentralityIndex == 1) w_mk = w / (1. - (1. - fitFxn_PbPb_HLT_C1->Eval(muPt_m))*(1. - fitFxn_PbPb_HLT_C1->Eval(muPt_k)));
-	    else{};
+	    TF1 *fitFxn_HLT = getHLTFitFxn(em->hiBin);
+	    w_mk = w / (1. - (1. - fitFxn_HLT->Eval(muPt_m))*(1. - fitFxn_HLT->Eval(muPt_k)));
 
 	    if(em->muCharge->at(m)*em->muCharge->at(k) == -1){
 
