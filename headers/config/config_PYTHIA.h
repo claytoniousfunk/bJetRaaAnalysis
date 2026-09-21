@@ -62,5 +62,9 @@ bool fillMu12 = true;
 // jet mods
 bool useCaloJetsOverride = false;
 bool useManualJEC = true;
+// for the response scan: keep only even- or odd-indexed events, giving the two
+// statistically independent halves unfoldClosureTest.C trains and tests on
+bool onlyEvenEvents = false;
+bool onlyOddEvents = false;
 
 

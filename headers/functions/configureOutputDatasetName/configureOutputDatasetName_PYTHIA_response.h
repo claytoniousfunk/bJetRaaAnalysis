@@ -30,7 +30,9 @@ TString configureOutputDatasetName(TString generator,
 				   double muPtCut,
 				   bool doPThatCorrelationFilter,
 				   bool useCaloJetsOverride,
-				   bool useManualJEC)
+				   bool useManualJEC,
+				   bool onlyEvenEvents,
+				   bool onlyOddEvents)
 {
 
   TString result = "output";
@@ -43,6 +45,9 @@ TString configureOutputDatasetName(TString generator,
   if(useCaloJetsOverride) result.Append("_caloJets");
   // jet pT from the JEC text files rather than the forest jtpt
   if(useManualJEC) result.Append("_manualJEC");
+  // half-sample outputs for the closure test
+  if(onlyEvenEvents) result.Append("_evenEvents");
+  if(onlyOddEvents)  result.Append("_oddEvents");
 
   // general information
   result.Append(Form("_pThat-%2.0f",pThat));

@@ -25,6 +25,23 @@
 //          root -l 'unfoldClosureTest.C("C1",15,"weighted","dataMC")'
 //          root -l 'unfoldClosureTest.C("C1",15,"weighted","tilt:0.5")'
 //          root -l 'unfoldClosureTest.C("C3",10,"weighted","none",100.,300.)'
+//          root -l 'unfoldClosureTest.C("C1",10,"weighted","tilt:0.5",80.,300.,true)'   // calo jets
+//
+//  CALO JETS (last argument).  Uses the manual-JEC calo response scans' even and
+//  odd halves from this repo -- the newest files matching
+//    PYTHIA/PYTHIA_DiJet_response_caloJets_manualJEC*{even,odd}Events*.root
+//    PYTHIAHYDJET/PYTHIAHYDJET_response_DiJet_caloJets_manualJEC*{even,odd}Events*.root
+//  produced with onlyEvenEvents / onlyOddEvents in config_PYTHIA.h and
+//  config_PYTHIAHYDJET.h.  Differences from PF, all forced by the calo samples:
+//    - the response is built from allJets, NOT the sum of named flavours.  Calo
+//      flavour comes from refparton_flavor, which leaves ~17-21% of real jets
+//      unassigned (x); dropping them would discard a fifth of the sample, and
+//      pp calo has no xJets histogram to subtract anyway.
+//    - no pThat-unweighted calo production exists ("unweighted" modes refuse).
+//    - "dataMC" is refused: its data files are the PF-era scans, and the
+//      manual-JEC PbPb calo data use 5% classes that do not map onto C1..C4.
+//      "none" and "tilt" work unchanged.
+//    - outputs carry "_caloJets" so they never overwrite the PF results.
 //
 //////////////////////////////////////////////////////////////////////////////////////
 
@@ -43,6 +60,7 @@
 struct SampleConfig {
   bool    ok    = false;
   bool    isPP  = false;
+  bool    isCalo = false;
   TString label;        // short tag used in output file names
   TString title;        // pretty title drawn on the plots
   TString trainFile;    // even half, pThat-weighted   -> response + prior
@@ -59,6 +77,38 @@ struct SampleConfig {
   TString unmRecoName;  // reco jets with no gen match  -> fakes
   TString unmGenName;   // gen  jets with no reco match -> inefficiency
 };
+
+// newest file matching a shell glob, or "" if none
+TString newestMatching(const TString &pattern){
+  TString s = gSystem->GetFromPipe(Form("ls -1t %s 2>/dev/null | head -1", pattern.Data()));
+  return s.Strip(TString::kBoth);
+}
+
+// Point an already-built config at the calo half-sample response scans. The
+// histogram names are identical between the calo and PF response scans, so only
+// the files, the title and the flags change.
+void applyCaloConfig(SampleConfig &c){
+  const TString dir  = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/";
+  const TString stem = c.isPP ? "PYTHIA/PYTHIA_DiJet_response_caloJets_manualJEC"
+                              : "PYTHIAHYDJET/PYTHIAHYDJET_response_DiJet_caloJets_manualJEC";
+  c.isCalo       = true;
+  c.trainFile    = newestMatching(dir + stem + "*evenEvents*.root");
+  c.testFile     = newestMatching(dir + stem + "*oddEvents*.root");
+  c.trainFileUnw = "";
+  c.title       += ", calo jets";
+  if(c.trainFile.IsNull() || c.testFile.IsNull()){
+    std::cout << "unfoldClosureTest: calo half-sample response scans not found:\n"
+              << "   even: " << (c.trainFile.IsNull() ? TString("MISSING") : c.trainFile) << "\n"
+              << "   odd : " << (c.testFile.IsNull()  ? TString("MISSING") : c.testFile)  << "\n"
+              << "   looked for " << dir << stem << "*{even,odd}Events*.root\n"
+              << "   Produce them with useCaloJetsOverride = true and onlyEvenEvents / onlyOddEvents\n"
+              << "   in " << (c.isPP ? "config_PYTHIA.h (PYTHIA_scan_response.C)"
+                                     : "config_PYTHIAHYDJET.h (PYTHIAHYDJET_scan_response.C)") << ".\n";
+    c.ok = false;
+    return;
+  }
+  std::cout << "calo response halves:\n   even: " << c.trainFile << "\n   odd : " << c.testFile << "\n";
+}
 
 SampleConfig getSampleConfig(TString sample){
 
@@ -790,7 +840,8 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
                        TString responseMode = "weighted",  // see below
                        TString distortion   = "none",      // see below
                        double ptLow  =  80.,               // metric window, gen pT
-                       double ptHigh = 300.){
+                       double ptHigh = 300.,
+                       bool   caloJets = false){           // calo response halves
 
   //  The spectrum that gets unfolded, and the truth it is compared to, are
   //  ALWAYS the pThat-weighted ones.  Only the response changes:
@@ -836,6 +887,7 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
   }
 
   SampleConfig cfg = getSampleConfig(sample);
+  if(cfg.ok && caloJets) applyCaloConfig(cfg);
   if(!cfg.ok) return;
 
   if(useUnwMatrix && cfg.trainFileUnw.IsNull()){
@@ -846,8 +898,9 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
 
   const TString trainFile = useUnwMatrix ? cfg.trainFileUnw : cfg.trainFile;
 
-  //  drop unassigned-flavour ("x") jets from the response -- see loadResponse
-  const bool removeXJets = true;
+  //  drop unassigned-flavour ("x") jets from the response -- see loadResponse.
+  //  Not for calo: there x is refparton_flavor failing on ~17-21% of real jets.
+  const bool removeXJets = !cfg.isCalo;
 
   //  Fold the unmatched jets into the response.  Reco jets with no gen partner
   //  become RooUnfold "fakes"; gen jets with no reco partner become
@@ -870,6 +923,7 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
     respTitle = "response: unwgt. matrix, wgt. prior";
     outTag    = Form("%s_unwMatrix",cfg.label.Data());
   }
+  if(cfg.isCalo) outTag += "_caloJets";   // never overwrite the PF outputs
 
   //---- distortion selection ---------------------------------------------------
   distortion.ToLower();
@@ -880,6 +934,12 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
   if(distortion != "none" && !doDistort){
     std::cout << "unfoldClosureTest: unknown distortion \"" << distortion << "\"\n"
               << "                   choose one of: none, dataMC, tilt, tilt:<exponent>\n";
+    return;
+  }
+
+  if(cfg.isCalo && doDataMC){
+    std::cout << "unfoldClosureTest: \"dataMC\" is not available for calo jets -- its data files are\n"
+              << "                   the PF-era scans. Use \"none\" or \"tilt[:exponent]\".\n";
     return;
   }
 

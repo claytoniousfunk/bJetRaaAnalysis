@@ -137,6 +137,11 @@ void PYTHIA_scan_response(int group = 1){
 
   std::cout << "input dataset = " << input << std::endl;
 
+  if(onlyEvenEvents && onlyOddEvents){
+    cout << "ERROR: onlyEvenEvents and onlyOddEvents are both set in config_PYTHIA.h; that selects no events. Exiting..." << endl;
+    return;
+  }
+
   cout << "jet collection = " << (useCaloJetsOverride ? "ak4Calo" : "ak4PF")
        << ", jet pT from " << (useManualJEC ? "manual JEC on rawpt" : "forest jtpt") << endl;
 
@@ -175,7 +180,9 @@ void PYTHIA_scan_response(int group = 1){
 						 muPtCut,
 						 doPThatCorrelationFilter,
 						 useCaloJetsOverride,
-						 useManualJEC);
+						 useManualJEC,
+						 onlyEvenEvents,
+						 onlyOddEvents);
 
   //outputDatasetName.Append("_noNeutrinoInfo");
 
@@ -471,11 +478,10 @@ void PYTHIA_scan_response(int group = 1){
 
     if(evi==0) cout << "Processing events..." << endl;
 
-    // // only take odd events
-    //if(evi % 2 == 0) continue;
-
-    // // only take even events
-    //if(evi % 2 == 1) continue;
+    // half-sample selection for the closure test (config_PYTHIA.h), same
+    // convention as PYTHIAHYDJET_scan_response.C
+    if(onlyEvenEvents && evi % 2 == 1) continue;
+    if(onlyOddEvents  && evi % 2 == 0) continue;
 
     em->getEvent(evi);
 
