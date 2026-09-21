@@ -40,8 +40,8 @@ const char *caloFile =
   "WDecayFilter_2026-9-10_ultraFineCentBins.root";
 const char *pfFile =
   "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/"
-  "PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_"
-  "WDecayFilter_2026-8-13_ultraFineCentBins.root";
+  "PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_2026-9-10_ultraFineCentBins.root";
+
 
 const char *histBase = "h_inclRecoJetPt";   // JEC-corrected inclusive reco jets
 const char *outDir   = "../../../../figures/jetCollection/";

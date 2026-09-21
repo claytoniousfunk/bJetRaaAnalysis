@@ -14,7 +14,7 @@
 //                                          the muon and the axis is pulled onto
 //                                          it -- the geometry the data has
 //
-// Both are drawn SHAPE-ONLY, unit-normalised over the plotted range, because the
+// Both are drawn SHAPE-ONLY, unit-normalized over the plotted range, because the
 // question here is how the distribution moved, not how the yield changed. The
 // per-event rates are printed to the terminal for the yield side of it.
 //
@@ -61,7 +61,7 @@ const int    nEdgePtRel  = (int)(sizeof(edgePtRel)/sizeof(double)) - 1;
 const double edgeDR[] = {0,0.05,0.10,0.15,0.20,0.25,0.30,0.35,0.40,0.45,0.50};
 const int    nEdgeDR  = (int)(sizeof(edgeDR)/sizeof(double)) - 1;
 
-// one canvas: two shapes overlaid, unit-normalised, with a new/old ratio panel
+// one canvas: two shapes overlaid, unit-normalized, with a new/old ratio panel
 // mOld/mNew are passed in rather than taken from the drawn histograms: those
 // have been rebinned to wide variable bins, so GetMean() on them is computed
 // from bin centres and is wrong by ~10%.
@@ -83,7 +83,7 @@ void drawShape(TH1D *hOld, TH1D *hNew, double mOld, double mNew,
 
   hOld->GetXaxis()->SetRangeUser(xMin, xMax);
   hOld->GetXaxis()->SetLabelSize(0);
-  hOld->GetYaxis()->SetTitle("normalised to unit area");
+  hOld->GetYaxis()->SetTitle("normalized to unit area");
   hOld->GetYaxis()->SetTitleSize(0.050); hOld->GetYaxis()->SetTitleOffset(1.55);
   hOld->GetYaxis()->SetLabelSize(0.042);
   hOld->SetTitle(""); hOld->SetMinimum(0.); hOld->SetMaximum(ymax*1.65);

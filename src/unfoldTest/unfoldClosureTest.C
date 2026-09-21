@@ -295,7 +295,7 @@ TH1D* loadDataSpectrum(const SampleConfig &cfg){
 //  onto the MC binning.  The data and response histograms do not share a binning
 //  (pp data is 96 bins from 20 GeV, the response 100 from 0), so everything is
 //  matched by bin centre and compared as densities rather than by bin index.
-//  Show where the distortion comes from: the normalised data and MC reco
+//  Show where the distortion comes from: the normalized data and MC reco
 //  spectra on top, their ratio and the fitted power law underneath.  The fit is
 //  drawn solid inside the fit range and dashed where it is extrapolated, since
 //  the weight is applied over the whole gen axis but only constrained here.
@@ -324,7 +324,7 @@ void drawDistortionDerivation(TH1D *h_data, TH1D *h_mcReco, TGraphErrors *g_rati
   h_data->SetLineColor(kBlack); h_data->SetMarkerColor(kBlack);
   h_data->SetMarkerStyle(20); h_data->SetMarkerSize(0.8); h_data->SetLineWidth(2);
   h_data->GetXaxis()->SetRangeUser(xLo,xHi);
-  h_data->GetYaxis()->SetTitle("normalised  (1/N) d#it{N}/d#it{p}_{T}");
+  h_data->GetYaxis()->SetTitle("normalized  (1/N) d#it{N}/d#it{p}_{T}");
   h_data->GetYaxis()->SetTitleSize(0.055); h_data->GetYaxis()->SetTitleOffset(1.25);
   h_data->GetYaxis()->SetLabelSize(0.045);
   h_data->Draw("p");
@@ -398,7 +398,7 @@ bool buildDataMCDistortion(TH1D *h_data, TH1D *h_mcReco,
   r->SetDirectory(0);
   r->Reset();
 
-  //  normalised copies, kept only for the derivation plot
+  //  normalized copies, kept only for the derivation plot
   TH1D *h_dataN = (TH1D*) h_data  ->Clone("h_data_norm");   h_dataN->SetDirectory(0);
   TH1D *h_mcN   = (TH1D*) h_mcReco->Clone("h_mcReco_norm"); h_mcN  ->SetDirectory(0);
   for(int b = 1; b <= h_dataN->GetNbinsX(); b++){
