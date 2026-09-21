@@ -1,6 +1,7 @@
 // general ROOT/C includes
 #include <iostream>
 #include "TFile.h"
+#include "TSystem.h"   // gSystem, for the output-directory check
 #include "TRandom.h"
 #include "TTree.h"
 #include "TH1F.h"
@@ -187,6 +188,14 @@ void PYTHIA_scan_response(int group = 1){
   
 
   std::cout << "output dataset = " << output << std::endl;
+
+  // same check as PYTHIA_scan.C: stop before any work if the output directory
+  // was not created, rather than fail at the write after the whole job
+  if(gSystem->AccessPathName(Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()))){
+    std::cout << "\033[1;31m Output directory not found: \033[0m "
+              << Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()) << std::endl;
+    return;
+  }
 
   // TString output = Form("/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/output_PYTHIA_response_pThat-15_inclJets/PYTHIA_DiJet_scan_output_%i.root",group);
 
