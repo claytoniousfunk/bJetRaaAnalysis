@@ -337,6 +337,13 @@ void PYTHIAHYDJET_scan(int group = 1){
 
     std::cout << "input dataset = " << input << std::endl;
 
+    // The jet tree is hard-coded to akCs4PF, so a calo request would run on PF
+    // jets with a PF JEC. Refuse before any output directory is created.
+    if(useCaloJetsOverride){
+      cout << "ERROR: useCaloJetsOverride is not implemented in PYTHIAHYDJET_scan.C (jet tree is akCs4PF). Exiting..." << endl;
+      return;
+    }
+
     TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
 
     TString outputDatasetName = "";
@@ -399,7 +406,8 @@ void PYTHIAHYDJET_scan(int group = 1){
 						   fillMu5,
 						   fillMu7,
 						   fillMu12,
-						   doPThatCorrelationFilter);
+						   doPThatCorrelationFilter,
+						   useManualJEC);
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
 
@@ -1218,7 +1226,7 @@ void PYTHIAHYDJET_scan(int group = 1){
 	  JEC.SetJetEta(em->jeteta[j]);
 	  JEC.SetJetPhi(em->jetphi[j]);
       
-	  double testJetPt_j = JEC.GetCorrectedPT();
+	  double testJetPt_j = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[j];
 	  double testJetEta_j = em->jeteta[j];
 	  double testJetPhi_j = em->jetphi[j];
 	  int testJetFlavor_j = em->matchedPartonFlavor[j];
@@ -1317,7 +1325,8 @@ void PYTHIAHYDJET_scan(int group = 1){
 	JEC.SetJetEta(em->jeteta[i]);
 	JEC.SetJetPhi(em->jetphi[i]);
 
-	double recoJetPt_i = JEC.GetCorrectedPT();  // recoJetPt
+	// manual JEC on rawpt, or the forest jtpt (config_PYTHIAHYDJET.h: useManualJEC)
+	double recoJetPt_i = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[i];  // recoJetPt
 	double refJetPt_i = em->refpt[i];
 	double recoJetPt_JERSmear_i = recoJetPt_i;
 	double recoJetPt_JEUShiftUp_i = recoJetPt_i;

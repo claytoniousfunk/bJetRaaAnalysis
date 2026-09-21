@@ -58,11 +58,14 @@ TString configureOutputDatasetName(TString generator,
 				   bool fillMu5,
 				   bool fillMu7,
 				   bool fillMu12,
-				   bool doPThatCorrelationFilter)
+				   bool doPThatCorrelationFilter,
+				   bool useManualJEC)
 {
 
   TString result = "output";
   result.Append(Form("_%s",generator.Data()));
+  // jet pT from the JEC text files rather than the forest jtpt
+  if(useManualJEC) result.Append("_manualJEC");
 
   TString datasetIndicator = "";
   if(doMuJetSample) datasetIndicator = "_MuJet";

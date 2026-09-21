@@ -61,5 +61,11 @@ bool fillMu7 = false;
 bool fillMu12 = true;
 // jet mods
 bool useCaloJetsOverride = true; // overrides typical PF jet collection with caloJets
+// Correct rawpt with the JEC text files (calo or PF, matching the collection)
+// instead of taking the forest's jtpt. The forest corrects calo jets with the
+// AK4PF payload (ak4CaloJetSequence_pp_mc_cff.py: payload = "AK4PF"), leaving
+// them 22% low against gen; AK4Calo L2Relative on rawpt closes at 1.014. For PF
+// the two agree exactly. Adds "_manualJEC" to the output name.
+bool useManualJEC = true;
 
 

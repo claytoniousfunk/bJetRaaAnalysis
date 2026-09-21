@@ -28,7 +28,9 @@ TString configureOutputDatasetName(TString generator,
 				   bool apply_JEU_shift_up,
 				   bool apply_JEU_shift_down,
 				   double muPtCut,
-				   bool doPThatCorrelationFilter)
+				   bool doPThatCorrelationFilter,
+				   bool useCaloJetsOverride,
+				   bool useManualJEC)
 {
 
   TString result = "output";
@@ -37,6 +39,10 @@ TString configureOutputDatasetName(TString generator,
   TString datasetIndicator = "";
   if(doDiJetSample) datasetIndicator = "_DiJet_response";
   result.Append(datasetIndicator);
+
+  if(useCaloJetsOverride) result.Append("_caloJets");
+  // jet pT from the JEC text files rather than the forest jtpt
+  if(useManualJEC) result.Append("_manualJEC");
 
   // general information
   result.Append(Form("_pThat-%2.0f",pThat));

@@ -97,6 +97,17 @@ TF1 *fitFxn_hiBin, *fitFxn_vz, *fitFxn_jetPt, *fitFxn_PYTHIA_JESb, *fitFxn_PYTHI
 #include "../../../headers/functions/configureOutputDatasetName/configureOutputDatasetName_PYTHIA_response.h"
 
 
+// Flavor for calo jets, identical to PYTHIA_scan.C. ak4CaloJetAnalyzer/t has no
+// jtPartonFlavor, jtHadronFlavor or bHadronNumber, so calo jets fall back to
+// refparton_flavor, which marks a jet with no matched parton as -999 where
+// jtPartonFlavor uses 0; map it to 0 so those jets land in xJets. Note the two
+// definitions disagree on the same jet: refparton_flavor recovers only ~39% of
+// the jets jtPartonFlavor calls b (plotCaloPFFlavorMatch_PYTHIA.C).
+inline int caloJetPartonFlavor(int refpartonFlavor)
+{
+  return refpartonFlavor < -900 ? 0 : refpartonFlavor;
+}
+
 void PYTHIA_scan_response(int group = 1){
 
   std::cout << "setting pthat cut to 15...\n";
@@ -108,18 +119,25 @@ void PYTHIA_scan_response(int group = 1){
   std::cout << "turning on pThat correlation filter...\n";
   doPThatCorrelationFilter = true;
 
-  TString inputDataset = "";
-  TString inputFileName = "";
+  // Full HiForest from the same file list PYTHIA_scan.C reads, not the skims
+  // (formerly /eos/user/c/cbennett/skims/output_skim_PYTHIA_DiJet_withGS_withNeutrinos/
+  // PYTHIA_DiJet_skim_output_<group>.root). The tree names below changed with it.
+  std::string inputFileList = "../../../fileNames/fileNames_PYTHIA_DiJet_withGS.txt";
 
-
-  inputDataset = "/eos/user/c/cbennett/skims/output_skim_PYTHIA_DiJet_withGS_withNeutrinos/";
-  //inputDataset = "/eos/user/c/cbennett/skims/output_PYTHIA_DiJet_noRecoJetPtCut/";
-  inputFileName = "PYTHIA_DiJet_skim_output";
-
-  TString input = "";
-  input = Form("%s%s_%i.root",inputDataset.Data(),inputFileName.Data(),group);
+  std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
+  if(!instr.is_open()){ cout << "filelist not found!! Exiting..." << endl; return; }
+  std::string filename; Int_t ifile = 0;
+  while(instr >> filename){ ifile++; if(ifile == group) break; }
+  if(ifile < group){
+    cout << "File index " << group << " out of range (list has " << ifile << " files). Exiting." << endl;
+    return;
+  }
+  TString input = TString(filename.c_str());
 
   std::cout << "input dataset = " << input << std::endl;
+
+  cout << "jet collection = " << (useCaloJetsOverride ? "ak4Calo" : "ak4PF")
+       << ", jet pT from " << (useManualJEC ? "manual JEC on rawpt" : "forest jtpt") << endl;
 
   TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
 
@@ -154,7 +172,9 @@ void PYTHIA_scan_response(int group = 1){
 						 apply_JEU_shift_up,
 						 apply_JEU_shift_down,
 						 muPtCut,
-						 doPThatCorrelationFilter);
+						 doPThatCorrelationFilter,
+						 useCaloJetsOverride,
+						 useManualJEC);
 
   //outputDatasetName.Append("_noNeutrinoInfo");
 
@@ -177,11 +197,21 @@ void PYTHIA_scan_response(int group = 1){
 
   // JET ENERGY CORRECTIONS
   vector<string> Files;
-  
-  Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_MC_L2Relative_AK4PF.txt"); // LXPLUS
+  // Calo jets need the AK4Calo payload: the forest corrects them with AK4PF,
+  // which leaves them 22% low against gen. There is no Spring18 MC AK4Calo
+  // file; the DATA L2Relative closes calo at 1.014 on PYTHIA. L2L3Residual is
+  // data-only and is not applied to MC. Same choice as PYTHIA_scan.C.
+  if(useCaloJetsOverride){
+    Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2Relative_AK4Calo.txt");
+  }
+  else{
+    Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_MC_L2Relative_AK4PF.txt"); // LXPLUS
+  }
 
   JetCorrector JEC(Files);
 
+  // No Spring18 AK4Calo uncertainty file exists, so calo also uses the AK4PF
+  // one. Only matters if apply_JEU_shift_up/down is turned on.
   JetUncertainty JEU("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_MC_Uncertainty_AK4PF.txt");
 
   // WEIGHT FUNCTIONS
@@ -366,16 +396,18 @@ void PYTHIA_scan_response(int group = 1){
   em->AASetup = AASetup_status;
   cout << "	Initializing variables ... " << endl;
   em->init();
+  // forest tree names, as in PYTHIA_scan.C (the skim names were jetTree,
+  // muonTree, hltTree, genParticleTree). No track tree: the forest has none and
+  // nothing in this scan reads tracks.
   cout << "	Loading jet..." << endl;
-  em->loadJet(jetTreeString);
+  if(useCaloJetsOverride) em->loadJet("ak4CaloJetAnalyzer/t");
+  else em->loadJet("ak4PFJetAnalyzer/t");
   cout << "	Loading muon..." << endl;
-  em->loadMuon(muonTreeString);
+  em->loadMuon("ggHiNtuplizerGED/EventTree");
   cout << "	Loading muon triggers..." << endl;
-  em->loadHLT(hltString);
-  cout << "	Loading tracks..." << endl;
-  em->loadTrack("ppTrack/trackTree");
+  em->loadHLT("hltanalysis/HltTree");
   cout << "	Loading gen particles..." << endl;
-  em->loadGenParticle("genParticleTree");
+  em->loadGenParticle("HiGenParticleAna/hi");
   cout << "	Variables initilized!" << endl << endl ;
   int NEvents = em->evtTree->GetEntries();
   cout << "	Number of events = " << NEvents << endl;
@@ -492,10 +524,16 @@ void PYTHIA_scan_response(int group = 1){
       JEC.SetJetPT(em->rawpt[i]);
       JEC.SetJetEta(em->jeteta[i]);
       JEC.SetJetPhi(em->jetphi[i]);
-      double recoJetPt_i = JEC.GetCorrectedPT();
+      // manual JEC on rawpt (AK4Calo or AK4PF, matching the collection), or the
+      // forest jtpt (config_PYTHIA.h: useManualJEC)
+      double recoJetPt_i = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[i];
       double recoJetEta_i = em->jeteta[i];
       double recoJetPhi_i = em->jetphi[i];
-      int recoJetFlavor_i = em->refparton_flavorForB[i];
+      // jtPartonFlavor, as at the gen-matched site below and in PYTHIA_scan.C.
+      // The skims carried refparton_flavorForB; the forest does not, and reading
+      // it would leave every jet in whatever the array last held.
+      int recoJetFlavor_i = useCaloJetsOverride ? caloJetPartonFlavor(em->refparton_flavor[i])
+                                                : (int) em->partonFlavor[i];
       double minDr_i = 100.0;
       if(fabs(recoJetEta_i) > 1.6) continue;
       if(recoJetPt_i > leadingRecoJetPt) leadingRecoJetPt = recoJetPt_i;
@@ -604,7 +642,7 @@ void PYTHIA_scan_response(int group = 1){
 	    JEC.SetJetEta(em->jeteta[k]);
 	    JEC.SetJetPhi(em->jetphi[k]);
 	    
-	    matchedRecoJetPt = JEC.GetCorrectedPT();
+	    matchedRecoJetPt = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[k];
 	    if(matchedRecoJetPt > leadingMatchedRecoJetPt) leadingMatchedRecoJetPt = matchedRecoJetPt;
 	    //matchedRecoJetPt = em->jetpt[k];
 	    matchedRawJetPt = em->rawpt[k];
@@ -692,7 +730,8 @@ void PYTHIA_scan_response(int group = 1){
 	}
       } // end recoJet loop
 
-      jetFlavorInt = em->partonFlavor[recoJetFlavorFlag];
+      jetFlavorInt = useCaloJetsOverride ? caloJetPartonFlavor(em->refparton_flavor[recoJetFlavorFlag])
+                                         : (int) em->partonFlavor[recoJetFlavorFlag];
       //if(fabs(jetFlavorInt) == 5 && bHadronNumber == 2) jetFlavorInt = 17; // 17 = bJet from gluon-splitting
 
 

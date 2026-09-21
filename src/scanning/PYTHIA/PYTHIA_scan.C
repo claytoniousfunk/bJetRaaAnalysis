@@ -338,7 +338,8 @@ void PYTHIA_scan(int group = 1){
 						 fillMu5,
 						 fillMu7,
 						 fillMu12,
-						 useCaloJetsOverride);
+						 useCaloJetsOverride,
+						 useManualJEC);
 
   TString outputFile = Form("%s%s/PYTHIA_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
 
@@ -384,7 +385,16 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 
   // JET ENERGY CORRECTIONS
   vector<string> Files;
-  Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_MC_L2Relative_AK4PF.txt"); // LXPLUS
+  // Calo jets need the AK4Calo payload: the forest corrects them with AK4PF,
+  // which leaves them 22% low against gen. There is no Spring18 MC AK4Calo
+  // file; the DATA L2Relative closes calo at 1.014 on PYTHIA. L2L3Residual is
+  // data-only and is not applied to MC (it would overshoot to 1.05).
+  if(useCaloJetsOverride){
+    Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2Relative_AK4Calo.txt");
+  }
+  else{
+    Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_MC_L2Relative_AK4PF.txt"); // LXPLUS
+  }
   JetCorrector JEC(Files);
 
 
@@ -981,7 +991,7 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
       JEC.SetJetEta(em->jeteta[j]);
       JEC.SetJetPhi(em->jetphi[j]);
       
-      double testJetPt_j = useCaloJetsOverride ? em->jetpt[j] : JEC.GetCorrectedPT();
+      double testJetPt_j = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[j];
       double testJetEta_j = em->jeteta[j];
       double testJetPhi_j = em->jetphi[j];
       int testJetFlavor_j = em->matchedPartonFlavor[j];
@@ -1005,7 +1015,7 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 	JEC.SetJetEta(em->jeteta[j]);
 	JEC.SetJetPhi(em->jetphi[j]);
       
-	double testJetPt_j = useCaloJetsOverride ? em->jetpt[j] : JEC.GetCorrectedPT();
+	double testJetPt_j = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[j];
 	double testJetEta_j = em->jeteta[j];
 	double testJetPhi_j = em->jetphi[j];
 	int testJetFlavor_j = em->matchedPartonFlavor[j];
@@ -1056,8 +1066,9 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
       JEC.SetJetEta(em->jeteta[i]);
       JEC.SetJetPhi(em->jetphi[i]);
 
-      // built-in JEC for calo jets (no AK4Calo MC JEC file here), manual AK4PF MC JEC otherwise
-      double recoJetPt_i = useCaloJetsOverride ? em->jetpt[i] : JEC.GetCorrectedPT();
+      // manual JEC on rawpt (AK4Calo or AK4PF, matching the collection), or the
+      // forest jtpt (config_PYTHIA.h: useManualJEC)
+      double recoJetPt_i = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[i];
       double recoJetPt_JERSmear_i = recoJetPt_i;
       double recoJetPt_JEUShiftUp_i = recoJetPt_i;
       double recoJetPt_JEUShiftDown_i = recoJetPt_i;

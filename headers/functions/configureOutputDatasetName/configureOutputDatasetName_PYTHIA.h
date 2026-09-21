@@ -40,7 +40,8 @@ TString configureOutputDatasetName(TString generator,
 				   bool fillMu5,
 				   bool fillMu7,
 				   bool fillMu12,
-				   bool useCaloJetsOverride)
+				   bool useCaloJetsOverride,
+				   bool useManualJEC)
 {
 
   TString result = "output";
@@ -51,6 +52,8 @@ TString configureOutputDatasetName(TString generator,
   result.Append(datasetIndicator);
 
   if(useCaloJetsOverride) result.Append("_caloJets");
+  // jet pT from the JEC text files rather than the forest jtpt
+  if(useManualJEC) result.Append("_manualJEC");
   result.Append(Form("_pThat-%2.0f",pThat));
 
   if(applyJet60Trigger) result.Append("_Jet60HLT");
