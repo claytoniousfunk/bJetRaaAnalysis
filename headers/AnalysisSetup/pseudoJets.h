@@ -1,6 +1,9 @@
 #pragma once
 // pfCandidateAnalysis variables
 
+#include <cmath>
+#include <string>
+
 bool doEventMixing = false;
 
 bool doFastJetClustering = true;      // true = run anti-kT R=0.4 on PF candidates via FastJet (requires -DDO_FASTJET at compile time)
@@ -33,7 +36,7 @@ int N_mixedEventsInPool = 100;
 // TOTAL contribution of one real event to any of these histograms is
 // unchanged no matter what this is set to -- increasing it only reduces the
 // pool-sampling noise (smoother fake-muon/fake-jet shapes at the same
-// normalisation). No downstream macro needs to change: still just divide by
+// normalization). No downstream macro needs to change: still just divide by
 // h_vz for a per-event rate, exactly as today. This is deliberately DIFFERENT
 // from the existing random-cone convention (h_pseudoJetPt etc.), which fills
 // every one of its N_mixedEventsInPool cone throws at the FULL weight w and
@@ -49,6 +52,41 @@ int N_mixedEventsInPool = 100;
 int N_fastJetMixedEventResamples = 100;
 
 double pseudoJetCandPt_min = 2.0;
+
+// Background (UE) maps for the RC- and dPT-subtracted FastJet spectra
+// (ultraFine centrality). A map is only valid for a scan run with the SAME
+// PF-candidate pT cut it was built with: in 0-5% the random-cone map holds
+// ~91 GeV per cone without a cut and ~18 GeV with the 2 GeV cut, so a
+// mismatched map subtracts the wrong background by tens of GeV.
+//
+// bkgMapFile() returns the map built with a given cut; PbPb_pfCandAnalyzer.C
+// stops if there is none. To use a map not in the table, set
+// bkgMapFileOverride to its full path -- the output name then carries
+// "_bkgMapOverride" instead of "_matchedBkgMap", and the provenance stamp
+// records the file either way.
+//
+// Each entry is the same-event MinBias scan made with that cut, copied into
+// the EOS maps directory under its own file name.
+std::string bkgMapFileOverride = "";
+std::string bkgMapFileUsed     = "";   // set by the scan; written to provenance
+
+inline std::string bkgMapFile(double candPtMin)
+{
+  if(!bkgMapFileOverride.empty()) return bkgMapFileOverride;
+  const std::string dir  = "/eos/cms/store/group/phys_heavyions/cbennett/maps/";
+  const std::string stem = "PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_";
+  if(fabs(candPtMin - 0.0) < 1e-6) return dir + stem + "pseudoJetCandPtMin-0.0_2026-8-17_ultraFineCentBins.root";
+  if(fabs(candPtMin - 2.0) < 1e-6) return dir + stem + "pseudoJetCandPtMin-2.0_2026-9-15_ultraFineCentBins.root";
+  return "";
+}
+
+// Output-name tag saying which map the subtracted spectra used. Needed because
+// the 2026-09-15 2 GeV map-making pass subtracted the 0 GeV map, and a rerun
+// with the matched map would otherwise get exactly the same name.
+inline std::string bkgMapTag()
+{
+  return bkgMapFileOverride.empty() ? "_matchedBkgMap" : "_bkgMapOverride";
+}
 
 double subleadingPFCandPt_min = 15.0;
 

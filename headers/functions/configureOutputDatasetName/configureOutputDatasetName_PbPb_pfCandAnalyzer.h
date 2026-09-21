@@ -29,7 +29,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
 				   bool useCaloJetsOverride,
 				   bool useFlowJetsOverride,
 				   int N_fastJetMixedEventResamples,
-				   double pseudoJetCandPt_min)
+				   double pseudoJetCandPt_min,
+				   const char *bkgMapTag)
 {
 
   TString result = "output";
@@ -87,6 +88,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   // the name on 2026-09-07 and restored: the RC and dPT maps depend on it
   // directly, and without it a 2 GeV scan is indistinguishable from a 0 GeV one.
   result.Append(Form("_pseudoJetCandPtMin-%.1f", pseudoJetCandPt_min));
+  // which background map the subtracted spectra used (bkgMapTag() in pseudoJets.h)
+  result.Append(bkgMapTag);
   if(skipSingleConstituentJets) result.Append("_skipSingleConstituentJets");
 
   TDatime dt;

@@ -255,7 +255,7 @@ TH2D *h_muonDR_inclusiveClosestJet[NCentralityIndices];
 // The ungated original is left as it is because other macros already read it on
 // that convention; this exists so the dR distribution can be compared against
 // h_mixedMuonPtRel_recoJetPt, whose fill IS gated. Without a matching pair the
-// two are normalised over different event samples -- the trigger fraction runs
+// two are normalized over different event samples -- the trigger fraction runs
 // from 0.12 in 0-10% to 0.025 in 50-80%, and the fraction among muon-near-jet
 // PAIRS is different again (0.16 central to 0.93 peripheral, because a 20 GeV
 // jet near a muon is common in central events and needs a hard scattering in
@@ -422,7 +422,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 						   useCaloJetsOverride,
 						   useFlowJetsOverride,
 						   N_fastJetMixedEventResamples,
-						   pseudoJetCandPt_min);
+						   pseudoJetCandPt_min,
+						   bkgMapTag().c_str());
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
@@ -474,10 +475,23 @@ void PbPb_pfCandAnalyzer(int group = 1){
       return;
     }
     else if(CENT_SCHEME == CENT_ULTRAFINE){
-      f_RC_maps = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-17_ultraFineCentBins.root");
+      // the map must have been built with the same PF-candidate cut this scan
+      // uses; bkgMapFile() in pseudoJets.h picks it from pseudoJetCandPt_min
+      bkgMapFileUsed = bkgMapFile(pseudoJetCandPt_min);
+      if(bkgMapFileUsed.empty()){
+        std::cout << "ERROR:  No background map for pseudoJetCandPt_min = " << pseudoJetCandPt_min
+                  << " GeV (see bkgMapFile in pseudoJets.h).  Exiting...\n";
+        return;
+      }
+      std::cout << "Background map: " << bkgMapFileUsed << "\n";
+      f_RC_maps = TFile::Open(bkgMapFileUsed.c_str());
     }
     else if(CENT_SCHEME == CENT_PERIPH90){
       std::cout << "ERROR:  No background maps created for CENT_PERIPH90 scheme yet (as of 2026-08-26).  Exiting...\n";
+      return;
+    }
+    if(!f_RC_maps || f_RC_maps->IsZombie()){
+      std::cout << "ERROR:  cannot open background map " << bkgMapFileUsed << ".  Exiting...\n";
       return;
     }
 
@@ -508,13 +522,20 @@ void PbPb_pfCandAnalyzer(int group = 1){
       
     }
 
+    // Stop here rather than mid-job: the FastJet loop dereferences the RC,
+    // RC-geoCorr, dPT, dPTAbove0 and PFCsPTAbove60 maps without a null check
+    // (only h_RC_map is guarded, and dPT-geoCorr has its own), so a missing
+    // one would segfault on the first jet.
+    bool mapsComplete = true;
     for(int i = 0; i < NCentralityIndices; i++){
-      if(!h_RC_map[i]) printf("WARNING: h_randConeEtaPhi_C%i missing from the RC map file\n", i);
-      if(!h_RC_map[i]) printf("WARNING: h_randConeEtaPhi_C%i MISSING\n", i);
-      if(!h_RC_geoCorr_map[i]) printf("WARNING: h_randConeEtaPhi_geoCorr_C%i MISSING\n", i);
-      if(!h_dPT_map[i]) printf("WARNING: h_dPTEtaPhi_PF_PFCs_C%i MISSING\n", i);
-
+      const char *miss[5] = {h_RC_map[i]                ? nullptr : "h_randConeEtaPhi",
+                             h_RC_geoCorr_map[i]        ? nullptr : "h_randConeEtaPhi_geoCorr",
+                             h_dPT_map[i]               ? nullptr : "h_dPTEtaPhi_PF_PFCs",
+                             h_dPT_dPTAbove0_map[i]     ? nullptr : "h_dPTEtaPhi_PF_PFCs_dPTAbove0",
+                             h_dPT_PFCsPTAbove60_map[i] ? nullptr : "h_dPTEtaPhi_PF_PFCs_PFCsPTAbove60"};
+      for(const char *m : miss) if(m){ printf("ERROR: %s_C%i missing from the background map file\n", m, i); mapsComplete = false; }
     }
+    if(!mapsComplete){ std::cout << "ERROR:  incomplete background map file.  Exiting...\n"; return; }
 
     // define histograms
     h_eventsBeforeSelection = new TH1D("h_eventsBeforeSelection","events before selection",2,0,1);
@@ -1173,6 +1194,13 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  if(signalJetPtCutIsRaw){
 	    jetPt_i = em->rawpt[i];
 	  }
+	  else if(useCaloJetsOverride){
+	    // calo jets need the AK4Calo payload, as in the jet loops below
+	    JEC_Calo.SetJetPT(em->rawpt[i]);
+	    JEC_Calo.SetJetEta(em->jeteta[i]);
+	    JEC_Calo.SetJetPhi(em->jetphi[i]);
+	    jetPt_i = JEC_Calo.GetCorrectedPT();
+	  }
 	  else{
 	    JEC_PF.SetJetPT(em->rawpt[i]);
 	    JEC_PF.SetJetEta(em->jeteta[i]);
@@ -1725,7 +1753,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    //
 	    // evtTriggerDecision matches the guard on the data fill: without it
 	    // this template accumulates in events the data histogram never sees,
-	    // and the per-event rates being subtracted are normalised over
+	    // and the per-event rates being subtracted are normalized over
 	    // different event samples. Note it gates only this fill, NOT the
 	    // enclosing muon loop -- the two h_*muonDR_inclusiveClosest*
 	    // histograms above are pre-existing diagnostics with their own
@@ -1864,7 +1892,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  // is deliberately left alone here.)
 	  //
 	  // evtTriggerDecision matches the guard on the data fill, so both are
-	  // normalised over the same event sample.
+	  // normalized over the same event sample.
 	  if(evtTriggerDecision){
 	    std::vector<int> matchFlagR_mixedJet(em->nMu > 0 ? em->nMu : 1, 0);
 	    for(const auto& jet : jets){
