@@ -47,6 +47,7 @@ TString configureOutputDatasetName(TString generator,
 				   double muPtCut,
 				   bool doPThatCorrelationFilter,
 				   bool useCaloJetsOverride,
+				   bool useManualJEC,
 				   bool onlyEvenEvents,
 				   bool onlyOddEvents)
 {
@@ -54,11 +55,13 @@ TString configureOutputDatasetName(TString generator,
   TString result = "output";
   result.Append(Form("_%s_response",generator.Data()));
 
-  TString datasetIndicator = "";  
+  TString datasetIndicator = "";
   datasetIndicator = "_DiJet";
   result.Append(datasetIndicator);
 
   if(useCaloJetsOverride) result.Append("_caloJets");
+  // jet pT from the JEC text files rather than the forest jtpt
+  if(useManualJEC) result.Append("_manualJEC");
 
   if(onlyEvenEvents) result.Append("_evenEvents");
   if(onlyOddEvents) result.Append("_oddEvents");

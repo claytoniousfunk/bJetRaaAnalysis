@@ -75,8 +75,8 @@ bool applyMu12TriggerEfficiencyCorrection = false;
 bool fillMu5 = false;
 bool fillMu7 = false;
 bool fillMu12 = true;
-bool useCaloJetsOverride = false;
-
+bool useCaloJetsOverride = true;
+bool useManualJEC = true;
 // for response scan
 bool onlyEvenEvents = false;
 bool onlyOddEvents = false;

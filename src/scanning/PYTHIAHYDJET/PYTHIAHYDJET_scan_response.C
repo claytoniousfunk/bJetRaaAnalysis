@@ -221,6 +221,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 						   muPtCut,
 						   doPThatCorrelationFilter,
 						   useCaloJetsOverride,
+						   useManualJEC,
 						   onlyEvenEvents,
 						   onlyOddEvents);
 
@@ -640,7 +641,9 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	JEC.SetJetPT(em->rawpt[i]);
 	JEC.SetJetEta(em->jeteta[i]);
 	JEC.SetJetPhi(em->jetphi[i]);
-	double recoJetPt_i = JEC.GetCorrectedPT();
+	// manual JEC on rawpt (AK4Calo or AK4PF, matching the collection), or the
+	// forest jtpt (config_PYTHIAHYDJET.h: useManualJEC)
+	double recoJetPt_i = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[i];
 	double recoJetEta_i = em->jeteta[i];
 	double recoJetPhi_i = em->jetphi[i];
 	double refJetPt_i = em->refpt[i];
@@ -795,7 +798,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	    JEC.SetJetEta(em->jeteta[k]);
 	    JEC.SetJetPhi(em->jetphi[k]);
 
-	    matchedRecoJetPt = JEC.GetCorrectedPT();
+	    matchedRecoJetPt = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[k];
 	    if(matchedRecoJetPt > leadingMatchedRecoJetPt) leadingMatchedRecoJetPt = matchedRecoJetPt;
 	    //matchedRecoJetPt = em->jetpt[k];
 	    matchedRawJetPt = em->rawpt[k];
