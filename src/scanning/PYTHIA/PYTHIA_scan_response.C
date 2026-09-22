@@ -121,7 +121,7 @@ void PYTHIA_scan_response(int group = 1){
   // std::cout << "turning on pThat correlation filter...\n";
   // doPThatCorrelationFilter = true;
   std::cout << "turning OFF pThat correlation filter (!!!!)...\n";
-  doPThatCorrelationFilter = true;
+  doPThatCorrelationFilter = false;
 
   // Full HiForest from the same file list PYTHIA_scan.C reads, not the skims
   // (formerly /eos/user/c/cbennett/skims/output_skim_PYTHIA_DiJet_withGS_withNeutrinos/
