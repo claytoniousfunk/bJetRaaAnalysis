@@ -26,6 +26,17 @@
 //          root -l 'unfoldClosureTest.C("C1",15,"weighted","tilt:0.5")'
 //          root -l 'unfoldClosureTest.C("C3",10,"weighted","none",100.,300.)'
 //          root -l 'unfoldClosureTest.C("C1",10,"weighted","tilt:0.5",80.,300.,true)'   // calo jets
+//          root -l 'unfoldClosureTest.C("pp",15,"weighted","none",80.,300.,true,4)'     // 20 GeV bins
+//
+//  REBINNING (last argument).  Merges the native 5 GeV bins by rebinFactor on
+//  BOTH axes of both response matrices and in all four unmatched spectra, right
+//  after loading, so every spectrum the test builds (all projections of those)
+//  shares the coarser binning.  The factor must divide the native bin count.
+//  Wider bins average down the statistical fluctuations that single high-weight
+//  events put into individual bins -- the point of the option.
+//  NOTE bias^2, variance and MSE are sums of squared COUNTS per bin, so they grow
+//  with bin width and are not comparable between rebin factors.  chi2/ndf and
+//  the max |unfolded/truth - 1| column are.
 //
 //  CALO JETS (last argument).  Uses the manual-JEC calo response scans' even and
 //  odd halves from this repo -- the newest files matching
@@ -541,6 +552,7 @@ struct ClosureMetrics {
   double bias2    = 0.;   // sum (unfolded - truth)^2
   double variance = 0.;   // sum sigma^2
   double mse      = 0.;   // bias^2 + variance
+  double maxDev   = 0.;   // max |unfolded/truth - 1|: bin-width independent
 };
 
 ClosureMetrics computeMetrics(TH1D *h_unfold, TH1D *h_truth, double ptLow, double ptHigh){
@@ -560,6 +572,7 @@ ClosureMetrics computeMetrics(TH1D *h_unfold, TH1D *h_truth, double ptLow, doubl
 
     m.bias2    += (u - t) * (u - t);
     m.variance += sig * sig;
+    m.maxDev    = std::max(m.maxDev, std::fabs(u / t - 1.));
 
     if(sig > 0.){
       m.chi2 += (u - t) * (u - t) / (sig * sig);
@@ -841,7 +854,8 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
                        TString distortion   = "none",      // see below
                        double ptLow  =  80.,               // metric window, gen pT
                        double ptHigh = 300.,
-                       bool   caloJets = false){           // calo response halves
+                       bool   caloJets = false,            // calo response halves
+                       int    rebinFactor = 1){            // merge native bins by this
 
   //  The spectrum that gets unfolded, and the truth it is compared to, are
   //  ALWAYS the pThat-weighted ones.  Only the response changes:
@@ -924,6 +938,10 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
     outTag    = Form("%s_unwMatrix",cfg.label.Data());
   }
   if(cfg.isCalo) outTag += "_caloJets";   // never overwrite the PF outputs
+  if(rebinFactor > 1){
+    outTag    += Form("_rebin%d", rebinFactor);
+    respTitle += Form(", %d GeV bins", 5*rebinFactor);
+  }
 
   //---- distortion selection ---------------------------------------------------
   distortion.ToLower();
@@ -988,6 +1006,26 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
     return;
   }
 
+  //  Coarser binning, applied to every input before anything is derived from it.
+  auto divides = [&](TH1 *h){ return h && h->GetNbinsX() % rebinFactor == 0; };
+  if(rebinFactor < 1 || !divides(h_response_train) ||
+     h_response_train->GetNbinsY() % rebinFactor != 0 ||
+     (includeUnmatched && (!divides(h_unmReco_train) || !divides(h_unmGen_train)))){
+    std::cout << "unfoldClosureTest: rebinFactor " << rebinFactor << " does not divide the native "
+              << h_response_train->GetNbinsX() << "-bin axis\n";
+    return;
+  }
+  if(rebinFactor > 1){
+    h_response_train->Rebin2D(rebinFactor,rebinFactor);
+    h_response_test ->Rebin2D(rebinFactor,rebinFactor);
+    if(includeUnmatched){
+      h_unmReco_train->Rebin(rebinFactor); h_unmGen_train->Rebin(rebinFactor);
+      h_unmReco_test ->Rebin(rebinFactor); h_unmGen_test ->Rebin(rebinFactor);
+    }
+    std::cout << "rebinned by " << rebinFactor << ": "
+              << h_response_train->GetXaxis()->GetBinWidth(1) << " GeV bins\n";
+  }
+
   //  Rescale every gen row of the unweighted matrix by (weighted truth) /
   //  (unweighted truth).  P(reco|gen) is untouched -- only the gen marginal,
   //  i.e. the Bayesian prior, is swapped for the physical one.
@@ -1004,6 +1042,7 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
                 << cfg.trainFile << "\n";
       return;
     }
+    if(rebinFactor > 1) h_response_trainW->Rebin2D(rebinFactor,rebinFactor);
 
     TH1D *h_truth_unw = projY(h_response_train ,"h_truth_unw");
     TH1D *h_truth_w   = projY(h_response_trainW,"h_truth_w");
@@ -1122,7 +1161,8 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
 
   std::vector<TH1D*>  h_unfold(N_points);
   std::vector<double> x(N_points), bias2(N_points), var(N_points),
-                      mse(N_points), chi2(N_points), chi2ndf(N_points);
+                      mse(N_points), chi2(N_points), chi2ndf(N_points),
+                      maxdev(N_points);
   std::vector<int>    ndf(N_points);
 
   RooUnfoldBayes unfold(&response,h_meas_test,1);
@@ -1164,6 +1204,7 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
     chi2[n]    = m.chi2;
     ndf[n]     = m.ndf;
     chi2ndf[n] = (m.ndf > 0) ? m.chi2 / m.ndf : 0.;
+    maxdev[n]  = m.maxDev;
 
   }
 
@@ -1185,11 +1226,11 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
          cfg.title.Data(), outTag.Data(),
          doDistort ? "distorted-truth" : "split-sample", ptLow, ptHigh);
   printf("  train: %s\n  test:  %s\n\n",trainFile.Data(),cfg.testFile.Data());
-  printf("%-6s  %12s  %12s  %12s  %12s  %5s  %10s\n",
-         "iter","bias^2","variance","MSE","chi2","ndf","chi2/ndf");
+  printf("%-6s  %12s  %12s  %12s  %12s  %5s  %10s  %11s\n",
+         "iter","bias^2","variance","MSE","chi2","ndf","chi2/ndf","max|r-1|");
   for(int n = 0; n < N_points; n++){
-    printf("%-6.0f  %12.4g  %12.4g  %12.4g  %12.4g  %5d  %10.3f%s\n",
-           x[n],bias2[n],var[n],mse[n],chi2[n],ndf[n],chi2ndf[n],
+    printf("%-6.0f  %12.4g  %12.4g  %12.4g  %12.4g  %5d  %10.3f  %10.2f%%%s\n",
+           x[n],bias2[n],var[n],mse[n],chi2[n],ndf[n],chi2ndf[n],100.*maxdev[n],
            n == 0     ? "   (measured, no unfolding)" :
            (n == iBest && doDistort) ? "   <- min MSE" : "");
   }
