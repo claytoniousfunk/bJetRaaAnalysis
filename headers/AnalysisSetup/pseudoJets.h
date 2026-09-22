@@ -51,7 +51,7 @@ int N_mixedEventsInPool = 100;
 // loop runs exactly once regardless of this value.
 int N_fastJetMixedEventResamples = 100;
 
-double pseudoJetCandPt_min = 2.0;
+double pseudoJetCandPt_min = 0.0;
 
 // ---- calo-jet fake-jet study ------------------------------------------------
 // caloConstituentsOnly restricts every PF-candidate sum this scan makes -- the
@@ -84,7 +84,7 @@ double pseudoJetCandPt_min = 2.0;
 // The existing background maps were built from ALL PF candidates, so
 // bkgMapFile() returns none in this mode: the first (map-making) run needs
 // bkgMapFileOverride, exactly as the 2 GeV maps were bootstrapped.
-bool caloConstituentsOnly = false;
+bool caloConstituentsOnly = true;
 bool caloConstituentsIncludeCharged = true;
 
 inline bool isClusteringCand(int pfId)
@@ -116,7 +116,10 @@ inline std::string constituentTag()
 //
 // Each entry is the same-event MinBias scan made with that cut, copied into
 // the EOS maps directory under its own file name.
-std::string bkgMapFileOverride = "";
+// first calo-constituent (map-making) run: no calo map exists yet, so subtract
+// the all-PF map with the SAME candidate cut (0 GeV); the random-cone map this
+// run writes is unaffected
+std::string bkgMapFileOverride = "/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-17_ultraFineCentBins.root";
 std::string bkgMapFileUsed     = "";   // set by the scan; written to provenance
 
 inline std::string bkgMapFile(double candPtMin)
