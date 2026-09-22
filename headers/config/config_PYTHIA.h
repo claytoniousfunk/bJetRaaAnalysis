@@ -15,7 +15,7 @@ bool skipGenParticles = false;
 // reweighting functions
 // pThat cross-section weight (em->weight); false fills every event with weight
 // 1, as in PYTHIAHYDJET. Output name: _pThat-<cut> or _pThat-unweighted.
-bool doPThatWeight = true;
+bool doPThatWeight = false;
 bool doVzReweight = true;
 bool doJetPtReweight = false;
 // jet-based filers
@@ -67,7 +67,7 @@ bool useCaloJetsOverride = true;
 bool useManualJEC = true;
 // for the response scan: keep only even- or odd-indexed events, giving the two
 // statistically independent halves unfoldClosureTest.C trains and tests on
-bool onlyEvenEvents = true;
+bool onlyEvenEvents = false;
 bool onlyOddEvents = false;
 
 
