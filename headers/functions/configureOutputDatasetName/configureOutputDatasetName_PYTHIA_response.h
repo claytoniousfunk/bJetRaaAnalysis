@@ -3,6 +3,7 @@
 TString configureOutputDatasetName(TString generator,
 				   bool doDiJetSample,
 				   double pThat,
+				   bool doPThatWeight,
 				   bool doVzReweight,
 				   bool doJetPtReweight,
 				   bool doGenJetPthatFilter,
@@ -50,7 +51,8 @@ TString configureOutputDatasetName(TString generator,
   if(onlyOddEvents)  result.Append("_oddEvents");
 
   // general information
-  result.Append(Form("_pThat-%2.0f",pThat));
+  if(doPThatWeight) result.Append(Form("_pThat-%2.0f",pThat));
+  else result.Append("_pThat-unweighted");
   result.Append(Form("_mu12_pTmu-%2.0f_tight",muPtCut));
   // event-based reweights
   if(doVzReweight) result.Append("_vzReweight");

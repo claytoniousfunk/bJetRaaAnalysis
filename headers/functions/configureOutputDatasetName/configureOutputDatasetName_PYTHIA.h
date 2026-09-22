@@ -3,6 +3,7 @@
 TString configureOutputDatasetName(TString generator,
 				   bool doDiJetSample,
 				   double pThat,
+				   bool doPThatWeight,
 				   bool doVzReweight,
 				   bool doJetPtReweight,
 				   bool doGenJetPthatFilter,
@@ -54,7 +55,8 @@ TString configureOutputDatasetName(TString generator,
   if(useCaloJetsOverride) result.Append("_caloJets");
   // jet pT from the JEC text files rather than the forest jtpt
   if(useManualJEC) result.Append("_manualJEC");
-  result.Append(Form("_pThat-%2.0f",pThat));
+  if(doPThatWeight) result.Append(Form("_pThat-%2.0f",pThat));
+  else result.Append("_pThat-unweighted");
 
   if(applyJet60Trigger) result.Append("_Jet60HLT");
   if(applyJet80Trigger) result.Append("_Jet80HLT");

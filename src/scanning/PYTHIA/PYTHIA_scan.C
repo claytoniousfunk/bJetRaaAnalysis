@@ -301,6 +301,7 @@ void PYTHIA_scan(int group = 1){
   outputDatasetName = configureOutputDatasetName(generator,
 						 doDiJetSample,
 						 pthatcut,
+						 doPThatWeight,
 						 doVzReweight,
 						 doJetPtReweight,
 						 doGenJetPthatFilter,
@@ -815,7 +816,11 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
     }
     
 
-    double w_pthat = em->weight;
+    // pThat cross-section weight, or 1 when doPThatWeight is off (config_PYTHIA.h)
+    double w_pthat = 1.0;
+    if(doPThatWeight){
+      w_pthat = em->weight;
+    }
 
     double w = w_pthat * w_reweight_vz;
 

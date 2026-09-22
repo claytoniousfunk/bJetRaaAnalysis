@@ -13,6 +13,9 @@ bool apply_JEU_shift_down = false;
 // options to skip genParticle loops (for forests with no genParticle info)
 bool skipGenParticles = false;
 // reweighting functions
+// pThat cross-section weight (em->weight); false fills every event with weight
+// 1, as in PYTHIAHYDJET. Output name: _pThat-<cut> or _pThat-unweighted.
+bool doPThatWeight = true;
 bool doVzReweight = true;
 bool doJetPtReweight = false;
 // jet-based filers
