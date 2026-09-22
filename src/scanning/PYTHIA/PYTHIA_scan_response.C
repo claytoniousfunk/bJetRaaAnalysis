@@ -64,6 +64,7 @@ TF1 *fitFxn_hiBin, *fitFxn_vz, *fitFxn_jetPt, *fitFxn_PYTHIA_JESb, *fitFxn_PYTHI
 #include "../../../headers/fitFunctions/fitFxn_PYTHIA_JERCorrection.h"
 // pThat correlation
 #include "../../../headers/fitFunctions/fitFxn_PYTHIA_pThatCorrelation.h"
+#include "../../../headers/fitFunctions/fitFxn_PYTHIA_pThatCorrelation_caloJets.h"
 // eta-phi mask function
 #include "../../../headers/functions/etaPhiMask.h"
 // getDr function
@@ -120,7 +121,7 @@ void PYTHIA_scan_response(int group = 1){
   // std::cout << "turning on pThat correlation filter...\n";
   // doPThatCorrelationFilter = true;
   std::cout << "turning OFF pThat correlation filter (!!!!)...\n";
-  doPThatCorrelationFilter = false;
+  doPThatCorrelationFilter = true;
 
   // Full HiForest from the same file list PYTHIA_scan.C reads, not the skims
   // (formerly /eos/user/c/cbennett/skims/output_skim_PYTHIA_DiJet_withGS_withNeutrinos/
@@ -220,7 +221,7 @@ void PYTHIA_scan_response(int group = 1){
   // file; the DATA L2Relative closes calo at 1.014 on PYTHIA. L2L3Residual is
   // data-only and is not applied to MC. Same choice as PYTHIA_scan.C.
   if(useCaloJetsOverride){
-    Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2Relative_AK4Calo.txt");
+    Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_MC_L2Relative_AK4Calo.txt");
   }
   else{
     Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_MC_L2Relative_AK4PF.txt"); // LXPLUS
@@ -455,6 +456,7 @@ void PYTHIA_scan_response(int group = 1){
   loadFitFxn_PYTHIA_JESb();
   loadFitFxn_PYTHIA_JERCorrection();
   loadFitFxn_PYTHIA_pThatCorrelation();
+  loadFitFxn_PYTHIA_pThatCorrelation_caloJets();
 
   TFile *f_neutrino_energy_fraction_map = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/neutrino_energy_fraction_map.root");
   TH2D *neutrino_energy_fraction_map;
@@ -597,8 +599,13 @@ void PYTHIA_scan_response(int group = 1){
       }
     }
     if(doPThatCorrelationFilter){
-     
-      if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIA_pThatCorrelation->Eval(em->pthat)) continue;     
+
+      if(useCaloJetsOverride){
+	if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIA_pThatCorrelation_caloJets->Eval(em->pthat)) continue;
+      }
+      else{
+	if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIA_pThatCorrelation->Eval(em->pthat)) continue;
+      }
     }
 
 
