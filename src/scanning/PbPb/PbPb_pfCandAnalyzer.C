@@ -346,18 +346,41 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 
 
+  // config_PbPb.h split doMinBiasSample into Part1..Part4 (2026-09-20). Only
+  // Part 1 has a PF-candidate forest list, so that is the only part this scan
+  // can run on.
+  if(doMinBiasSample_Part2 || doMinBiasSample_Part3 || doMinBiasSample_Part4){
+    std::cout << "ERROR:  only MinBias Part 1 has a PF-candidate forest list "
+              << "(fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt). "
+              << "Set doMinBiasSample_Part1 in config_PbPb.h.  Exiting...\n";
+    return;
+  }
+
   std::string inputFileList = "";
   if(doSingleMuonSample) inputFileList = "../../../fileNames/fileNames_HISingleMuon_withPFCandidates_partial.txt";
-  else if(doMinBiasSample) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt";
+  else if(doMinBiasSample_Part1) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt";
   else if(doHardProbesSample) {
     inputFileList = "";
     std::cout << "no withPFCandidates forest for HardProbes.  Exiting...\n";
     return;
   }
-    
-  else if(doNoRhoModificationSample) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_noRhoModulation.txt";
-  else if(doWithRhoModificationSample) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withRhoModulation.txt";
+  else if(doNoRhoModificationSample || doWithRhoModificationSample){
+    // the rho-modulation forests (fileNames_HIMinimumBias0_Part1_{no,with}RhoModulation.txt)
+    // are not withPFCandidates productions, so this scan does not run on them
+    std::cout << "ERROR:  the rho-modulation samples are not withPFCandidates forests; "
+              << "PbPb_pfCandAnalyzer.C runs only on withPFCandidates file lists.  Exiting...\n";
+    return;
+  }
   else{};
+
+  // Only withPFCandidates forests carry the PF-candidate trees this scan
+  // clusters. Enforce it on the list itself, so no sample flag -- present or
+  // future -- can route it to a forest without them.
+  if(inputFileList.find("PFCandidates") == std::string::npos){
+    std::cout << "ERROR:  input list \"" << inputFileList << "\" is not a withPFCandidates list "
+              << "(check the sample flags in config_PbPb.h).  Exiting...\n";
+    return;
+  }
 
   std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
   if(!instr.is_open()){
@@ -394,7 +417,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
     TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
     TString outputDatasetName = "";
     outputDatasetName = configureOutputDatasetName(doSingleMuonSample,
-						   doMinBiasSample,
+						   doMinBiasSample_Part1,
 						   doHardProbesSample,
 						   doNoRhoModificationSample,
 						   doWithRhoModificationSample,
@@ -423,7 +446,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
 						   useFlowJetsOverride,
 						   N_fastJetMixedEventResamples,
 						   pseudoJetCandPt_min,
-						   bkgMapTag().c_str());
+						   bkgMapTag().c_str(),
+						   constituentTag().c_str());
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
@@ -479,6 +503,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
       // uses; bkgMapFile() in pseudoJets.h picks it from pseudoJetCandPt_min
       bkgMapFileUsed = bkgMapFile(pseudoJetCandPt_min);
       if(bkgMapFileUsed.empty()){
+        if(caloConstituentsOnly)
+          std::cout << "ERROR:  No background map exists for a calo-constituent scan (caloConstituentsOnly):\n"
+                    << "        the maps were built from all PF candidates. For the first, map-making run set\n"
+                    << "        bkgMapFileOverride in pseudoJets.h to any existing map.\n";
         std::cout << "ERROR:  No background map for pseudoJetCandPt_min = " << pseudoJetCandPt_min
                   << " GeV (see bkgMapFile in pseudoJets.h).  Exiting...\n";
         return;
@@ -946,9 +974,18 @@ void PbPb_pfCandAnalyzer(int group = 1){
     cout << "	Initializing variables ... " << endl;
     em->init();
     cout << "	Loading jet..." << endl;
-    if(useCaloJetsOverride) em->loadJet("akPu4CaloJetAnalyzer/t");
-    else if(useFlowJetsOverride) em->loadJet("akFlowPuCs4PFJetAnalyzer/t");
-    else em->loadJet("akCs4PFJetAnalyzer/t");
+    // eventMap::loadJet passes a missing tree straight to AddFriend, so check
+    // that the SELECTED collection exists. This only concerns the reco-jet
+    // override flags; caloConstituentsOnly never needs a calo-jet branch.
+    const char *jetTreeName = useCaloJetsOverride ? "akPu4CaloJetAnalyzer/t"
+                            : useFlowJetsOverride ? "akFlowPuCs4PFJetAnalyzer/t"
+                                                  : "akCs4PFJetAnalyzer/t";
+    if(!f || f->IsZombie() || !f->Get(jetTreeName)){
+      std::cout << "ERROR:  " << jetTreeName << " not found in " << input
+                << " -- this forest does not carry that jet collection.  Exiting...\n";
+      return;
+    }
+    em->loadJet(jetTreeName);
     cout << "	Loading muon..." << endl;
     em->loadMuon("ggHiNtuplizerGED/EventTree");
     cout << "	Loading muon triggers..." << endl;
@@ -967,7 +1004,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
     if(doSingleMuonSample){
       em->regEventFilter(NeventFilters_SingleMuon, eventFilters_SingleMuon);
     }
-    else if(doMinBiasSample){
+    else if(doMinBiasSample_Part1){
       em->regEventFilter(NeventFilters_SingleMuon, eventFilters_SingleMuon);
     }
     else if(doHardProbesSample){
@@ -1274,6 +1311,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       for(size_t l = 0; l < donor_pfPt.size(); l++){
 	double pt = donor_pfPt[l];
 	if(pt < pseudoJetCandPt_min) continue;
+	if(!isClusteringCand(donor_pfId[l])) continue;   // calo-constituent study
 	double eta = donor_pfEta[l], phi = donor_pfPhi[l];
 	fastjet::PseudoJet pj(pt*TMath::Cos(phi), pt*TMath::Sin(phi),
 			      pt*TMath::SinH(eta), pt*TMath::CosH(eta));
@@ -1309,6 +1347,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	      double pfPt_l  = pool_pfPt[idx];
 	      double pfEta_l = pool_pfEta[idx];
 	      double pfPhi_l = pool_pfPhi[idx];
+	      if(!isClusteringCand((int)pool_pfId[idx])) continue;   // calo-constituent study
 	      double dR_kl = getDr(randEta_k, randPhi_k, pfEta_l, pfPhi_l);
 	      if(pfPt_l > pseudoJetCandPt_min && dR_kl < dR_max_pfcand){
 		h_pfPt[0]->Fill(pfPt_l, w);
@@ -1324,6 +1363,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    double pfPt_l  = em->pfPt->at(l);
 	    double pfEta_l = em->pfEta->at(l);
 	    double pfPhi_l = em->pfPhi->at(l);
+	    if(!isClusteringCand(em->pfId->at(l))) continue;   // calo-constituent study
 	    double dR_kl = getDr(randEta_k, randPhi_k, pfEta_l, pfPhi_l);
 	    if(pfPt_l > pseudoJetCandPt_min && dR_kl < dR_max_pfcand){
 	      h_pfPt[0]->Fill(pfPt_l, w);
@@ -1394,6 +1434,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
             double phi = pool_pfPhi[idx];
 	    int id = pool_pfId[idx];
             if(pt < pseudoJetCandPt_min) continue;
+            if(!isClusteringCand(id)) continue;   // calo-constituent study
             double px = pt * TMath::Cos(phi);
             double py = pt * TMath::Sin(phi);
             double pz = pt * TMath::SinH(eta);
@@ -1416,6 +1457,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
             double phi = em->pfPhi->at(l);
 	    int id = em->pfId->at(l);
             if(pt < pseudoJetCandPt_min) continue;
+            if(!isClusteringCand(id)) continue;   // calo-constituent study
             double px = pt * TMath::Cos(phi);
             double py = pt * TMath::Sin(phi);
             double pz = pt * TMath::SinH(eta);
@@ -1429,7 +1471,9 @@ void PbPb_pfCandAnalyzer(int group = 1){
         }
         // Diagnostic: how many candidates actually went into the clustering.
         // In same-event running this must equal em->nPFpart (i.e. h_nPFcand),
-        // since the loop just copies the event. In mixed-event running it is the
+        // since the loop just copies the event -- except with
+        // caloConstituentsOnly, where it is the calo-like subset (h_nPFcand
+        // still counts every candidate). In mixed-event running it is the
         // number drawn from the pool, which is meant to be NCandidatesToSample =
         // em->nPFpart as well -- comparing this against h_nPFcand is the check
         // that the mixed event is being built at the right multiplicity.
@@ -1956,6 +2000,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	  double phi = em->pfCsPhi->at(l);
 	  double id = em->pfCsId->at(l);
 	  if(pt < pseudoJetCandPt_min) continue;
+	  if(!isClusteringCand((int)id)) continue;   // calo-constituent study
 	  double px = pt * TMath::Cos(phi);
 	  double py = pt * TMath::Sin(phi);
 	  double pz = pt * TMath::SinH(eta);

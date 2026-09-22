@@ -53,6 +53,55 @@ int N_fastJetMixedEventResamples = 100;
 
 double pseudoJetCandPt_min = 2.0;
 
+// ---- calo-jet fake-jet study ------------------------------------------------
+// caloConstituentsOnly restricts every PF-candidate sum this scan makes -- the
+// FastJet inputs (same- and mixed-event), the random cones, the PFCs
+// clustering and the injection donors -- to the species a calorimeter jet is
+// built from, so the combinatorial-jet estimate is the calo-jet analogue of
+// the PF one. It changes ONLY which candidates are clustered: the reco jet
+// collection, and so the forest branches required, are exactly those of the
+// standard PF scan. No calo-jet branch is needed -- leave useCaloJetsOverride
+// off unless you separately want akPu4Calo as the reco jets.
+//
+// PF ids: 1 charged hadron, 2 electron, 3 muon, 4 photon, 5 neutral hadron,
+// 6 HF hadron, 7 HF EM.
+//   default                       : all but muons (1,2,4,5,6,7). A muon is a
+//                                   MIP in the calorimeter and calo jets exclude
+//                                   its momentum; everything else deposits its
+//                                   energy in the towers.
+//   caloConstituentsIncludeCharged = false
+//                                 : photons, neutral hadrons and HF only -- the
+//                                   purely calorimetric PF candidates, a lower
+//                                   bound on what the calorimeter sees.
+//
+// CAVEAT. This selects WHICH particles enter; it does not reproduce HOW a
+// calorimeter measures them. Charged hadrons enter at their track momentum,
+// not the lower calorimeter response; there is no 0.087 tower granularity, no
+// 0.3 GeV tower threshold, and no akPu pileup subtraction. With the default
+// the selection removes only muons, so the result should sit close to the PF
+// one -- the neutral-only mode brackets it from below.
+//
+// The existing background maps were built from ALL PF candidates, so
+// bkgMapFile() returns none in this mode: the first (map-making) run needs
+// bkgMapFileOverride, exactly as the 2 GeV maps were bootstrapped.
+bool caloConstituentsOnly = false;
+bool caloConstituentsIncludeCharged = true;
+
+inline bool isClusteringCand(int pfId)
+{
+  if(!caloConstituentsOnly) return true;
+  if(pfId == 3) return false;                                   // muon
+  if(pfId == 1 || pfId == 2) return caloConstituentsIncludeCharged;
+  return (pfId == 4 || pfId == 5 || pfId == 6 || pfId == 7);    // gamma, h0, HF
+}
+
+// output-name tag for the constituent selection ("" for the standard PF scan)
+inline std::string constituentTag()
+{
+  if(!caloConstituentsOnly) return "";
+  return caloConstituentsIncludeCharged ? "_caloConstituents" : "_caloNeutralConstituents";
+}
+
 // Background (UE) maps for the RC- and dPT-subtracted FastJet spectra
 // (ultraFine centrality). A map is only valid for a scan run with the SAME
 // PF-candidate pT cut it was built with: in 0-5% the random-cone map holds
@@ -73,6 +122,9 @@ std::string bkgMapFileUsed     = "";   // set by the scan; written to provenance
 inline std::string bkgMapFile(double candPtMin)
 {
   if(!bkgMapFileOverride.empty()) return bkgMapFileOverride;
+  // every map below was built from all PF candidates; none is valid for a
+  // calo-constituent scan (see caloConstituentsOnly above)
+  if(caloConstituentsOnly) return "";
   const std::string dir  = "/eos/cms/store/group/phys_heavyions/cbennett/maps/";
   const std::string stem = "PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_";
   if(fabs(candPtMin - 0.0) < 1e-6) return dir + stem + "pseudoJetCandPtMin-0.0_2026-8-17_ultraFineCentBins.root";
