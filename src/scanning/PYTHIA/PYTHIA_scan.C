@@ -390,7 +390,7 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
   // file; the DATA L2Relative closes calo at 1.014 on PYTHIA. L2L3Residual is
   // data-only and is not applied to MC (it would overshoot to 1.05).
   if(useCaloJetsOverride){
-    Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2Relative_AK4Calo.txt");
+    Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_MC_L2Relative_AK4Calo.txt");
   }
   else{
     Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_MC_L2Relative_AK4PF.txt"); // LXPLUS
