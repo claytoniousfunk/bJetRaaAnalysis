@@ -177,6 +177,18 @@ static double winInt(TH1D *h, double lo, double hi)
   return h->Integral(h->FindBin(lo + eps), h->FindBin(hi - eps));
 }
 
+// Trigger-only stitch: drop MinBias and start each side at the Jet80 threshold
+// (150 GeV here). Set by the main function's useMinBias argument.
+//
+// Why it matters: below 150 GeV both systems are fed by MinBias, and that is
+// where the peripheral calo curve goes ragged -- 50-80% scatters 0.42, 0.52,
+// 0.46, 0.66, 0.96 across 100-150 GeV with 11-22% errors, then settles to 2.0%
+// errors the moment Jet80 takes over at 150. The scatter is consistent with
+// those errors, but it is worthless as a measurement and it dominates the eye.
+// Peripheral is worst because every class holds the same number of MinBias
+// EVENTS while peripheral collisions make far fewer hard jets.
+static bool g_useMinBias = true;
+
 // calculateRAA.C's stitchSamples, with the fake-jet argument dropped
 // mbRawEntries is the MinBias count in the normalization window BEFORE any
 // per-event scaling, for the printout only: the PbPb MinBias spectrum arrives
@@ -198,7 +210,7 @@ static TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_jet60, TH1D *h_jet80, TH1D *h_
   double N_jet60  = winInt(h_jet60,  jet80_pTmin, jet100_pTmin);
   double N_jetMB  = winInt(h_jetMB,  mbNormLo, mbNormHi);
 
-  if(N_jet80 <= 0. || N_jet60 <= 0. || N_jetMB <= 0.){
+  if(N_jet80 <= 0. || N_jet60 <= 0. || (g_useMinBias && N_jetMB <= 0.)){
     printf("ERROR: %s: empty normalization window (jet80 %.0f, jet60 %.0f, MinBias %.0f)\n",
            name, N_jet80, N_jet60, N_jetMB);
     ok = false;
@@ -216,23 +228,43 @@ static TH1D* stitchSamples(TH1D *h_jetMB, TH1D *h_jet60, TH1D *h_jet80, TH1D *h_
                       : winInt(h_jet80_scaled, mbNormLo, mbNormHi);
 
   TH1D *h_jetMB_scaled = (TH1D*) h_jetMB->Clone(Form("%s_MBs", name));
-  h_jetMB_scaled->Scale(N_ref / N_jetMB);
+  if(N_jetMB > 0.) h_jetMB_scaled->Scale(N_ref / N_jetMB);
 
   if(verbose)
     printf("    stitch %-4s: k(jet80)=%.4g  k(jet60)=%.4g  k(MinBias)=%.4g   MinBias [%.0f,%.0f] entries=%.0f (%.1f%% stat)\n",
            name, N_jet100/N_jet80, N_jet80_scaled/N_jet60, N_ref/N_jetMB,
            mbNormLo, mbNormHi, mbRawEntries, mbRawEntries > 0. ? 100./sqrt(mbRawEntries) : -1.);
 
-  for(int i = 0; i < h_jet60->GetSize(); i++){
-    double pT = h_jet60->GetBinCenter(i);
+  // Iterate over h_return's OWN bins and look each source up by pT.
+  //
+  // This used to loop over h_jet60's bins, take pT from h_jet60, and then read
+  // and write content at that same bin INDEX in the other histograms. The pp
+  // Jet60 scan (2026-3-10) has 96 bins over 20-500 while Jet80, Jet100 and
+  // MinBias have 100 bins over 0-500 -- same 5 GeV width, offset by four bins.
+  // So the pT that chose the source was 20 GeV away from the pT the content was
+  // written to: with the handover set at 150 the switch actually happened at
+  // 130 in the output frame, which is why pp carried MinBias-derived content at
+  // 130-150 that should have come from Jet60/Jet80, roughly a factor two off.
+  // Indexing by pT is immune to the binnings differing.
+  for(int i = 1; i <= h_return->GetNbinsX(); i++){
+    double pT = h_return->GetBinCenter(i);
     TH1D *src = nullptr;
-    if(pT < jet60_pTmin)                              src = h_jetMB_scaled;
+    if(pT < jet60_pTmin)                              src = g_useMinBias ? h_jetMB_scaled : nullptr;
     else if(pT > jet60_pTmin && pT < jet80_pTmin)     src = h_jet60_scaled;
     else if(pT > jet80_pTmin && pT < jet100_pTmin)    src = h_jet80_scaled;
     else if(pT > jet100_pTmin)                        src = h_jet100;
-    if(!src) continue;
-    h_return->SetBinContent(i, src->GetBinContent(i));
-    h_return->SetBinError  (i, src->GetBinError(i));
+    // No source for this bin: zero it. h_return is CLONED from h_jet100, so
+    // skipping would silently leave the raw Jet100 content there -- which is
+    // what happened on the first trigger-only attempt, filling the region below
+    // 150 GeV with an unscaled Jet100/Jet100 ratio that looked like a
+    // measurement (0.28 with 0.0006 errors). This also zeroes bins sitting
+    // exactly on a threshold, which the strict inequalities above skip.
+    if(!src){ h_return->SetBinContent(i, 0.); h_return->SetBinError(i, 0.); continue; }
+    const int j = src->FindBin(pT);
+    if(j < 1 || j > src->GetNbinsX()){
+      h_return->SetBinContent(i, 0.); h_return->SetBinError(i, 0.); continue; }
+    h_return->SetBinContent(i, src->GetBinContent(j));
+    h_return->SetBinError  (i, src->GetBinError(j));
   }
 
   delete h_jet80_scaled; delete h_jet60_scaled; delete h_jetMB_scaled;
@@ -251,8 +283,10 @@ static TH1D* toSpectrum(TH1D *h, const char *name, int nEdge, double *axis)
 
 // -------------------------------------------------------------------- main ---
 
-void calculateJetsPerZ_caloJets(bool useCalo = true, bool ppRawPt = false, bool pbpbRawPt = false)
+void calculateJetsPerZ_caloJets(bool useCalo = true, bool ppRawPt = false, bool pbpbRawPt = false,
+                                bool useMinBias = true)
 {
+  g_useMinBias = useMinBias;
   initPlotStyle();
   ok = true;
 
@@ -427,12 +461,13 @@ void calculateJetsPerZ_caloJets(bool useCalo = true, bool ppRawPt = false, bool 
 
   TString figDir = Form("%s/figures/JetsPerZ", repo);
   gSystem->mkdir(figDir, kTRUE);
-  TString figPath = Form("%s/JetsPerZ_%s%s_noUnfold.pdf", figDir.Data(), s.tag, scaleTag.Data());
+  const char *mbTag = g_useMinBias ? "" : "_trigOnly";
+  TString figPath = Form("%s/JetsPerZ_%s%s%s_noUnfold.pdf", figDir.Data(), s.tag, scaleTag.Data(), mbTag);
   canv->SaveAs(figPath);
 
   TString outDir = "./rootFiles/JetsPerZ";
   gSystem->mkdir(outDir, kTRUE);
-  TString outPath = Form("%s/histograms_JetsPerZ_%s%s_noUnfold.root", outDir.Data(), s.tag, scaleTag.Data());
+  TString outPath = Form("%s/histograms_JetsPerZ_%s%s%s_noUnfold.root", outDir.Data(), s.tag, scaleTag.Data(), mbTag);
   TFile *wf = TFile::Open(outPath, "recreate");
   for(int c = 1; c <= 4; c++){ r[c]->Write(Form("r_C%d_fine", c)); rc[c]->Write(Form("r_C%d_r", c)); }
   sp_pp->Write("spectrum_pp");
