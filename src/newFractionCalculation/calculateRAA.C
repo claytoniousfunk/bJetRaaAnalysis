@@ -48,6 +48,97 @@ int N_iter_C3 = 1;
 int N_iter_C2 = 1;
 int N_iter_C1 = 1;
 
+// Unfold on the COARSE variable-width axis instead of the fine uniform one.
+//
+// Default (false) reproduces the nominal chain: the response is the fine
+// uniform h_matchedRecoJetPt_genJetPt_allJets, and the coarse binning is
+// imposed only AFTER unfolding, by the Rebin onto newAxis further down.
+//
+// true uses h_matchedRecoJetPt_genJetPt_var_allJets, booked by the response
+// scans on ptAxisVar below, and rebins the measured spectra onto that same axis
+// BEFORE unfolding (RooUnfoldResponse requires the measured histogram to share
+// the response's x binning). Most migration is then intra-bin, absorbed by the
+// matrix rather than inverted.
+//
+// The two are NOT the same measurement -- unfolding then rebinning differs from
+// rebinning then unfolding, because the Bayes prior lives on whatever binning
+// the matrix has. Set this true when the result has to be compared bin-by-bin
+// against something unfolded the same way, e.g. the b-jet spectra from
+// src/calculateBJetsPerZ/calculateBJetsPerZ.cc, which unfold on the coarse
+// axis. Mixing the two conventions in a ratio creates a pT-dependent trend that
+// is an artifact of the unfolding, not physics.
+// WARNING, measured 2026-09-24. The fine matrix spans 0-500 in BOTH reco and
+// gen; the variable matrix spans only 60-500. On a steeply falling spectrum the
+// fine unfolding can assign a jet of true pT 40-60 that reconstructed above 80
+// to a truth bin below 60, and so remove it. The variable matrix has no truth
+// below 60, so that content piles into the lowest truth bins and inflates the
+// low-pT result -- r_C1_r at 80-90 GeV went from 0.368 to 2.267, a factor of 6,
+// which is an artifact of the truncation and not a difference in method.
+// Leave this false until the response scans provide a variable matrix that
+// extends below 60.
+bool useVariableBinResponse = false;
+
+// Put the OUTPUT on the coarse axis without changing how the unfolding is done,
+// so the result can be divided into the b-jet spectra from
+// src/calculateBJetsPerZ/calculateBJetsPerZ.cc, which live on that axis. This
+// is the nominal "unfold fine, rebin after" chain, just binned coarsely at the
+// end; every ptAxisVar edge is a multiple of the fine 5 GeV binning, so the
+// rebin is exact.
+bool outputOnVarAxis = true;
+
+// BUFFERED COARSE UNFOLDING -- the same treatment the b-jet chain got on
+// 2026-09-24, adapted to the inclusive spectrum.
+//
+// The b-jet fix was simply to extend its axis down to 60 so the measured and
+// truth axes both span the response. That does NOT work here: the inclusive
+// measured axis ALREADY started at 60 when it gave the broken r_C1_r = 2.267,
+// and the distortion was not contained in the 60-80 bins -- it leaked out to
+// 120-150 (60-70: 2.504, 70-80: 2.588, 80-90: 2.267, 120-150: 0.544, against
+// 0.419 / 0.398 / 0.368 / 0.334 from the fine matrix). The inclusive spectrum
+// carries far more yield below 60 GeV than the muon-tagged b-jet one, so two
+// coarse buffer bins are nowhere near enough to absorb the migration.
+//
+// So the coarse matrix is built HERE by rebinning the fine 0-500 response onto
+// ptAxisBuf below, which carries buffer bins all the way down to 20 GeV. Every
+// ptAxisBuf edge is a multiple of the fine 5 GeV binning, so the rebin is
+// exact. The measured spectra are rebinned onto the same axis before unfolding,
+// and coarseAxis (80-500) then drops the buffers from the quoted r_C*_r.
+//
+// This supersedes useVariableBinResponse for the inclusive: that flag uses the
+// response scan's own 60-500 variable matrix, which has no room for buffers.
+bool useBufferedCoarseResponse = true;
+
+// Buffer bins below 80 (20-40, 40-60, 60-70, 70-80), then the quoted binning.
+const int N_bufEdge = 12;
+double ptAxisBuf[N_bufEdge] = {20,40,60,70,80,90,100,120,150,200,300,500};
+
+// must match ptAxis1 in src/scanning/PYTHIA/PYTHIA_scan_response.C
+const int N_varEdge = 10;
+double ptAxisVar[N_varEdge] = {60,70,80,90,100,120,150,200,300,500};
+
+// Rebin a fine (reco x gen) response onto a coarse axis on both sides. ROOT's
+// TH2::Rebin2D only merges by integer groups, which cannot produce a variable
+// axis, so the sum is done by hand. Errors are added in quadrature.
+TH2D *rebinResponse2D(TH2D *hFine, int nEdge, const double *edges, const char *name)
+{
+  TH2D *h = new TH2D(name,name,nEdge-1,edges,nEdge-1,edges);
+  h->Sumw2();
+  for(int ix = 1; ix <= hFine->GetNbinsX(); ix++){
+    const double xc = hFine->GetXaxis()->GetBinCenter(ix);
+    if(xc < edges[0] || xc >= edges[nEdge-1]) continue;
+    const int bx = h->GetXaxis()->FindBin(xc);
+    for(int iy = 1; iy <= hFine->GetNbinsY(); iy++){
+      const double yc = hFine->GetYaxis()->GetBinCenter(iy);
+      if(yc < edges[0] || yc >= edges[nEdge-1]) continue;
+      const int by = h->GetYaxis()->FindBin(yc);
+      const double c = hFine->GetBinContent(ix,iy), e = hFine->GetBinError(ix,iy);
+      h->SetBinContent(bx,by,h->GetBinContent(bx,by) + c);
+      h->SetBinError  (bx,by,sqrt(pow(h->GetBinError(bx,by),2) + e*e));
+    }
+  }
+  return h;
+}
+
 void normalizeToMatchHistogram(TH1D *h_ref, TH1D *h_mod){
 
   // h_ref = reference histogram
@@ -1208,11 +1299,46 @@ void calculateRAA(){
   /////////////////////////////////////////////////////////////////////////////
 
   TH2D *h_response_pp, *h_response_C4, *h_response_C3, *h_response_C2, *h_response_C1;
-  file_PYTHIA_response->GetObject("h_matchedRecoJetPt_genJetPt_allJets",h_response_pp);
-  file_PH_response->GetObject("h_matchedRecoJetPt_genJetPt_allJets_C4",h_response_C4);
-  file_PH_response->GetObject("h_matchedRecoJetPt_genJetPt_allJets_C3",h_response_C3);
-  file_PH_response->GetObject("h_matchedRecoJetPt_genJetPt_allJets_C2",h_response_C2);
-  file_PH_response->GetObject("h_matchedRecoJetPt_genJetPt_allJets_C1",h_response_C1);
+  const TString respStem = useVariableBinResponse
+    ? "h_matchedRecoJetPt_genJetPt_var_allJets"
+    : "h_matchedRecoJetPt_genJetPt_allJets";
+  file_PYTHIA_response->GetObject(respStem,h_response_pp);
+  file_PH_response->GetObject(respStem + "_C4",h_response_C4);
+  file_PH_response->GetObject(respStem + "_C3",h_response_C3);
+  file_PH_response->GetObject(respStem + "_C2",h_response_C2);
+  file_PH_response->GetObject(respStem + "_C1",h_response_C1);
+  if(!h_response_pp || !h_response_C1){
+    printf("FATAL: response histogram %s not found -- that response scan\n"
+           "       predates the variable-bin matrices.\n",respStem.Data());
+    return;
+  }
+
+  // Buffered coarse response, built from the fine matrix (see the block above).
+  if(useBufferedCoarseResponse){
+    h_response_pp = rebinResponse2D(h_response_pp,N_bufEdge,ptAxisBuf,"hResp_buf_pp");
+    h_response_C4 = rebinResponse2D(h_response_C4,N_bufEdge,ptAxisBuf,"hResp_buf_C4");
+    h_response_C3 = rebinResponse2D(h_response_C3,N_bufEdge,ptAxisBuf,"hResp_buf_C3");
+    h_response_C2 = rebinResponse2D(h_response_C2,N_bufEdge,ptAxisBuf,"hResp_buf_C2");
+    h_response_C1 = rebinResponse2D(h_response_C1,N_bufEdge,ptAxisBuf,"hResp_buf_C1");
+  }
+
+  // The measured histogram handed to RooUnfoldBayes must share the response's
+  // x binning, so rebin the stitched spectra onto the coarse axis up front.
+  // Rebin() returns a NEW histogram and leaves the original alone.
+  if(useBufferedCoarseResponse){
+    h_pp = (TH1D*) h_pp->Rebin(N_bufEdge-1,"h_pp_buf",ptAxisBuf);
+    h_C4 = (TH1D*) h_C4->Rebin(N_bufEdge-1,"h_C4_buf",ptAxisBuf);
+    h_C3 = (TH1D*) h_C3->Rebin(N_bufEdge-1,"h_C3_buf",ptAxisBuf);
+    h_C2 = (TH1D*) h_C2->Rebin(N_bufEdge-1,"h_C2_buf",ptAxisBuf);
+    h_C1 = (TH1D*) h_C1->Rebin(N_bufEdge-1,"h_C1_buf",ptAxisBuf);
+  }
+  else if(useVariableBinResponse){
+    h_pp = (TH1D*) h_pp->Rebin(N_varEdge-1,"h_pp_var",ptAxisVar);
+    h_C4 = (TH1D*) h_C4->Rebin(N_varEdge-1,"h_C4_var",ptAxisVar);
+    h_C3 = (TH1D*) h_C3->Rebin(N_varEdge-1,"h_C3_var",ptAxisVar);
+    h_C2 = (TH1D*) h_C2->Rebin(N_varEdge-1,"h_C2_var",ptAxisVar);
+    h_C1 = (TH1D*) h_C1->Rebin(N_varEdge-1,"h_C1_var",ptAxisVar);
+  }
 
   TH1D *h_meas_pp, *h_meas_C4, *h_meas_C3, *h_meas_C2, *h_meas_C1;
   TH1D *h_truth_pp, *h_truth_C4, *h_truth_C3, *h_truth_C2, *h_truth_C1;
@@ -1330,8 +1456,22 @@ void calculateRAA(){
   // const int N_edge = 32;
   // double newAxis[N_edge] = {60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,160,170,180,190,200,220,240,260,280,300,350,400,500};
 
-  const int N_edge = 21;
-  double newAxis[N_edge] = {60,65,70,75,80,85,90,95,100,110,120,130,140,150,160,180,200,240,280,350,500};
+  int N_edge = 21;
+  double newAxis[21] = {60,65,70,75,80,85,90,95,100,110,120,130,140,150,160,180,200,240,280,350,500};
+
+  // With the variable-bin response everything is ALREADY on ptAxisVar, so make
+  // the final axis that same axis: the Rebin calls below reduce to clones and
+  // nothing is rebinned twice. Rebinning a coarse histogram onto the finer
+  // newAxis would fail regardless -- every requested edge must land on an
+  // existing bin boundary.
+  if(useBufferedCoarseResponse){
+    N_edge = N_bufEdge;
+    for(int i = 0; i < N_bufEdge; i++) newAxis[i] = ptAxisBuf[i];
+  }
+  else if(useVariableBinResponse || outputOnVarAxis){
+    N_edge = N_varEdge;
+    for(int i = 0; i < N_varEdge; i++) newAxis[i] = ptAxisVar[i];
+  }
 
   
   h_pp_unfold = (TH1D*) h_pp_unfold->Rebin(N_edge-1,"h_pp_unfold",newAxis);
@@ -1450,6 +1590,26 @@ void calculateRAA(){
   h_C3_unfold->Scale(1./NZ_C3);
   h_C2_unfold->Scale(1./NZ_C2);
   h_C1_unfold->Scale(1./NZ_C1);
+
+  // Snapshot the per-system INCLUSIVE spectra here, before the plotting code
+  // below rescales them, so the inclusive b-jet fraction can be formed as
+  // (corrected b) / (corrected inclusive) in each system separately.
+  //
+  // ETA CONVENTION. The 1./3.2 applied further up is undone here. Both chains
+  // cover |eta| < 1.6, so that factor is a units choice, not an acceptance --
+  // but src/calculateBJetsPerZ/calculateBJetsPerZ.cc does NOT apply it, and a
+  // fraction formed across the two conventions would be 3.2x too small. These
+  // snapshots are therefore per Z and per GeV with no eta division, matching
+  // the b-jet spectra exactly.
+  TH1D *inclSnap_pp = (TH1D*) h_pp_unfold->Clone("inclSpectrum_pp");
+  TH1D *inclSnap_C4 = (TH1D*) h_C4_unfold->Clone("inclSpectrum_C4");
+  TH1D *inclSnap_C3 = (TH1D*) h_C3_unfold->Clone("inclSpectrum_C3");
+  TH1D *inclSnap_C2 = (TH1D*) h_C2_unfold->Clone("inclSpectrum_C2");
+  TH1D *inclSnap_C1 = (TH1D*) h_C1_unfold->Clone("inclSpectrum_C1");
+  for(TH1D *h : {inclSnap_pp, inclSnap_C4, inclSnap_C3, inclSnap_C2, inclSnap_C1}){
+    h->SetDirectory(nullptr);
+    h->Scale(3.2);
+  }
 
   // scale by forest inefficiency in HardProbes.
   // reforesting as to not need this term, but for now this is a quick fix
@@ -1685,6 +1845,12 @@ void calculateRAA(){
   r_C3->Write("r_C3_fine");
   r_C2->Write("r_C2_fine");
   r_C1->Write("r_C1_fine");
+  // per-system corrected inclusive spectra, per Z per GeV, no eta division
+  inclSnap_pp->Write();
+  inclSnap_C4->Write();
+  inclSnap_C3->Write();
+  inclSnap_C2->Write();
+  inclSnap_C1->Write();
   file_JetsPerZ_lightJets_rebinned->Close();
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

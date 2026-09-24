@@ -25,9 +25,15 @@
 #include "TLine.h"
 #include "TSystem.h"
 
-const char *f_calo_path = "./rootFiles/JetsPerZ/histograms_JetsPerZ_caloJets_noUnfold.root";
-const char *f_PF_path   = "./rootFiles/JetsPerZ/histograms_JetsPerZ_PFJets_noUnfold.root";
-const char *outPath     = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/JetsPerZ/JetsPerZ_caloVsPF_noUnfold.pdf";
+// Trigger-only inputs: MinBias dropped from both systems, so each starts at the
+// Jet80 threshold (150 GeV). The MinBias-fed region below 150 was pure scatter
+// -- 50-80% ran 0.42 / 0.52 / 0.46 / 0.66 / 0.96 with 11-22% errors, against
+// 2.0% errors the moment Jet80 takes over. Produced by
+//   calculateJetsPerZ_caloJets.C(true ,false,false,false)   calo
+//   calculateJetsPerZ_caloJets.C(false,false,false,false)   PF
+const char *f_calo_path = "./rootFiles/JetsPerZ/histograms_JetsPerZ_caloJets_trigOnly_noUnfold.root";
+const char *f_PF_path   = "./rootFiles/JetsPerZ/histograms_JetsPerZ_PFJets_trigOnly_noUnfold.root";
+const char *outPath     = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/JetsPerZ/JetsPerZ_caloVsPF_trigOnly_noUnfold.pdf";
 
 void plotJetsPerZ_caloVsPF_noUnfold()
 {
