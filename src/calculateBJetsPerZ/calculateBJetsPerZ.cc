@@ -5,6 +5,10 @@
 #include "RooHistPdf.h"
 #include "RooAddPdf.h"
 #include "RooFitResult.h"
+#if !(defined(__CINT__) || defined(__CLING__)) || defined(__ACLIC__)
+#include "RooUnfoldResponse.h"
+#include "RooUnfoldBayes.h"
+#endif
 
 TFile *file_PbPb_MinBias, *file_pp_MinBias;
 TFile *file_PbPb_SingleMuon, *file_pp_SingleMuon;
@@ -24,6 +28,22 @@ TH1D *h_b_draw, *h_c_draw, *h_l_draw, *h_x_draw, *h_draw, *h_roo;
 
 const int M = 51;
 double muRelPtAxis[M] = {0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3.0,3.1,3.2,3.3,3.4,3.5,3.6,3.7,3.8,3.9,4.0,4.1,4.2,4.3,4.4,4.5,4.6,4.7,4.8,4.9,5.0}; // M = 51
+
+// Subtract the combinatorial (fake muon + fake jet) ptRel template from the
+// measured ptRel distribution before the b-purity template fit. The template is
+// h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC_C*, i.e. T3 in the decomposition
+// S = D - T2 - T3: a mixed-event muon paired with a mixed-event FastJet, with
+// the random-cone background subtracted.
+//
+// This was previously unconditional. It is a flag so its effect can be
+// separated from the unfolding's -- the two act at different places in the
+// chain (this one changes the b PURITY, the unfolding changes the SPECTRUM) and
+// both move the low-pT central points, so a single combined number hides which
+// is responsible.
+//
+// PbPb only: the pp side has no fake-jet estimate in this chain, so the ratio
+// feels this correction through its numerator alone.
+bool doFakePtRelSubtraction = true;
 
 
 
@@ -310,7 +330,13 @@ double templateFitter(bool isData = 1,
   h_data = (TH1D*) H_data->ProjectionX("h_data",binFinder->FindBin(low_jetPt + smallShift),binFinder->FindBin(high_jetPt - smallShift));
   
 
-  if(!ispp){
+  // isData gate added 2026-09-24. Without it this block also fired for MC
+  // (isData = 0), subtracting a DATA-derived fake template from an MC
+  // pseudo-data distribution -- which silently biased every MC closure run
+  // through this function. The MC is gen-matched and contains no fake jets or
+  // fake muon tags at all, so there is nothing there to subtract. Nominal data
+  // results are unaffected: they want the subtraction and still get it.
+  if(isData && !ispp && doFakePtRelSubtraction){
     h_fake = (TH1D*) H_fake->ProjectionX("h_fake",binFinder->FindBin(low_jetPt + smallShift),binFinder->FindBin(high_jetPt - smallShift));
     h_data->Scale(1./h_vz_data->Integral());
     h_fake->Scale(1./h_vz_fake->Integral());
@@ -734,9 +760,148 @@ double templateFitter(bool isData = 1,
 }
 
 
-const int N_jetPtAxisEdges = 8;
-double jetPtAxisEdges[N_jetPtAxisEdges] = {80,90,100,120,150,200,300,500};
+// Extended down to 60 GeV on 2026-09-24. The two lowest bins, 60-70 and 70-80,
+// are BUFFER bins: they exist so the unfolding has somewhere to put jets that
+// migrate in from below the region of interest, instead of piling that content
+// into the 80-90 bin. Edge distortion now lands on 60-80, which is not quoted.
+// Results are read from 80 GeV up, exactly as before.
+//
+// Everything downstream keys off this array -- the b-purity template fits, the
+// correction factors (regenerated on every run) and the response matrix crop --
+// so extending it here is sufficient; nothing else needs editing. The ptRel
+// maps are binned in 5 GeV steps over 0-500, so 60 and 70 land on existing bin
+// boundaries and the new fit windows are exact.
+const int N_jetPtAxisEdges = 10;
+double jetPtAxisEdges[N_jetPtAxisEdges] = {60,70,80,90,100,120,150,200,300,500};
+
+// First bin to quote. Bins below this are the buffer described above.
+const double quoteFromPt = 80.;
+
 string output_file_string = "";
+
+
+// ---------------------------------------------------------------------------
+// Unfolding of the b-jet spectrum.
+//
+// Applied to h_bJetPt_muTag_muTrig_* -- i.e. AFTER the b-purity multiplication
+// and BEFORE the corrFactor_1 division -- so what gets unfolded is the measured
+// b-jet yield itself, matched to a b-jet response matrix.
+//
+// The matrix is h_matchedRecoJetPt_genJetPt_var_bJets{,_C1..C4}, booked by the
+// response scans on the variable-width axis below (their ptAxis1). X is reco,
+// Y is gen, following PYTHIA_scan_response.C's Fill(matchedRecoJetPt, genPt, w).
+//
+// AXIS MISMATCH, and how it is handled. The matrix spans 60-500 in 9 bins;
+// this analysis' spectra start at 80, on jetPtAxisEdges, which is exactly the
+// matrix axis with the two lowest bins dropped. So the response is built with
+//    measured (x) = 7 bins, 80-500   <- matches the data histogram
+//    truth    (y) = 9 bins, 60-500   <- keeps feed-in from true pT 60-80
+// by dropping only the two lowest RECO rows. Truth bins below 80 are then
+// discarded from the unfolded result. Dropping them from the truth axis instead
+// would silently attribute a 70 GeV jet reconstructed at 85 to a >=80 GeV
+// truth bin.
+//
+// PF jets. The response files below are the PF manual-JEC pair; the forest
+// applies the AK4PF JEC to calo jets too, so a calo run needs the _caloJets
+// files and useManualJEC, which is a separate configuration.
+bool doBJetUnfolding = true;
+
+int N_iter_bJet_pp = 1;
+int N_iter_bJet_C4 = 1;
+int N_iter_bJet_C3 = 1;
+int N_iter_bJet_C2 = 1;
+int N_iter_bJet_C1 = 1;
+
+// must match ptAxis1 in src/scanning/PYTHIA/PYTHIA_scan_response.C
+const int N_respEdge = 10;
+double respAxis[N_respEdge] = {60,70,80,90,100,120,150,200,300,500};
+
+TString bUnfoldResponseFile_pp =
+  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PYTHIA/"
+  "PYTHIA_DiJet_response_manualJEC_pThat-15_mu12_pTmu-15_tight_"
+  "jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-9-21.root";
+TString bUnfoldResponseFile_PbPb =
+  "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PYTHIAHYDJET/"
+  "PYTHIAHYDJET_response_DiJet_manualJEC_pThat-15_mu12_pTmu-15_tight_vzReweight_"
+  "hiBinReweight_hiBinShift-10_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-9-21.root";
+
+// Crop the response's reco axis to the analysis axis, keeping the full gen
+// axis. The offset is derived rather than hard-coded: with jetPtAxisEdges now
+// starting at 60 it is zero and this is a straight copy, but it stays correct
+// if the analysis axis is trimmed again.
+TH2D *buildBJetResponseMatrix(TH2D *h9, const char *name)
+{
+  const int nRecoDrop = N_respEdge - N_jetPtAxisEdges;   // 0 with the 60 GeV axis
+  TH2D *h = new TH2D(name,name,
+                     N_jetPtAxisEdges-1, jetPtAxisEdges,
+                     N_respEdge-1,       respAxis);
+  h->Sumw2();
+  for(int ix = 1; ix <= N_jetPtAxisEdges-1; ix++){
+    for(int iy = 1; iy <= N_respEdge-1; iy++){
+      h->SetBinContent(ix,iy,h9->GetBinContent(ix+nRecoDrop,iy));
+      h->SetBinError  (ix,iy,h9->GetBinError  (ix+nRecoDrop,iy));
+    }
+  }
+  return h;
+}
+
+// Unfold one measured b-jet spectrum. h_meas_data must be on jetPtAxisEdges.
+// Returns a NEW histogram on jetPtAxisEdges (truth bins below 80 dropped).
+//
+// BIN WIDTHS. By this point in constructBJetSpectra the spectrum has already
+// been through divideByBinwidth, so it is a density, while the response matrix
+// counts jets. Handing a density to RooUnfold would mis-weight every migration
+// on this axis, whose bins run from 10 to 200 GeV wide -- a 20x spread. So the
+// widths are multiplied back in here, the unfolding is done on counts, and the
+// result is divided by width again, leaving the caller's convention unchanged.
+TH1D *unfoldBJetSpectrum(TH1D *h_meas_data, TH2D *h9, int nIter, const char *tag)
+{
+  TH2D *h_resp = buildBJetResponseMatrix(h9,Form("h_bResp_%s",tag));
+
+  TH1D *h_meas_mc  = (TH1D*) h_resp->ProjectionX(Form("h_bMeas_%s",tag));
+  TH1D *h_truth_mc = (TH1D*) h_resp->ProjectionY(Form("h_bTruth_%s",tag));
+
+  // density -> counts
+  TH1D *h_counts = (TH1D*) h_meas_data->Clone(Form("h_bCounts_%s",tag));
+  for(int i = 1; i <= h_counts->GetNbinsX(); i++){
+    const double w = h_counts->GetBinWidth(i);
+    h_counts->SetBinContent(i,h_counts->GetBinContent(i)*w);
+    h_counts->SetBinError  (i,h_counts->GetBinError(i)*w);
+  }
+
+  RooUnfoldResponse resp(h_meas_mc,h_truth_mc,h_resp,
+                         Form("bResponse_%s",tag),Form("%s b response",tag));
+  RooUnfoldBayes unfold(&resp,h_counts,nIter);
+  TH1D *h_full = (TH1D*) unfold.Hunfold();   // 9 truth bins, 60-500
+
+  // keep truth pT >= 80
+  TH1D *h_out = new TH1D(Form("%s_unfold",h_meas_data->GetName()),
+                         h_meas_data->GetTitle(),
+                         N_jetPtAxisEdges-1,jetPtAxisEdges);
+  h_out->Sumw2();
+  const int nTruthDrop = N_respEdge - N_jetPtAxisEdges;   // 0 with the 60 GeV axis
+  for(int i = 1; i <= N_jetPtAxisEdges-1; i++){
+    // counts -> density, restoring the caller's convention
+    const double w = h_out->GetBinWidth(i);
+    h_out->SetBinContent(i,h_full->GetBinContent(i+nTruthDrop)/w);
+    h_out->SetBinError  (i,h_full->GetBinError  (i+nTruthDrop)/w);
+  }
+
+  printf("\n  === %s, %d Bayes iteration%s ===\n", tag, nIter, nIter == 1 ? "" : "s");
+  printf("    pT bin      measured        unfolded      ratio\n");
+  for(int i = 1; i <= N_jetPtAxisEdges-1; i++){
+    const double m = h_meas_data->GetBinContent(i), u = h_out->GetBinContent(i);
+    printf("  %c%4.0f-%4.0f  %12.5g  %12.5g   ",
+           jetPtAxisEdges[i-1] < quoteFromPt ? '*' : ' ',
+           jetPtAxisEdges[i-1], jetPtAxisEdges[i], m, u);
+    // a measured bin that is empty (or negative, after fake subtraction) has no
+    // meaningful ratio -- say so rather than printing a huge number
+    if(m > 0.) printf("%7.3f\n", u/m);
+    else       printf("   --    (measured bin empty)\n");
+  }
+
+  return h_out;
+}
 
 
 void calculateBPurity(){
@@ -1724,6 +1889,41 @@ void constructBJetSpectra(){
   h_bJetPt_muTag_muTrig_C1->Multiply(bPurity_muTag_muTrig_C1);
 
 
+  // ---- unfold the b-jet spectra (variable-width b-jet response) ------------
+  if(doBJetUnfolding){
+
+    TFile *f_bResp_pp   = TFile::Open(bUnfoldResponseFile_pp);
+    TFile *f_bResp_PbPb = TFile::Open(bUnfoldResponseFile_PbPb);
+    if(!f_bResp_pp || f_bResp_pp->IsZombie() || !f_bResp_PbPb || f_bResp_PbPb->IsZombie()){
+      printf("FATAL: cannot open a b-jet response file.\n");
+      return;
+    }
+
+    TH2D *hR_pp, *hR_C4, *hR_C3, *hR_C2, *hR_C1;
+    f_bResp_pp  ->GetObject("h_matchedRecoJetPt_genJetPt_var_bJets",   hR_pp);
+    f_bResp_PbPb->GetObject("h_matchedRecoJetPt_genJetPt_var_bJets_C4",hR_C4);
+    f_bResp_PbPb->GetObject("h_matchedRecoJetPt_genJetPt_var_bJets_C3",hR_C3);
+    f_bResp_PbPb->GetObject("h_matchedRecoJetPt_genJetPt_var_bJets_C2",hR_C2);
+    f_bResp_PbPb->GetObject("h_matchedRecoJetPt_genJetPt_var_bJets_C1",hR_C1);
+    if(!hR_pp || !hR_C1){
+      printf("FATAL: h_matchedRecoJetPt_genJetPt_var_bJets missing -- the response\n"
+             "       scan predates the variable-width matrices.\n");
+      return;
+    }
+
+    printf("\n  b-jet unfolding, variable-width response, unfolded/measured:\n");
+    h_bJetPt_muTag_muTrig_pp = unfoldBJetSpectrum(h_bJetPt_muTag_muTrig_pp,hR_pp,N_iter_bJet_pp,"pp");
+    h_bJetPt_muTag_muTrig_C4 = unfoldBJetSpectrum(h_bJetPt_muTag_muTrig_C4,hR_C4,N_iter_bJet_C4,"C4");
+    h_bJetPt_muTag_muTrig_C3 = unfoldBJetSpectrum(h_bJetPt_muTag_muTrig_C3,hR_C3,N_iter_bJet_C3,"C3");
+    h_bJetPt_muTag_muTrig_C2 = unfoldBJetSpectrum(h_bJetPt_muTag_muTrig_C2,hR_C2,N_iter_bJet_C2,"C2");
+    h_bJetPt_muTag_muTrig_C1 = unfoldBJetSpectrum(h_bJetPt_muTag_muTrig_C1,hR_C1,N_iter_bJet_C1,"C1");
+    printf("\n");
+
+    stylizeBJetHistograms(h_bJetPt_muTag_muTrig_pp, h_bJetPt_muTag_muTrig_C1,
+                          h_bJetPt_muTag_muTrig_C2, h_bJetPt_muTag_muTrig_C3,
+                          h_bJetPt_muTag_muTrig_C4);
+  }
+
 
   TH1D *h_bJetPt_corr_pp, *h_bJetPt_corr_C4, *h_bJetPt_corr_C3, *h_bJetPt_corr_C2, *h_bJetPt_corr_C1;
 
@@ -1806,6 +2006,24 @@ void constructBJetSpectra(){
   bFraction_C3->Write();
   bFraction_C2->Write();
   bFraction_C1->Write();
+
+  // The corrected b-jet spectra themselves, not just their ratio to pp: the
+  // fake-ptRel subtraction and the unfolding both change the spectra, and in
+  // the ratio a change common to PbPb and pp would cancel and look like no
+  // effect at all.
+  h_bJetPt_corr_pp->Write("bJetSpectrum_pp");
+  h_bJetPt_corr_C4->Write("bJetSpectrum_C4");
+  h_bJetPt_corr_C3->Write("bJetSpectrum_C3");
+  h_bJetPt_corr_C2->Write("bJetSpectrum_C2");
+  h_bJetPt_corr_C1->Write("bJetSpectrum_C1");
+
+  // b purity actually used, so a change in the ratio can be traced to the
+  // purity (fake-ptRel subtraction) rather than the spectrum (unfolding).
+  bPurity_muTag_muTrig_pp->Write("bPurity_pp");
+  bPurity_muTag_muTrig_C4->Write("bPurity_C4");
+  bPurity_muTag_muTrig_C3->Write("bPurity_C3");
+  bPurity_muTag_muTrig_C2->Write("bPurity_C2");
+  bPurity_muTag_muTrig_C1->Write("bPurity_C1");
   file_BJetPbPbToPP->Close();
 
   
