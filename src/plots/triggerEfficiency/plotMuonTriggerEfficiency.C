@@ -254,10 +254,10 @@ void plotMuonTriggerEfficiency()
   Sample eg  {"pp_HighEGJet_Jet60", "pp/latest/triggerEff/pp_HighEGJet_triggerEffScan_Jet60HLT_mu12_tight_onlyOneMuonPerEvent.root",
               "HighEGJet + Jet60", "HLT_HIL3Mu12", 1, ""};
 
-  // pp ZeroBias through pp_scan.C's h_muTrigEff histograms (2026-09-21 scan):
+  // pp ZeroBias through pp_scan.C's h_muTrigEff histograms (2026-09-23 scan):
   // prescale-1 events only, unweighted, no second muon above 10 GeV
-  Sample zb2{"pp_ZeroBias_2026-9-21",
-             "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/pp/pp_MinBias_caloJets_manualJEC_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-9-21.root",
+  Sample zb2{"pp_ZeroBias_2026-9-23",
+             "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/pp/pp_MinBias_caloJets_manualJEC_mu12_pTmu-15to999_tight_deltaR-40_jetTrkMaxFilter_WDecayFilter_2026-9-23.root",
              "HIZeroBias1", "HLT_HIL3Mu12", 1, "", true};
 
   // PbPb MinBias Parts 1-4 (2026-09-19/20/21 scans) through PbPb_scan.C's
@@ -279,6 +279,6 @@ void plotMuonTriggerEfficiency()
   writeHeader("PbPb_MinBias", rMB, true);
   writeHeader("PbPb_HardProbes", rHP, true);
   writeHeader("pp_HighEGJet_Jet60", rEG, false);
-  writeHeader("pp_ZeroBias_2026-9-21", rZB2, false);
+  writeHeader("pp_ZeroBias_2026-9-23", rZB2, false);
   writeHeader("PbPb_MinBias_Parts1-4", rMB3, true);
 }
