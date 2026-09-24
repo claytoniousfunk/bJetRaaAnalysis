@@ -3,7 +3,9 @@
 #include "TFile.h"
 #include "TSystem.h"   // gSystem, for the output-directory check
 #include "TRandom.h"
+#include "TRandom2.h"   // TRandom2 is instantiated below; only TRandom.h was included
 #include "TTree.h"
+#include "TVector2.h"   // Phi_mpi_pi, for the calo-PF flavor match
 #include "TH1F.h"
 #include "TH1D.h"
 #include "TProfile.h"
@@ -108,6 +110,66 @@ TF1 *fitFxn_hiBin, *fitFxn_vz, *fitFxn_jetPt, *fitFxn_PYTHIA_JESb, *fitFxn_PYTHI
 inline int caloJetPartonFlavor(int refpartonFlavor)
 {
   return refpartonFlavor < -900 ? 0 : refpartonFlavor;
+}
+
+// ---- calo-jet flavor from the matched PF jet --------------------------------
+// Alternative to refparton_flavor: match each calo jet to the nearest PF jet in
+// dR and take that jet's jtPartonFlavor.
+//
+// WHY. refparton_flavor and jtPartonFlavor disagree badly on the same jet --
+// refparton_flavor recovers only ~39% of the jets jtPartonFlavor calls b and
+// labels ~30% of them gluons (plotCaloPFFlavorMatch_PYTHIA.C). A calo b-jet
+// response matrix built on refparton_flavor is therefore a much more diluted
+// sample than its PF counterpart, and calo-vs-PF comparisons carry that
+// difference on top of everything else. Since the calo and PF collections are
+// clustered from essentially the same event, the PF jet sitting on top of a
+// calo jet is the same jet, and its flavor is the better label.
+//
+// The PF tree cannot go through eventMap: loadJet() attaches the jet tree as a
+// FRIEND of evtTree, so a second one would collide on branch names (jtpt,
+// jteta, ...). It is read here as a plain TTree with its own addresses, and
+// stepped with the same entry index -- both are per-event trees in the same
+// forest file, so entry i is the same event.
+//
+// Falls back to refparton_flavor, with a warning, if the PF tree or its flavor
+// branch is absent, so a forest without it still scans.
+bool   caloFlavorFromPFMatch = true;
+double caloPFMatchDR         = 0.2;   // calo and PF R=0.4 jets on the same event
+                                      // sit far closer than this; see the dR
+                                      // distributions in
+                                      // plotCaloPFMatching_PYTHIA.C
+
+static TTree  *g_pfFlavTree = nullptr;
+static Int_t   g_pfN        = 0;
+static const int g_pfMax = eventMap::jetMax;   // class member, not a global
+static Float_t g_pfPt [g_pfMax], g_pfEta[g_pfMax], g_pfPhi[g_pfMax], g_pfFlav[g_pfMax];
+static long    g_nPFMatched = 0, g_nPFUnmatched = 0;
+
+// nearest PF jet within caloPFMatchDR; returns its flavor, or the
+// refparton_flavor fallback when there is no match.
+inline int caloFlavorByPFMatch(double caloEta, double caloPhi, int refFallback)
+{
+  if(!g_pfFlavTree) return caloJetPartonFlavor(refFallback);
+  double best = caloPFMatchDR; int bestIdx = -1;
+  for(int j = 0; j < g_pfN; j++){
+    double dEta = caloEta - g_pfEta[j];
+    double dPhi = TVector2::Phi_mpi_pi(caloPhi - g_pfPhi[j]);
+    double dr   = sqrt(dEta*dEta + dPhi*dPhi);
+    if(dr < best){ best = dr; bestIdx = j; }
+  }
+  if(bestIdx < 0){ g_nPFUnmatched++; return caloJetPartonFlavor(refFallback); }
+  g_nPFMatched++;
+  return (int) g_pfFlav[bestIdx];
+}
+
+// one place that decides a calo jet's flavor, so the two fill sites agree
+inline int recoJetFlavorFor(bool useCalo, int idx, eventMap *em)
+{
+  if(!useCalo) return (int) em->partonFlavor[idx];
+  if(caloFlavorFromPFMatch)
+    return caloFlavorByPFMatch(em->jeteta[idx], em->jetphi[idx],
+                               em->refparton_flavor[idx]);
+  return caloJetPartonFlavor(em->refparton_flavor[idx]);
 }
 
 void PYTHIA_scan_response(int group = 1){
@@ -422,6 +484,29 @@ void PYTHIA_scan_response(int group = 1){
   cout << "	Loading jet..." << endl;
   if(useCaloJetsOverride) em->loadJet("ak4CaloJetAnalyzer/t");
   else em->loadJet("ak4PFJetAnalyzer/t");
+
+  // second, un-friended read of the PF jet tree, for calo flavor by dR match
+  g_pfFlavTree = nullptr;
+  if(useCaloJetsOverride && caloFlavorFromPFMatch){
+    g_pfFlavTree = (TTree*) f->Get("ak4PFJetAnalyzer/t");
+    if(!g_pfFlavTree)
+      cout << "	WARNING: caloFlavorFromPFMatch set but ak4PFJetAnalyzer/t is "
+              "absent; falling back to refparton_flavor\n";
+    else if(!g_pfFlavTree->GetBranch("jtPartonFlavor")){
+      cout << "	WARNING: ak4PFJetAnalyzer/t has no jtPartonFlavor; falling back "
+              "to refparton_flavor\n";
+      g_pfFlavTree = nullptr;
+    }
+    else{
+      g_pfFlavTree->SetBranchAddress("nref",           &g_pfN);
+      g_pfFlavTree->SetBranchAddress("jtpt",            g_pfPt);
+      g_pfFlavTree->SetBranchAddress("jteta",           g_pfEta);
+      g_pfFlavTree->SetBranchAddress("jtphi",           g_pfPhi);
+      g_pfFlavTree->SetBranchAddress("jtPartonFlavor",  g_pfFlav);
+      cout << "	calo flavor will be taken from the PF jet within dR < "
+           << caloPFMatchDR << "\n";
+    }
+  }
   cout << "	Loading muon..." << endl;
   em->loadMuon("ggHiNtuplizerGED/EventTree");
   cout << "	Loading muon triggers..." << endl;
@@ -431,6 +516,7 @@ void PYTHIA_scan_response(int group = 1){
   cout << "	Variables initilized!" << endl << endl ;
   int NEvents = em->evtTree->GetEntries();
   cout << "	Number of events = " << NEvents << endl;
+  g_nPFMatched = 0; g_nPFUnmatched = 0;
 
 
   // define event filters
@@ -489,6 +575,10 @@ void PYTHIA_scan_response(int group = 1){
     if(onlyOddEvents  && evi % 2 == 0) continue;
 
     em->getEvent(evi);
+
+    // step the un-friended PF tree to the same event; both are per-event trees
+    // in the same forest file, so entry evi is the same collision
+    if(g_pfFlavTree) g_pfFlavTree->GetEntry(evi);
 
     if((100*evi / NEvents) % 5 == 0 && 100*evi / NEvents > evi_frac) cout << "evt frac: " << evi_frac << "%" << endl;
     evi_frac = 100 * evi/NEvents;
@@ -556,8 +646,7 @@ void PYTHIA_scan_response(int group = 1){
       // jtPartonFlavor, as at the gen-matched site below and in PYTHIA_scan.C.
       // The skims carried refparton_flavorForB; the forest does not, and reading
       // it would leave every jet in whatever the array last held.
-      int recoJetFlavor_i = useCaloJetsOverride ? caloJetPartonFlavor(em->refparton_flavor[i])
-                                                : (int) em->partonFlavor[i];
+      int recoJetFlavor_i = recoJetFlavorFor(useCaloJetsOverride, i, em);
       double minDr_i = 100.0;
       if(fabs(recoJetEta_i) > 1.6) continue;
       if(recoJetPt_i > leadingRecoJetPt) leadingRecoJetPt = recoJetPt_i;
@@ -759,8 +848,7 @@ void PYTHIA_scan_response(int group = 1){
 	}
       } // end recoJet loop
 
-      jetFlavorInt = useCaloJetsOverride ? caloJetPartonFlavor(em->refparton_flavor[recoJetFlavorFlag])
-                                         : (int) em->partonFlavor[recoJetFlavorFlag];
+      jetFlavorInt = recoJetFlavorFor(useCaloJetsOverride, recoJetFlavorFlag, em);
       //if(fabs(jetFlavorInt) == 5 && bHadronNumber == 2) jetFlavorInt = 17; // 17 = bJet from gluon-splitting
 
 
