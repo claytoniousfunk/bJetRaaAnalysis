@@ -150,7 +150,7 @@ const double recoGenMatchDr = 0.2;
 //    uses and the one the calo-vs-PF flavor study was done with; it is NOT
 //    refparton_flavorForB. Mixing the two definitions across systems would
 //    defeat the point of the exercise.
-bool   caloFlavorFromPFMatch = true;
+bool   caloFlavorFromPFMatch = false;
 double caloPFMatchDR         = 0.3;   // looser than pp: different subtraction
 
 static TTree  *g_pfFlavTree = nullptr;
@@ -277,6 +277,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 						   muPtCut,
 						   doPThatCorrelationFilter,
 						   useCaloJetsOverride,
+						   caloFlavorFromPFMatch,
 						   useManualJEC,
 						   onlyEvenEvents,
 						   onlyOddEvents);

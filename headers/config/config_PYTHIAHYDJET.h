@@ -35,7 +35,7 @@ bool doWeightCut = false;
 bool doJetAxisSmearing = false;
 bool doWDecayFilter = true;
 bool doBJetSpectraReweightToData = false;
-bool doPThatCorrelationFilter = true;
+bool doPThatCorrelationFilter = false;
 // shifting the hiBin distribution by this amount
 int hiBinShift = 10;
 // jet-alterations for closure
@@ -76,7 +76,7 @@ bool fillMu5 = false;
 bool fillMu7 = false;
 bool fillMu12 = true;
 bool useCaloJetsOverride = true;
-bool useManualJEC = false;
+bool useManualJEC = true;
 // for response scan
 bool onlyEvenEvents = false;
 bool onlyOddEvents = false;

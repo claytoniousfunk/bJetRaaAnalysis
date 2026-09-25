@@ -47,6 +47,7 @@ TString configureOutputDatasetName(TString generator,
 				   double muPtCut,
 				   bool doPThatCorrelationFilter,
 				   bool useCaloJetsOverride,
+				   bool caloFlavorFromPFMatch,
 				   bool useManualJEC,
 				   bool onlyEvenEvents,
 				   bool onlyOddEvents)
@@ -60,6 +61,10 @@ TString configureOutputDatasetName(TString generator,
   result.Append(datasetIndicator);
 
   if(useCaloJetsOverride) result.Append("_caloJets");
+  // Calo-jet flavor taken from the matched PF jet rather than
+  // refparton_flavorForB. Tagged because the two definitions disagree on the
+  // same jet -- without it the two scans collide on one filename.
+  if(useCaloJetsOverride && caloFlavorFromPFMatch) result.Append("_PFflavor");
   // jet pT from the JEC text files rather than the forest jtpt
   if(useManualJEC) result.Append("_manualJEC");
 
