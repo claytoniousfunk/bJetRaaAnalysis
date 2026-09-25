@@ -630,6 +630,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
     // load JER correction fit fxn
     loadFitFxn_PYTHIA_JERCorrection();
     loadFitFxn_PYTHIAHYDJET_pThatCorrelation();
+    loadFitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets();
     loadFitFxn_PYTHIAHYDJET_BJetSpectraReweightToData();
 
     TFile *f_neutrino_energy_fraction_map = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/neutrino_energy_fraction_map.root");
@@ -814,21 +815,40 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	}
       }
       if(doPThatCorrelationFilter){
-	if(CentralityIndex == 4){
-	  if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C4->Eval(em->pthat)) continue;
-	}
-	else if(CentralityIndex == 3){
-	  if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C3->Eval(em->pthat)) continue;
-	}
-	else if(CentralityIndex == 2){
-	  if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C2->Eval(em->pthat)) continue;
-	}
-	else if(CentralityIndex == 1){
-	  if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C1->Eval(em->pthat)) continue;
+	if(useCaloJetsOverride){
+	  if(CentralityIndex == 4){
+	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C4->Eval(em->pthat)) continue;
+	  }
+	  else if(CentralityIndex == 3){
+	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C3->Eval(em->pthat)) continue;
+	  }
+	  else if(CentralityIndex == 2){
+	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C2->Eval(em->pthat)) continue;
+	  }
+	  else if(CentralityIndex == 1){
+	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C1->Eval(em->pthat)) continue;
+	  }
+	  else{
+	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C4->Eval(em->pthat)) continue; // default to C4 if we have more centrality bins
+	  };
 	}
 	else{
-	  if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C4->Eval(em->pthat)) continue; // default to C4 if we have more centrality bins
-	};
+	  if(CentralityIndex == 4){
+	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C4->Eval(em->pthat)) continue;
+	  }
+	  else if(CentralityIndex == 3){
+	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C3->Eval(em->pthat)) continue;
+	  }
+	  else if(CentralityIndex == 2){
+	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C2->Eval(em->pthat)) continue;
+	  }
+	  else if(CentralityIndex == 1){
+	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C1->Eval(em->pthat)) continue;
+	  }
+	  else{
+	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C4->Eval(em->pthat)) continue; // default to C4 if we have more centrality bins
+	  };
+	}
       }
 
     
