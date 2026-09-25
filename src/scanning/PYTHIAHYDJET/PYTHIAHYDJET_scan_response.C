@@ -193,7 +193,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
   doVzReweight = true;
   std::cout << "turning off removeHYDJETjet...\n";
   doRemoveHYDJETjet = false;
-v  std::cout << "turning on pThat correlation filter...\n";
+  std::cout << "turning on pThat correlation filter...\n";
   doPThatCorrelationFilter = true;
   
   // TString inputDataset = "";
