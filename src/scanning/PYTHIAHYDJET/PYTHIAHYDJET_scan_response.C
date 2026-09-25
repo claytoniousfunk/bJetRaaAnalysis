@@ -89,6 +89,7 @@ TF1 *fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C1;
 #include "../../../headers/fitFunctions/fitFxn_PYTHIA_JERCorrection.h"
 // pThat correlation
 #include "../../../headers/fitFunctions/fitFxn_PYTHIAHYDJET_pThatCorrelation.h"
+#include "../../../headers/fitFunctions/fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets.h"
 // eta-phi mask function
 #include "../../../headers/functions/etaPhiMask.h"
 // getDr function
@@ -192,7 +193,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
   doVzReweight = true;
   std::cout << "turning off removeHYDJETjet...\n";
   doRemoveHYDJETjet = false;
-  std::cout << "turning on pThat correlation filter...\n";
+v  std::cout << "turning on pThat correlation filter...\n";
   doPThatCorrelationFilter = true;
   
   // TString inputDataset = "";
