@@ -78,5 +78,5 @@ bool fillMu12 = true;
 bool useCaloJetsOverride = true;
 bool useManualJEC = true;
 // for response scan
-bool onlyEvenEvents = false;
+bool onlyEvenEvents = true;
 bool onlyOddEvents = false;
