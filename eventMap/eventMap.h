@@ -47,6 +47,7 @@ public :
   void regEventFilter(std::vector<std::string> &filtername);
   void loadParticleFlowAnalyzer(const char* name);
   void loadParticleFlowAnalyzer_PFCs(const char* name);
+  void loadRecHitTowers(const char* name);
   bool checkEventFilter(){
     //mScrapingFilterreturn 1 for event needs to be skipped
     for(auto & it : filters) if(!it) return 1;
@@ -62,7 +63,7 @@ public :
   int gppdgID(int j) {return gppdgIDp->at(j);}
   //  int gpIsStable(int j) {return gpStableTag->at(j);}
   //int gpSube(int j){ return gpsube->at(j);}
-  TTree *hltTree, *filterTree, *trkTree, *genParticleTree=nullptr, *recoJetTree=nullptr, *genJetTree=nullptr, *muonTree=nullptr, *muonTriggerTree=nullptr, *muonAnalyzerTree=nullptr, *pfTree=nullptr, *pfCsTree=nullptr;
+  TTree *hltTree, *filterTree, *trkTree, *genParticleTree=nullptr, *recoJetTree=nullptr, *genJetTree=nullptr, *muonTree=nullptr, *muonTriggerTree=nullptr, *muonAnalyzerTree=nullptr, *pfTree=nullptr, *pfCsTree=nullptr, *towerTree=nullptr;
   TTree *jetEvtTree=nullptr, *muonEvtTree=nullptr, *genParticleEvtTree=nullptr;
   TTree *evtTree;
   TFile *_file = 0;
@@ -103,6 +104,18 @@ public :
   std::vector<int> *pfCsId=0;
   std::vector<double> *pfCsPt=0, *pfCsEta=0, *pfCsPhi=0;
   int nPFCspart = 0;
+
+  // CaloTowers from rechitanalyzerpp/tower. Fixed C arrays, not the vectors the
+  // pfCandAnalyzer branches use, because that is how the forest writes them.
+  //
+  // towMax: the CaloTower grid is 72 iphi x 82 ieta in the barrel/endcap plus
+  // HF, so ~6k is the geometric ceiling; 10000 leaves headroom and the loader
+  // clamps nTower to it rather than writing past the end.
+  static const int towMax = 10000;
+  Int_t   nTower = 0;
+  Float_t towE   [towMax], towEt  [towMax], towEta[towMax], towPhi[towMax];
+  Float_t towEmEt[towMax], towHadEt[towMax];
+  Int_t   towIeta[towMax], towIphi[towMax];
 
   //jet set
   static const int jetMax = 9999;
@@ -338,6 +351,36 @@ void eventMap::loadParticleFlowAnalyzer_PFCs(const char* name){
   pfCsTree->SetBranchAddress("pfPt",&pfCsPt);
   pfCsTree->SetBranchAddress("pfEta",&pfCsEta);
   pfCsTree->SetBranchAddress("pfPhi",&pfCsPhi);
+}
+
+// CaloTowers, rechitanalyzerpp/tower.
+//
+// NOT attached as a friend of evtTree, deliberately. This tree's branches are
+// named n, e, et, eta, phi, emEt, hadEt, rawId, ieta, iphi -- about as generic
+// as names get -- and AddFriend would put every one of them into evtTree's
+// namespace, where they would collide with anything similarly named (the same
+// failure mode CLAUDE.md records for a second jet tree). loadParticleFlowAnalyzer_PFCs
+// already sidesteps this the same way. The caller therefore has to advance this
+// tree itself:  em->towerTree->GetEntry(evi);  alongside em->getEvent(evi).
+//
+// Towers are exactly massless in the forest: e/cosh(eta) reproduces et to
+// 4e-7, and emEt + hadEt equals et exactly, so a 4-vector can be built as
+// (et cos phi, et sin phi, et sinh eta, e) with no mass term.
+void eventMap::loadRecHitTowers(const char* name){
+  towerTree = (TTree*) _file->Get(Form("%s/tower",name));
+  if(!towerTree){
+    std::cout << "eventMap::loadRecHitTowers: no tree \"" << name << "/tower\" in this file.\n";
+    return;
+  }
+  towerTree->SetBranchAddress("n",    &nTower);
+  towerTree->SetBranchAddress("e",     towE);
+  towerTree->SetBranchAddress("et",    towEt);
+  towerTree->SetBranchAddress("eta",   towEta);
+  towerTree->SetBranchAddress("phi",   towPhi);
+  towerTree->SetBranchAddress("emEt",  towEmEt);
+  towerTree->SetBranchAddress("hadEt", towHadEt);
+  towerTree->SetBranchAddress("ieta",  towIeta);
+  towerTree->SetBranchAddress("iphi",  towIphi);
 }
 
 void eventMap::unloadGP(){
