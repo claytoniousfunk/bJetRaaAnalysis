@@ -54,5 +54,15 @@ int main(int argc, char **argv){
 
   HYDJET_pfCandAnalyzer((int)group);
 
+  // The analyzer returns void and bails out with a plain "return" on a missing
+  // background map, an unreadable file list, a forest without the PF trees and a
+  // dozen other conditions. Without this check every one of those exits 0 and
+  // condor records the job as successful having produced no output.
+  if(!g_pfCandScanCompletedOK){
+    fprintf(stderr, "ERROR: scan(%ld) did not complete -- no output written. "
+                    "See the messages above.\n", group);
+    return 1;
+  }
+
   return 0;
 }

@@ -86,4 +86,13 @@ void run_pfCandAnalyzer_condor(int group = 1){
          gSystem->GetLibraries("fastjet|Delphes", "D", kFALSE));
 
   gROOT->ProcessLine(Form("HYDJET_pfCandAnalyzer(%d)", group));
+
+  // The analyzer returns void and bails out with a plain "return" on a missing
+  // background map, an unreadable file list and a dozen other conditions.
+  // Without this the job exits 0 and condor records success with no output.
+  Long_t ok = gROOT->ProcessLine("g_pfCandScanCompletedOK;");
+  if(!ok){
+    printf("ERROR: HYDJET_pfCandAnalyzer(%d) did not complete -- no output written.\n", group);
+    gSystem->Exit(1);
+  }
 }

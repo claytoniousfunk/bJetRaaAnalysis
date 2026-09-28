@@ -326,6 +326,14 @@ TProfile2D  *h_dPT_dPTAbove0_map[NCentralityIndices];
 TProfile2D  *h_dPT_PFCsPTAbove60_map[NCentralityIndices];
 
 ///////////////////////  start the program
+// Set true only after the output file has been written and closed. main() in
+// main_pfCandAnalyzer.cc returns non-zero when it is still false, so a job that
+// bailed out early -- missing background map, missing input list, forest without
+// the PF trees -- is reported to condor as FAILED instead of exiting 0 having
+// written nothing. Every early "return" in the scan below leaves this false,
+// which is the point: there is no list of failure modes to keep in sync.
+bool g_pfCandScanCompletedOK = false;
+
 void PbPb_pfCandAnalyzer(int group = 1){
 
   if(fillMu5){
@@ -1019,18 +1027,37 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
 
 
-    TFile *f_neutrino_energy_fraction_map = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/neutrino_energy_fraction_map.root");
-    TH2D *neutrino_energy_fraction_map;
-    TH1D *neutrino_energy_fraction_map_proj;
-    f_neutrino_energy_fraction_map->GetObject("neutrino_energy_fraction_map",neutrino_energy_fraction_map);
+    // The neutrino maps were opened unconditionally and dereferenced with no null
+    // check, so a run with no /eos mounted segfaulted here rather than saying
+    // what was missing. They are only consumed under doBJetNeutrinoEnergyShift,
+    // so on a run with that off they are dead weight. Null-checked instead:
+    // missing maps are reported and left null, and the scan continues.
+    const char *nuDir = "/eos/cms/store/group/phys_heavyions/cbennett/maps/";
+    TH2D *neutrino_energy_fraction_map = nullptr;
+    TH1D *neutrino_energy_fraction_map_proj = nullptr;
+    TH2D *neutrino_energy_map = nullptr;
+    TH1D *neutrino_tag_fraction = nullptr;
 
-    TFile *f_neutrino_energy_map = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/neutrino_energy_map.root");
-    TH2D *neutrino_energy_map;
-    f_neutrino_energy_map->GetObject("neutrino_energy_map",neutrino_energy_map);
+    TFile *f_neutrino_energy_fraction_map = TFile::Open(Form("%sneutrino_energy_fraction_map.root", nuDir));
+    if(f_neutrino_energy_fraction_map && !f_neutrino_energy_fraction_map->IsZombie())
+      f_neutrino_energy_fraction_map->GetObject("neutrino_energy_fraction_map",neutrino_energy_fraction_map);
 
-    TFile *f_neutrino_tag_fraction = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/neutrino_tag_fraction.root");
-    TH1D *neutrino_tag_fraction;
-    f_neutrino_tag_fraction->GetObject("neutrino_tag_fraction",neutrino_tag_fraction);
+    TFile *f_neutrino_energy_map = TFile::Open(Form("%sneutrino_energy_map.root", nuDir));
+    if(f_neutrino_energy_map && !f_neutrino_energy_map->IsZombie())
+      f_neutrino_energy_map->GetObject("neutrino_energy_map",neutrino_energy_map);
+
+    TFile *f_neutrino_tag_fraction = TFile::Open(Form("%sneutrino_tag_fraction.root", nuDir));
+    if(f_neutrino_tag_fraction && !f_neutrino_tag_fraction->IsZombie())
+      f_neutrino_tag_fraction->GetObject("neutrino_tag_fraction",neutrino_tag_fraction);
+
+    if(!neutrino_energy_fraction_map || !neutrino_energy_map || !neutrino_tag_fraction){
+      std::cout << "WARNING:  one or more neutrino maps could not be read from " << nuDir << ".\n";
+      if(doBJetNeutrinoEnergyShift){
+        std::cout << "ERROR:  doBJetNeutrinoEnergyShift needs them.  Exiting...\n";
+        return;
+      }
+      std::cout << "          doBJetNeutrinoEnergyShift is off, so continuing without them.\n";
+    }
 
 
 
@@ -2687,6 +2714,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
     writeProvenance(wf);
 
     wf->Close();
+    g_pfCandScanCompletedOK = true;   // the only place this is set
     return;
     // END WRITE
 
