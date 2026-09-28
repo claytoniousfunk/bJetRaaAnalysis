@@ -13,6 +13,15 @@
 //      single summary plot, starting from N = 0 (the measured spectrum with no
 //      unfolding applied), which is the reference the iterations improve on
 //
+//  Three figures per run, all in figures/unfoldTest/:
+//    closure_<tag>.pdf          every iteration, for watching them walk away
+//                               from the truth
+//    closure_reduced_<tag>.pdf  gen truth, N = 0 and the min-MSE iteration only,
+//                               with that iteration's uncertainty -- the version
+//                               to show when the question is what the unfolding
+//                               delivers rather than how it got there
+//    closure_summary_<tag>.pdf  bias^2 / variance / MSE / chi^2 vs. N
+//
 //  The third argument selects which response is used to unfold the (always
 //  pThat-weighted) spectrum; the fourth distorts the truth away from the prior so
 //  that the optimal number of iterations is actually measurable.  See the comment
@@ -34,9 +43,18 @@
 //  shares the coarser binning.  The factor must divide the native bin count.
 //  Wider bins average down the statistical fluctuations that single high-weight
 //  events put into individual bins -- the point of the option.
-//  NOTE bias^2, variance and MSE are sums of squared COUNTS per bin, so they grow
-//  with bin width and are not comparable between rebin factors.  chi2/ndf and
-//  the max |unfolded/truth - 1| column are.
+//  Since 2026-09-26 bias^2, variance and MSE are RELATIVE -- each bin divided by
+//  its own truth before squaring -- so they no longer carry a counts^2 scale and
+//  are broadly comparable between rebin factors, as chi2/ndf and max
+//  |unfolded/truth - 1| always were.  MSE_abs in the table is the old counts^2
+//  sum, kept only for comparison with runs made before that date.
+//
+//  FILE OVERRIDES (trainOverride, testOverride, outLabel).  Replace the training
+//  file (response + prior) and/or the test file (unfolded spectrum + truth) with
+//  explicit paths, for pairings the sample configs do not cover -- e.g. the full
+//  pThat-weighted response unfolding a pThat-unweighted half.  The histogram
+//  names are unchanged.  outLabel is appended to the output tag so the figures
+//  do not overwrite the standard ones; with overrides it is required.
 //
 //  CALO JETS (last argument).  Uses the manual-JEC calo response scans' even and
 //  odd halves from this repo -- the newest files matching
@@ -48,6 +66,13 @@
 //      flavour comes from refparton_flavor, which leaves ~17-21% of real jets
 //      unassigned (x); dropping them would discard a fifth of the sample, and
 //      pp calo has no xJets histogram to subtract anyway.
+//      The last argument, removeXJetsOpt, overrides that (-1 default, 0 keep,
+//      1 drop) and tags the output _noX / _withX.  Tried 2026-09-25: it changes
+//      nothing.  The ~20% is a whole-spectrum average sitting at gen pT 0-20;
+//      above 80 GeV x is 0.02% of the C1 calo response, and dropping it moves
+//      chi2/ndf at iteration 1 by ~1% (C1 11.74 -> 11.87, C4 7.99 -> 7.97) and
+//      max|unfolded/truth - 1| by less than 0.1%.  x jets are not what breaks
+//      the central-PbPb closure; the unfiltered fakes are.
 //    - no pThat-unweighted calo production exists ("unweighted" modes refuse).
 //    - "dataMC" is refused: its data files are the PF-era scans, and the
 //      manual-JEC PbPb calo data use 5% classes that do not map onto C1..C4.
@@ -89,9 +114,15 @@ struct SampleConfig {
   TString unmGenName;   // gen  jets with no reco match -> inefficiency
 };
 
-// newest file matching a shell glob, or "" if none
-TString newestMatching(const TString &pattern){
-  TString s = gSystem->GetFromPipe(Form("ls -1t %s 2>/dev/null | head -1", pattern.Data()));
+// newest file matching a shell glob, or "" if none.  `exclude`, when given, drops
+// any match containing that substring -- needed because the PbPb calo data scans
+// exist in both nominal and _ultraFineCentBins flavours under otherwise identical
+// names, and the ultraFine ones carry 5% slices instead of C0..C4.
+TString newestMatching(const TString &pattern, const TString &exclude = ""){
+  TString cmd = Form("ls -1t %s 2>/dev/null", pattern.Data());
+  if(!exclude.IsNull()) cmd += Form(" | grep -v '%s'", exclude.Data());
+  cmd += " | head -1";
+  TString s = gSystem->GetFromPipe(cmd);
   return s.Strip(TString::kBoth);
 }
 
@@ -103,15 +134,47 @@ void applyCaloConfig(SampleConfig &c){
   const TString stem = c.isPP ? "PYTHIA/PYTHIA_DiJet_response_caloJets_manualJEC"
                               : "PYTHIAHYDJET/PYTHIAHYDJET_response_DiJet_caloJets_manualJEC";
   c.isCalo       = true;
-  c.trainFile    = newestMatching(dir + stem + "*evenEvents*.root");
-  c.testFile     = newestMatching(dir + stem + "*oddEvents*.root");
+  // pThat-WEIGHTED halves only ("_pThat-<number>"): the pThat-unweighted halves
+  // share the stem and would otherwise be picked whenever they are newer
+  c.trainFile    = newestMatching(dir + stem + "*evenEvents_pThat-[0-9]*.root");
+  c.testFile     = newestMatching(dir + stem + "*oddEvents_pThat-[0-9]*.root");
   c.trainFileUnw = "";
   c.title       += ", calo jets";
+
+  //  Calo data, for the dataMC distortion.  These replace the PF-era scans the
+  //  config set up; without them "dataMC" would fit a PF data spectrum against a
+  //  calo MC one and call the difference a prior error.
+  //
+  //  The PbPb globs end in [0-9].root via the `exclude`: every one of these
+  //  scans also exists as *_ultraFineCentBins.root with 5% slices in place of
+  //  C0..C4, and `ls -1t` would happily hand back whichever was written last.
+  //
+  //  There is no manual-JEC PbPb Jet60 scan, and none is needed: PbPb stitching
+  //  sets jet60_pTmin = jet80_pTmin, so the Jet60 window closes to zero width and
+  //  that histogram is never read as a source.  It is still dereferenced, so the
+  //  Jet80 file stands in -- deliberately NOT the 2026-9-15 calo Jet60 scan,
+  //  which has no manual JEC and would silently mix jet energy scales if the
+  //  stitch logic ever changed.
+  const TString dDir = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/";
+  if(c.isPP){
+    c.dataMB     = newestMatching(dDir + "pp/pp_MinBias_caloJets_manualJEC_*.root");
+    c.dataJet60  = newestMatching(dDir + "pp/pp_HighEGJet_caloJets_manualJEC_Jet60HLT_*.root");
+    c.dataJet80  = newestMatching(dDir + "pp/pp_HighEGJet_caloJets_manualJEC_Jet80HLT_*.root");
+    c.dataJet100 = newestMatching(dDir + "pp/pp_HighEGJet_caloJets_manualJEC_Jet100HLT_*.root");
+  }
+  else{
+    const TString ex = "ultraFineCentBins";
+    c.dataMB     = newestMatching(dDir + "PbPb/PbPb_MinBias_Part1_caloJets_manualJEC_*.root", ex);
+    c.dataJet80  = newestMatching(dDir + "PbPb/PbPb_HardProbes_caloJets_manualJEC_Jet80HLT_*.root",  ex);
+    c.dataJet100 = newestMatching(dDir + "PbPb/PbPb_HardProbes_caloJets_manualJEC_Jet100HLT_*.root", ex);
+    c.dataJet60  = c.dataJet80;   // never read for PbPb; see above
+  }
+
   if(c.trainFile.IsNull() || c.testFile.IsNull()){
     std::cout << "unfoldClosureTest: calo half-sample response scans not found:\n"
               << "   even: " << (c.trainFile.IsNull() ? TString("MISSING") : c.trainFile) << "\n"
               << "   odd : " << (c.testFile.IsNull()  ? TString("MISSING") : c.testFile)  << "\n"
-              << "   looked for " << dir << stem << "*{even,odd}Events*.root\n"
+              << "   looked for " << dir << stem << "*{even,odd}Events_pThat-<number>*.root\n"
               << "   Produce them with useCaloJetsOverride = true and onlyEvenEvents / onlyOddEvents\n"
               << "   in " << (c.isPP ? "config_PYTHIA.h (PYTHIA_scan_response.C)"
                                      : "config_PYTHIAHYDJET.h (PYTHIAHYDJET_scan_response.C)") << ".\n";
@@ -541,17 +604,106 @@ double distortionWeight(double pt, double expo, double pTref){
   return std::pow(x/pTref, expo);
 }
 
+//  How much the tilt distorts the input: the reco spectrum that gets unfolded,
+//  before and after the distortion, and their ratio.
+void drawTiltDerivation(TH1D *h_truthOrig, TH1D *h_truthDist,
+                        TH1D *h_measOrig,  TH1D *h_measDist,
+                        double expo, double pTref, double ptLow, double ptHigh,
+                        const char *titleStr, const char *outPath){
+
+  const double xLo = 40., xHi = 400.;
+
+  TCanvas *canv = new TCanvas("canv_tilt","canv_tilt",750,750);
+  canv->cd();
+  TPad *up = new TPad("pad_tilt_up","",0,0.38,1,1);
+  TPad *dn = new TPad("pad_tilt_dn","",0,0,1,0.38);
+  up->SetLeftMargin(0.15); dn->SetLeftMargin(0.15);
+  up->SetRightMargin(0.05); dn->SetRightMargin(0.05);
+  up->SetBottomMargin(0.);  dn->SetBottomMargin(0.30);
+  up->SetTopMargin(0.10);   dn->SetTopMargin(0.);
+  up->SetLogy(); up->SetTickx(1); up->SetTicky(1);
+  dn->SetTickx(1); dn->SetTicky(1);
+  up->Draw(); dn->Draw();
+
+  //---- input spectrum, original and distorted -----------------------------------
+  up->cd();
+  TH1D *mO = (TH1D*) h_measOrig->Clone("tilt_mO"); mO->SetDirectory(0);
+  TH1D *mD = (TH1D*) h_measDist->Clone("tilt_mD"); mD->SetDirectory(0);
+  mO->SetStats(0); mO->SetTitle("");
+  mO->GetXaxis()->SetRangeUser(xLo,xHi);
+  mO->GetYaxis()->SetTitle("counts");
+  mO->GetYaxis()->SetTitleSize(0.055); mO->GetYaxis()->SetTitleOffset(1.25);
+  mO->GetYaxis()->SetLabelSize(0.045);
+  mO->SetLineColor(kBlack);    mO->SetLineWidth(3);
+  mD->SetLineColor(cbVermil()); mD->SetLineWidth(3);
+  mO->Draw("hist");
+  mD->Draw("hist same");
+
+  TLegend *leg = new TLegend(0.55,0.70,0.93,0.86);
+  leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.045);
+  leg->AddEntry(mO,"input, original","l");
+  leg->AddEntry(mD,"input, distorted","l");
+  leg->Draw();
+
+  TLatex lat; lat.SetNDC(); lat.SetTextSize(0.050);
+  lat.DrawLatex(0.15,0.925,titleStr);
+
+  //---- ratio --------------------------------------------------------------------
+  dn->cd();
+  TH1D *rM = (TH1D*) mD->Clone("tilt_rM"); rM->SetDirectory(0); rM->Divide(mO);
+  double yLo = 1e9, yHi = -1e9;
+  for(int b = rM->FindBin(xLo); b <= rM->FindBin(xHi - 1e-6); b++){
+    if(rM->GetBinContent(b) <= 0.) continue;
+    yLo = std::min(yLo, rM->GetBinContent(b)); yHi = std::max(yHi, rM->GetBinContent(b));
+  }
+  yLo = std::min(yLo, 1.) - 0.1; yHi = std::max(yHi, 1.) + 0.1;
+  TH1F *fr = dn->DrawFrame(xLo,yLo,xHi,yHi);
+  fr->GetXaxis()->SetTitle("Jet #it{p}_{T} [GeV]");
+  fr->GetYaxis()->SetTitle("distorted / original");
+  fr->GetXaxis()->SetTitleSize(0.105); fr->GetXaxis()->SetTitleOffset(1.15);
+  fr->GetYaxis()->SetTitleSize(0.085); fr->GetYaxis()->SetTitleOffset(0.78);
+  fr->GetXaxis()->SetLabelSize(0.090); fr->GetYaxis()->SetLabelSize(0.090);
+  fr->GetYaxis()->SetNdivisions(505);
+
+  rM->SetLineColor(cbVermil()); rM->SetLineWidth(3);
+  rM->Draw("hist same");
+
+  TLine *li = new TLine(); li->SetLineStyle(7); li->SetLineColor(kGray+2);
+  li->DrawLine(xLo,1.,xHi,1.);
+
+  canv->SaveAs(outPath);
+
+}
+
 
 //====================================================================================
 //  closure metrics
 //====================================================================================
 
+//  RELATIVE METRICS, adopted 2026-09-26.  bias2/variance/mse are sums of
+//  squared COUNTS, so they are dominated by whichever bin holds the most yield
+//  -- on a steeply falling spectrum, always the lowest one in the window.  In
+//  C3 the 80-100 GeV bin alone supplied 85-99% of bias2 at nearly every
+//  iteration (mean share 0.90; C4 0.83), and the "minimum MSE at N = 9" it
+//  produced was simply where that one bin's deviation crossed zero on its way
+//  from positive to negative -- the other ten bins stayed inside 1.5% the whole
+//  time and max|unfolded/truth - 1| had no minimum there at all.  On a log axis
+//  the crossing looked like a spike in the bias curve.
+//
+//  Dividing each bin by its own truth removes the yield weighting, so every bin
+//  in the window counts equally.  The minima become broad and consistent
+//  (N ~ 8-11 in all four classes, where the absolute metric gave 3 to 10), and
+//  the spurious structure disappears.  The absolute MSE is kept in the table for
+//  continuity with earlier runs.
 struct ClosureMetrics {
   double chi2     = 0.;   // sum (unfolded - truth)^2 / sigma^2
   int    ndf      = 0;    // number of bins entering the sum
-  double bias2    = 0.;   // sum (unfolded - truth)^2
-  double variance = 0.;   // sum sigma^2
+  double bias2    = 0.;   // sum ((unfolded - truth)/truth)^2
+  double variance = 0.;   // sum (sigma/truth)^2
   double mse      = 0.;   // bias^2 + variance
+  double bias2Abs = 0.;   // sum (unfolded - truth)^2, counts^2
+  double varAbs   = 0.;   // sum sigma^2, counts^2
+  double mseAbs   = 0.;   // bias2Abs + varAbs
   double maxDev   = 0.;   // max |unfolded/truth - 1|: bin-width independent
 };
 
@@ -570,18 +722,24 @@ ClosureMetrics computeMetrics(TH1D *h_unfold, TH1D *h_truth, double ptLow, doubl
 
     if(t == 0.) continue;
 
-    m.bias2    += (u - t) * (u - t);
-    m.variance += sig * sig;
-    m.maxDev    = std::max(m.maxDev, std::fabs(u / t - 1.));
+    const double d = (u - t) / t;      // relative deviation
+    const double s = sig / t;          // relative uncertainty
+
+    m.bias2    += d * d;
+    m.variance += s * s;
+    m.bias2Abs += (u - t) * (u - t);
+    m.varAbs   += sig * sig;
+    m.maxDev    = std::max(m.maxDev, std::fabs(d));
 
     if(sig > 0.){
-      m.chi2 += (u - t) * (u - t) / (sig * sig);
+      m.chi2 += (u - t) * (u - t) / (sig * sig);   // scale-free already
       m.ndf++;
     }
 
   }
 
-  m.mse = m.bias2 + m.variance;
+  m.mse    = m.bias2    + m.variance;
+  m.mseAbs = m.bias2Abs + m.varAbs;
 
   return m;
 
@@ -632,9 +790,13 @@ void drawClosure(int N_iter_max, TH1D **h_unfold, TH1D *h_truth,
   pad_lower->SetTickx(1); pad_lower->SetTicky(1);
   pad_upper->Draw(); pad_lower->Draw();
 
+  //  entries = gen truth + N = 0 ... N_iter_max.  A long scan overruns a
+  //  two-column legend, so widen and shrink it rather than let the rows overlap.
+  const int nLegEntries = N_iter_max + 2;
   TLegend *leg = new TLegend(0.60,0.32,0.93,0.84);
-  leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.036);
-  leg->SetNColumns(2);
+  leg->SetBorderSize(0); leg->SetFillStyle(0);
+  leg->SetTextSize(nLegEntries > 14 ? 0.024 : 0.036);
+  leg->SetNColumns(nLegEntries > 14 ? 3 : 2);
 
   //---- spectra ----------------------------------------------------------------
   pad_upper->cd();
@@ -668,7 +830,12 @@ void drawClosure(int N_iter_max, TH1D **h_unfold, TH1D *h_truth,
   for(int n = 0; n <= N_iter_max; n++){
 
     TH1D *r = (TH1D*) h_unfold[n]->Clone(Form("r_closure_iter%i",n));
-    r->Divide(h_unfold[n],h_truth,1,1,"");
+    //  binomial for the unfolded iterations, which share their events with the
+    //  truth (see the note in drawClosureReduced); plain for N = 0, whose ratio
+    //  to truth runs to 8-14 before the fakes are unfolded away.  Neither is
+    //  drawn on this figure -- ten curves leave no room for error bars -- but
+    //  the two figures should not disagree about what the ratio means.
+    r->Divide(h_unfold[n],h_truth,1,1, n > 0 ? "B" : "");
 
     if(n > 0){ r->Draw("hist same"); continue; }
 
@@ -692,6 +859,151 @@ void drawClosure(int N_iter_max, TH1D **h_unfold, TH1D *h_truth,
   li->DrawLine(drawPtLow,1.05,drawPtHigh,1.05);
 
   // window used for the bias/variance/chi2 metrics
+  li->SetLineColor(kGray+2);
+  li->DrawLine(ptLow, ratioLow,ptLow, ratioHigh);
+  li->DrawLine(ptHigh,ratioLow,ptHigh,ratioHigh);
+  li->SetLineColor(kBlack);
+
+  canv->SaveAs(outPath);
+
+}
+
+// Same figure reduced to three curves: gen truth, N = 0 (the measured spectrum,
+// no unfolding) and the one iteration the MSE scan picks out.  The full version
+// stacks eleven curves, which is the right plot for watching the iterations walk
+// away from the truth but the wrong one for showing what the unfolding actually
+// delivers -- there the two references and the answer are all that matter.
+//
+// The optimal N is only meaningful for a distorted-truth run.  In a plain
+// split-sample test the prior IS the truth up to the even/odd split, so MSE is
+// minimised at N = 1 by construction; nOptMeaningful says which case this is and
+// the legend is labelled accordingly.
+void drawClosureReduced(TH1D *h_meas, TH1D *h_opt, int nOpt, bool nOptMeaningful,
+                        TH1D *h_truth,
+                        double drawPtLow, double drawPtHigh,
+                        double ptLow, double ptHigh,
+                        double ratioLow, double ratioHigh,
+                        const char *titleStr,
+                        const std::vector<TString> &infoLines,
+                        const char *outPath){
+
+  TLine *li = new TLine();
+  li->SetLineStyle(7);
+
+  TCanvas *canv = new TCanvas("canv_closure_red","canv_closure_red",750,750);
+  canv->cd();
+  TPad *pad_upper = new TPad("pad_red_upper","",0,0.35,1,1);
+  TPad *pad_lower = new TPad("pad_red_lower","",0,0,1,0.35);
+  pad_upper->SetLeftMargin(0.15);  pad_lower->SetLeftMargin(0.15);
+  pad_upper->SetRightMargin(0.05); pad_lower->SetRightMargin(0.05);
+  pad_upper->SetBottomMargin(0.);  pad_lower->SetBottomMargin(0.30);
+  pad_upper->SetTopMargin(0.16);   pad_lower->SetTopMargin(0.);
+  pad_upper->SetLogy();
+  pad_upper->SetTickx(1); pad_upper->SetTicky(1);
+  pad_lower->SetTickx(1); pad_lower->SetTicky(1);
+  pad_upper->Draw(); pad_lower->Draw();
+
+  // clones, so restyling here cannot disturb the full eleven-curve figure
+  TH1D *t = (TH1D*) h_truth->Clone("red_truth");
+  TH1D *m = (TH1D*) h_meas ->Clone("red_meas");
+  TH1D *u = (TH1D*) h_opt  ->Clone("red_opt");
+  t->SetDirectory(0); m->SetDirectory(0); u->SetDirectory(0);
+
+  t->SetLineColor(kBlack);    t->SetLineWidth(3); t->SetLineStyle(1);
+  m->SetLineColor(kGray+2);   m->SetLineWidth(2); m->SetLineStyle(7);
+  u->SetLineColor(cbVermil()); u->SetLineWidth(3); u->SetLineStyle(1);
+  u->SetMarkerColor(cbVermil());
+
+  //---- spectra ----------------------------------------------------------------
+  pad_upper->cd();
+
+  t->SetStats(0);
+  t->SetTitle("");
+  t->GetXaxis()->SetRangeUser(drawPtLow,drawPtHigh);
+  t->GetYaxis()->SetTitle("counts");
+  t->GetYaxis()->SetTitleSize(0.055); t->GetYaxis()->SetTitleOffset(1.3);
+  t->GetYaxis()->SetLabelSize(0.045);
+  t->Draw("hist");
+  m->Draw("hist same");
+  u->Draw("hist same");
+  t->Draw("hist same");   // back on top: it is the reference being judged
+
+  TLegend *leg = new TLegend(0.55,0.60,0.93,0.84);
+  leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.040);
+  leg->AddEntry(t,"gen truth","l");
+  leg->AddEntry(m,"#it{N} = 0 (meas.)","l");
+  leg->AddEntry(u, nOptMeaningful ? Form("#it{N} = %i (min MSE)",nOpt)
+                                  : Form("#it{N} = %i",nOpt), "l");
+  leg->Draw();
+
+  TLatex lat; lat.SetNDC(); lat.SetTextSize(0.050);
+  lat.DrawLatex(0.15,0.945,titleStr);
+
+  //  Provenance goes bottom left, not under the title: the spectra fall by five
+  //  decades across the pad, so that corner is the only empty one, and a reader
+  //  checking which half produced which curve is looking at the plot, not at
+  //  the header.
+  lat.SetTextSize(0.038); lat.SetTextColor(kBlack); lat.SetTextFont(42);
+  const double lineStep = 0.052;
+  for(size_t i = 0; i < infoLines.size(); i++)
+    lat.DrawLatex(0.19, 0.075 + lineStep*(infoLines.size()-1-i), infoLines[i].Data());
+
+  //---- ratio to truth ---------------------------------------------------------
+  pad_lower->cd();
+
+  TH1D *rm = (TH1D*) m->Clone("red_r_meas");
+  TH1D *ru = (TH1D*) u->Clone("red_r_opt");
+  rm->SetDirectory(0); ru->SetDirectory(0);
+  //  "B" -- binomial errors on unfolded/truth.  The unfolded spectrum and the
+  //  truth it is compared against are built from the SAME events (the odd half,
+  //  or the training half for a distorted run), so treating them as independent
+  //  and adding the two relative errors in quadrature overstates the spread.
+  //
+  //  Caveat, since it matters if these bars are ever quoted: the binomial form
+  //  assumes the numerator is a subset of the denominator, and an unfolded
+  //  spectrum is not -- it is a different estimator on the same events, and the
+  //  ratio sits above 1 in plenty of bins.  ROOT's weighted-binomial expression
+  //  |((1-2w)e1^2 + w^2 e2^2)/(c2 b2)^2| goes outside its domain there and is
+  //  saved only by the absolute value.  In practice it makes almost no
+  //  difference: across 80-300 GeV in C1 the unfolded error dominates and the
+  //  binomial and uncorrelated bars agree to better than 15% (worst bin
+  //  160-180, 0.057 vs 0.066), so this is a presentational choice, not a
+  //  correction.
+  //
+  //  rm stays uncorrelated -- measured/truth runs to 8-14 before unfolding,
+  //  where a binomial error would be meaningless.  Its bars are not drawn.
+  rm->Divide(m,t,1,1,"");
+  ru->Divide(u,t,1,1,"B");
+  // Bars, not a filled band.  Outside the metric window the relative error runs
+  // to ~100% (the 40-60 bin, and everything above ~220 GeV where the C1 yield is
+  // a fraction of a count), and a shaded band there covers the whole pad and
+  // reads as "nothing is known".  Bars carry the same numbers per bin and stay
+  // out of the way.
+  ru->SetMarkerStyle(kFullCircle);
+  ru->SetMarkerSize(0.7);
+
+  rm->SetStats(0);
+  rm->SetTitle("");
+  rm->GetXaxis()->SetRangeUser(drawPtLow,drawPtHigh);
+  rm->GetYaxis()->SetRangeUser(ratioLow,ratioHigh);
+  rm->GetXaxis()->SetTitle("Jet #it{p}_{T} [GeV]");
+  rm->GetYaxis()->SetTitle("unfolded / truth");
+  rm->GetXaxis()->SetTitleSize(0.100); rm->GetXaxis()->SetTitleOffset(1.15);
+  rm->GetYaxis()->SetTitleSize(0.090); rm->GetYaxis()->SetTitleOffset(0.75);
+  rm->GetXaxis()->SetLabelSize(0.085);
+  rm->GetYaxis()->SetLabelSize(0.085);
+  rm->GetYaxis()->SetNdivisions(505);
+  rm->Draw("hist");
+  // with one curve instead of ten there is room for its uncertainty, which is
+  // the whole point of picking an iteration: it trades bias for variance
+  ru->Draw("hist same");
+  ru->Draw("e1 same");
+
+  // unity only -- no +-5% guides.  This figure carries the iteration's own
+  // uncertainty, and fixed guide lines invite reading the closure against 5%
+  // rather than against the error bars, which are what actually bound it.
+  li->DrawLine(drawPtLow,1.00,drawPtHigh,1.00);
+
   li->SetLineColor(kGray+2);
   li->DrawLine(ptLow, ratioLow,ptLow, ratioHigh);
   li->DrawLine(ptHigh,ratioLow,ptHigh,ratioHigh);
@@ -750,7 +1062,7 @@ void drawSummary(int N_iter_max, double *x, double *bias2, double *var, double *
 
   TH1F *frame = pad->DrawFrame(xLow,yLow,xHigh,yHigh);
   frame->GetXaxis()->SetTitle("#it{N}_{iterations}");
-  frame->GetYaxis()->SetTitle("bias^{2}, variance, MSE [counts^{2}]");
+  frame->GetYaxis()->SetTitle("relative bias^{2}, variance, MSE");
   frame->GetXaxis()->SetTitleSize(0.048); frame->GetXaxis()->SetTitleOffset(1.20);
   frame->GetYaxis()->SetTitleSize(0.048); frame->GetYaxis()->SetTitleOffset(1.45);
   frame->GetXaxis()->SetLabelSize(0.042); frame->GetYaxis()->SetLabelSize(0.042);
@@ -767,9 +1079,13 @@ void drawSummary(int N_iter_max, double *x, double *bias2, double *var, double *
   int iBest = 1;
   for(int i = 2; i < N; i++) if(mse[i] < mse[iBest]) iBest = i;
 
+  //  Stop the marker at the MSE point rather than running it to the top of the
+  //  frame: it is pointing at one value on one curve, and a full-height line
+  //  crosses bias^2, variance and the chi2/ndf overlay on the way, implying it
+  //  marks something about all four.
   TLine *li = new TLine();
   li->SetLineStyle(7); li->SetLineColor(kGray+2);
-  li->DrawLine(x[iBest],yLow,x[iBest],yHigh);
+  li->DrawLine(x[iBest],yLow,x[iBest],mse[iBest]);
 
   // ---- chi2/ndf on a transparent overlay pad with its own right-hand axis.
   //      Goes log if the N = 0 point drags the range over a couple of decades,
@@ -807,7 +1123,8 @@ void drawSummary(int N_iter_max, double *x, double *bias2, double *var, double *
 
   TGraph *gC = new TGraph(N,x,chi2ndf);
   gC->SetLineColor(cbGreen()); gC->SetMarkerColor(cbGreen());
-  gC->SetLineWidth(2); gC->SetLineStyle(3); gC->SetMarkerStyle(22);
+  // diamond, not a triangle: markers here are centre-symmetric by convention
+  gC->SetLineWidth(2); gC->SetLineStyle(3); gC->SetMarkerStyle(33);
   gC->SetMarkerSize(1.1);
   gC->Draw("LP same");
 
@@ -849,13 +1166,17 @@ void drawSummary(int N_iter_max, double *x, double *bias2, double *var, double *
 //====================================================================================
 
 void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
-                       int    N_iter_max = 10,             // iterations to scan
+                       int    N_iter_max = 30,             // iterations to scan
                        TString responseMode = "weighted",  // see below
                        TString distortion   = "none",      // see below
                        double ptLow  =  80.,               // metric window, gen pT
                        double ptHigh = 300.,
                        bool   caloJets = false,            // calo response halves
-                       int    rebinFactor = 1){            // merge native bins by this
+                       int    rebinFactor = 1,             // merge native bins by this
+                       TString trainOverride = "",         // explicit response/prior file
+                       TString testOverride  = "",         // explicit unfolded/truth file
+                       TString outLabel      = "",         // appended to the output tag
+                       int    removeXJetsOpt = -1){        // -1 default, 0 keep x, 1 drop x
 
   //  The spectrum that gets unfolded, and the truth it is compared to, are
   //  ALWAYS the pThat-weighted ones.  Only the response changes:
@@ -904,6 +1225,17 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
   if(cfg.ok && caloJets) applyCaloConfig(cfg);
   if(!cfg.ok) return;
 
+  if(!trainOverride.IsNull() || !testOverride.IsNull()){
+    if(outLabel.IsNull()){
+      std::cout << "unfoldClosureTest: file overrides need an outLabel, so the figures do not\n"
+                << "                   overwrite the standard ones.\n";
+      return;
+    }
+    if(!trainOverride.IsNull()) cfg.trainFile = trainOverride;
+    if(!testOverride.IsNull())  cfg.testFile  = testOverride;
+    std::cout << "file overrides:\n   train: " << cfg.trainFile << "\n   test : " << cfg.testFile << "\n";
+  }
+
   if(useUnwMatrix && cfg.trainFileUnw.IsNull()){
     std::cout << "unfoldClosureTest: no pThat-unweighted response exists for \""
               << cfg.label << "\" -- that production is PbPb only.\n";
@@ -912,18 +1244,35 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
 
   const TString trainFile = useUnwMatrix ? cfg.trainFileUnw : cfg.trainFile;
 
-  //  drop unassigned-flavour ("x") jets from the response -- see loadResponse.
-  //  Not for calo: there x is refparton_flavor failing on ~17-21% of real jets.
-  const bool removeXJets = !cfg.isCalo;
+  //  Drop unassigned-flavour ("x") jets from the response -- see loadResponse.
+  //  Default is off for calo, where refparton_flavor leaves ~17-21% of jets
+  //  unassigned.  That number is honest but it is a whole-spectrum average
+  //  dominated by the softest bins: measured on the 2026-9-25 C1 calo response
+  //  the x fraction is 0.1997 at gen pT 0-20, 0.0337 at 20-40, 0.0032 at 40-60
+  //  and 0.0002 everywhere above 80.  So x is not a contaminant of the
+  //  measurement region at all -- but those low bins are where the buffer
+  //  migration comes from, so it is not obviously irrelevant either, which is
+  //  what removeXJetsOpt is for.
+  //
+  //  (With includeUnmatched off, below, x removal now applies to everything the
+  //  test uses -- the matched response is the whole input.)
+  const bool removeXJets = (removeXJetsOpt < 0) ? !cfg.isCalo : (removeXJetsOpt == 1);
 
-  //  Fold the unmatched jets into the response.  Reco jets with no gen partner
-  //  become RooUnfold "fakes"; gen jets with no reco partner become
-  //  inefficiency.  Without this the response has efficiency 1 and zero fakes
-  //  by construction, because measured and truth are just projections of the
-  //  matched 2D -- which is self-consistent for a closure test but not what the
-  //  real data contains.  RooUnfoldBayes ignores fakes unless HandleFakes(true)
-  //  is set, so that is switched on below.
-  const bool includeUnmatched = true;
+  //  MATCHED JETS ONLY.  With this off, measured and truth are just the X and Y
+  //  projections of the matched 2D, so the response has efficiency 1 and no
+  //  fakes: the test asks whether the unfolding recovers a real jet spectrum,
+  //  and nothing else.  Fake-jet subtraction is a separate problem and is not
+  //  handled here.
+  //
+  //  It was on until 2026-09-25, and it was the dominant term in the closure
+  //  deviation rather than a realistic addition.  The fake histogram escapes the
+  //  pThat correlation filter (see PYTHIAHYDJET_scan_response.C), leaving it
+  //  built from a handful of events -- even and odd disagree by 31% / 79% /
+  //  133% / 293% in C2 / C1 / C3 / C4 over reco pT 80-200, against 0.4-2.0% for
+  //  the matched response over the same range.  Turning it off drops
+  //  max|unfolded/truth - 1| at iteration 1 from 12.4% to 2.6% in C1, 26.2% to
+  //  4.1% in C2, 37.9% to 2.4% in C3 and 15.2% to 1.8% in C4.
+  const bool includeUnmatched = false;
 
   TString respTitle = "response: pThat-weighted";
   TString distTitle = "";
@@ -938,6 +1287,14 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
     outTag    = Form("%s_unwMatrix",cfg.label.Data());
   }
   if(cfg.isCalo) outTag += "_caloJets";   // never overwrite the PF outputs
+  //  only tag when the x handling differs from this collection's default, so
+  //  the existing filenames keep meaning what they meant
+  if(removeXJets != !cfg.isCalo) outTag += removeXJets ? "_noX" : "_withX";
+  if(!outLabel.IsNull()) outTag += outLabel;
+  // with a train override the mode name no longer says what the response is
+  if(!trainOverride.IsNull())
+    respTitle = trainOverride.Contains("unweighted") ? "response: pThat-unweighted (override)"
+                                                     : "response: pThat-weighted (override)";
   if(rebinFactor > 1){
     outTag    += Form("_rebin%d", rebinFactor);
     respTitle += Form(", %d GeV bins", 5*rebinFactor);
@@ -955,9 +1312,15 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
     return;
   }
 
-  if(cfg.isCalo && doDataMC){
-    std::cout << "unfoldClosureTest: \"dataMC\" is not available for calo jets -- its data files are\n"
-              << "                   the PF-era scans. Use \"none\" or \"tilt[:exponent]\".\n";
+  //  "dataMC" works for calo since 2026-09-26; applyCaloConfig points the four
+  //  data slots at the manual-JEC calo scans.  Guard against a missing one
+  //  rather than letting TFile::Open fail on an empty path deep in the fit.
+  if(doDataMC &&
+     (cfg.dataMB.IsNull() || cfg.dataJet80.IsNull() || cfg.dataJet100.IsNull())){
+    std::cout << "unfoldClosureTest: \"dataMC\" needs the data scans and at least one is missing:\n"
+              << "   MinBias: " << (cfg.dataMB    .IsNull() ? TString("MISSING") : cfg.dataMB)     << "\n"
+              << "   Jet80  : " << (cfg.dataJet80 .IsNull() ? TString("MISSING") : cfg.dataJet80)  << "\n"
+              << "   Jet100 : " << (cfg.dataJet100.IsNull() ? TString("MISSING") : cfg.dataJet100) << "\n";
     return;
   }
 
@@ -1081,9 +1444,25 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
     h_truth_test ->Add(h_unmGen_test);
   }
 
-  //  The response is always built from the undistorted training half: the prior
-  //  it carries is exactly what the distorted test is supposed to be wrong about.
-  RooUnfoldResponse response(h_meas_train,h_truth_train,h_response_train,
+  //  WHICH HALF UNFOLDS.  Both modes keep the pseudo-data and the response in
+  //  different halves, so the two are statistically independent:
+  //
+  //    split-sample   measured = odd, truth = odd, response = EVEN
+  //    distorted      even gen reweighted, folded through the EVEN response to
+  //                   make the pseudo-measurement; unfolded with the ODD
+  //                   response, whose prior is the undistorted odd truth
+  //
+  //  The distorted mode used the even response on both sides until 2026-09-25.
+  //  That folded the pseudo-data through the very matrix that then unfolded it,
+  //  so the fluctuations were common to both sides and cancelled -- hence its
+  //  chi2/ndf of 0.04, which measured correlation rather than closure.  Taking
+  //  the response from the odd half removes that, at the cost of the prior
+  //  being wrong by the even/odd difference as well as by the tilt, which is
+  //  what it is supposed to be wrong about anyway.
+  const bool unfoldWithOddHalf = doDistort;
+  RooUnfoldResponse response(unfoldWithOddHalf ? h_meas_test     : h_meas_train,
+                             unfoldWithOddHalf ? h_truth_test    : h_truth_train,
+                             unfoldWithOddHalf ? h_response_test : h_response_train,
                              "response",cfg.title);
 
   //---- distorted truth --------------------------------------------------------
@@ -1092,6 +1471,7 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
   //  unfolding has to recover from is the wrong prior.  Folding through the same
   //  matrix that will be used to unfold makes the pseudo-measurement noiseless,
   //  which keeps bias^2 free of test-sample statistical scatter.
+  double usedExpo = 0.;   // kept for the figure label
   if(doDistort){
 
     double expo = tiltExpo;
@@ -1112,7 +1492,11 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
       }
       if(!buildDataMCDistortion(h_data,h_meas_train,fitLow,ptHigh,pTref,
                                 cfg.dataMinPt,expo,relErr,cfg.title,
-                                Form("%sdistortion_%s.pdf",outDir.Data(),cfg.label.Data())))
+                                //  outTag, not cfg.label: the label is just "C1",
+                                //  so the calo run overwrote the PF derivation
+                                //  figure for the same class.  Harmless while
+                                //  dataMC was PF-only; not once calo can run it.
+                                Form("%sdistortion_%s.pdf",outDir.Data(),outTag.Data())))
         return;
     }
 
@@ -1150,7 +1534,14 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
         h_meas_test->SetBinError(b, relErr[b] * h_meas_test->GetBinContent(b));
 
     distTitle = Form("distorted truth: #it{w} #propto #it{p}_{T}^{%.2f}",expo);
+    usedExpo  = expo;
     outTag   += doDataMC ? "_distDataMC" : Form("_distTilt%.2f",expo);
+
+    //  the tilt's own derivation figure (dataMC draws its own, above)
+    if(doTilt)
+      drawTiltDerivation(h_truth_train, h_truth_test, h_meas_train, h_meas_test,
+                         expo, pTref, ptLow, ptHigh, cfg.title,
+                         Form("%sdistortion_%s.pdf",outDir.Data(),outTag.Data()));
 
   }
 
@@ -1162,7 +1553,7 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
   std::vector<TH1D*>  h_unfold(N_points);
   std::vector<double> x(N_points), bias2(N_points), var(N_points),
                       mse(N_points), chi2(N_points), chi2ndf(N_points),
-                      maxdev(N_points);
+                      maxdev(N_points), mseAbs(N_points);
   std::vector<int>    ndf(N_points);
 
   RooUnfoldBayes unfold(&response,h_meas_test,1);
@@ -1201,6 +1592,7 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
     bias2[n]   = m.bias2;
     var[n]     = m.variance;
     mse[n]     = m.mse;
+    mseAbs[n]  = m.mseAbs;
     chi2[n]    = m.chi2;
     ndf[n]     = m.ndf;
     chi2ndf[n] = (m.ndf > 0) ? m.chi2 / m.ndf : 0.;
@@ -1209,28 +1601,76 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
   }
 
   //---- plots ------------------------------------------------------------------
+  //  the iteration the MSE scan picks, needed by the reduced figure below as
+  //  well as by the table
+  int iBest = 1;
+  for(int n = 2; n < N_points; n++) if(mse[n] < mse[iBest]) iBest = n;
+
+  //  A minimum sitting on the last point is not a minimum -- the scan stopped
+  //  before MSE turned over, and the number quoted is wherever it was cut off.
+  //  This is silent otherwise, and it bit a 6-iteration scan where C3 and C4
+  //  both "optimised" at 6 while still falling (they turn over at 9).
+  if(doDistort && iBest == N_iter_max)
+    printf("\n  WARNING: MSE is still falling at N = %d, the last iteration scanned.\n"
+           "           The minimum is beyond the scan -- rerun with a larger N_iter_max\n"
+           "           before quoting an optimal iteration count.\n", N_iter_max);
+
   drawClosure(N_iter_max,h_unfold.data(),h_truth_test,
               drawPtLow,drawPtHigh,ptLow,ptHigh,ratioLow,ratioHigh,
               cfg.title,respTitle,distTitle,
               Form("%sclosure_%s.pdf",outDir.Data(),outTag.Data()));
+
+  //  What the reduced figure says about itself, bottom left of the spectra pad.
+  //  The jet collection moves out of the title and in here; which half is which
+  //  is not cosmetic, because the two modes do not use the split the same way
+  //  and the figures are otherwise indistinguishable.
+  //
+  //  Both axes are |eta| < 1.6: the scans cut reco jets at 1.6 and gen jets at
+  //  etaMax, which common.h sets to the same value.
+  std::vector<TString> infoLines;
+  infoLines.push_back(Form("#it{R} = 0.4 %s, |#eta| < 1.6, matched jets only",
+                           cfg.isCalo ? "calo jets" : "PF jets"));
+  if(doDistort){
+    //  The weight is a function of GEN pT alone -- distortionWeight is evaluated
+    //  on the Y (gen) axis and applied to a whole gen row at once -- so the reco
+    //  side moves only by being folded through an unchanged P(reco|gen).  The
+    //  fakes are added unweighted, being background that does not track the
+    //  signal truth shape.  And h_dist clones the TRAINING response, so the
+    //  pseudo-data, its truth and the response all come from the even half:
+    //  the odd file is read but nothing from it enters this mode.
+    infoLines.push_back(Form("even gen reweighted #it{w} #propto #it{p}_{T,gen}^{%.2f}, folded to reco", usedExpo));
+    infoLines.push_back("folded with even response, unfolded with odd");
+  }
+  else{
+    infoLines.push_back("response: even half, unfolded: odd half");
+  }
+
+  //  the collection now lives in the info block, so strip it from the title
+  TString redTitle = cfg.title;
+  redTitle.ReplaceAll(", calo jets","");
+
+  drawClosureReduced(h_unfold[0],h_unfold[iBest],iBest,doDistort,h_truth_test,
+                     drawPtLow,drawPtHigh,ptLow,ptHigh,ratioLow,ratioHigh,
+                     redTitle,infoLines,
+                     Form("%sclosure_reduced_%s.pdf",outDir.Data(),outTag.Data()));
 
   drawSummary(N_iter_max,x.data(),bias2.data(),var.data(),mse.data(),chi2ndf.data(),
               cfg.title,respTitle,distTitle,doDistort,
               Form("%sclosure_summary_%s.pdf",outDir.Data(),outTag.Data()));
 
   //---- table ------------------------------------------------------------------
-  int iBest = 1;
-  for(int n = 2; n < N_points; n++) if(mse[n] < mse[iBest]) iBest = n;
-
   printf("\n=== %s [%s] : %s closure, %.0f < gen pT < %.0f GeV ===\n",
          cfg.title.Data(), outTag.Data(),
          doDistort ? "distorted-truth" : "split-sample", ptLow, ptHigh);
   printf("  train: %s\n  test:  %s\n\n",trainFile.Data(),cfg.testFile.Data());
-  printf("%-6s  %12s  %12s  %12s  %12s  %5s  %10s  %11s\n",
-         "iter","bias^2","variance","MSE","chi2","ndf","chi2/ndf","max|r-1|");
+  printf("  bias^2, variance and MSE are RELATIVE: each bin divided by its own\n"
+         "  truth before squaring, so no single high-yield bin dominates the sum.\n"
+         "  MSE_abs is the old counts^2 version, kept for comparison only.\n\n");
+  printf("%-6s  %12s  %12s  %12s  %12s  %12s  %5s  %10s  %11s\n",
+         "iter","bias^2","variance","MSE","MSE_abs","chi2","ndf","chi2/ndf","max|r-1|");
   for(int n = 0; n < N_points; n++){
-    printf("%-6.0f  %12.4g  %12.4g  %12.4g  %12.4g  %5d  %10.3f  %10.2f%%%s\n",
-           x[n],bias2[n],var[n],mse[n],chi2[n],ndf[n],chi2ndf[n],100.*maxdev[n],
+    printf("%-6.0f  %12.4g  %12.4g  %12.4g  %12.4g  %12.4g  %5d  %10.3f  %10.2f%%%s\n",
+           x[n],bias2[n],var[n],mse[n],mseAbs[n],chi2[n],ndf[n],chi2ndf[n],100.*maxdev[n],
            n == 0     ? "   (measured, no unfolding)" :
            (n == iBest && doDistort) ? "   <- min MSE" : "");
   }
