@@ -410,42 +410,34 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 
 
 
-  // config_PbPb.h split doMinBiasSample into Part1..Part4 (2026-09-20). Only
-  // Part 1 has a PF-candidate forest list, so that is the only part this scan
-  // can run on.
-  if(doMinBiasSample_Part2 || doMinBiasSample_Part3 || doMinBiasSample_Part4){
-    std::cout << "ERROR:  only MinBias Part 1 has a PF-candidate forest list "
-              << "(fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt). "
-              << "Set doMinBiasSample_Part1 in config_PbPb.h.  Exiting...\n";
-    return;
-  }
-
-  std::string inputFileList = "";
-  if(doSingleMuonSample) inputFileList = "../../../fileNames/fileNames_HISingleMuon_withPFCandidates_partial.txt";
-  else if(doMinBiasSample_Part1) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt";
-  else if(doHardProbesSample) {
-    inputFileList = "";
-    std::cout << "no withPFCandidates forest for HardProbes.  Exiting...\n";
-    return;
-  }
-  else if(doNoRhoModificationSample || doWithRhoModificationSample){
-    std::cout << "ERROR:  no forest list wired up for the rho-modulation samples in this scan.  Exiting...\n";
-    return;
-  }
-  else{};
-
-  // NOTE ON FILE LISTS. This scan clusters CaloTowers, which rechitanalyzerpp
-  // writes into every standard AOD HiForest -- it does NOT need a
-  // withPFCandidates production the way PbPb_pfCandAnalyzer.C does. The lists
-  // above are inherited from that scan only because they are the ones known to
-  // work; other PbPb forest lists (HardProbes in particular, which has no PF
-  // candidates and so is refused there) are very likely usable here. That has
-  // NOT been verified against the forests on EOS, so rather than assert it on
-  // the filename, the tower tree is required at run time below: point this at
-  // another list and it will either work or say plainly that it cannot.
+  // THE ONE FOREST THAT CARRIES TOWERS.
   //
-  // The withPFCandidates lists do additionally carry the PF trees, so the
-  // PFCs comparison block further down stays live when running on them.
+  // forest_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh
+  // (CRAB 260926, 1992 files) is the production made for this scan: calo jets,
+  // flow jets, PF candidates and rechitanalyzerpp towers together. It is a
+  // MinBias Part 1 production, so that is the only sample flag this scan can
+  // serve today.
+  //
+  // The other lists are deliberately NOT wired up. Towers are written into
+  // every standard AOD HiForest, so the SingleMuon and HardProbes forests very
+  // likely carry them too -- but that has not been checked against EOS, and a
+  // list that silently lacks rechitanalyzerpp/tower would produce a job that
+  // exits with an error rather than data. Add a list here once it is verified;
+  // the run-time check on the tower tree will confirm it on the first job.
+  std::string inputFileList = "";
+  if(doMinBiasSample_Part1){
+    inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh.txt";
+  }
+  else{
+    std::cout << "ERROR:  the only forest list with towers is MinBias Part 1\n"
+              << "        (fileNames_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh.txt).\n"
+              << "        Set doMinBiasSample_Part1 = true in config_PbPb.h, and clear the other\n"
+              << "        sample flags.  Exiting...\n";
+    return;
+  }
+
+  // This production also carries the PF trees, so the PFCs comparison block
+  // further down stays live.
 
   if(!fileListOverride.IsNull()){
     inputFileList = fileListOverride.Data();

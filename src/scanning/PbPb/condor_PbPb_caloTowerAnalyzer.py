@@ -33,19 +33,16 @@ import os
 
 jobname = 'PbPb_caloTowerAnalyzer'
 
-# Input list -- must be the same one PbPb_caloTowerAnalyzer.C selects via its
-# doMinBiasSample / doHardProbesSample / doSingleMuonSample flags, because the
-# job index is matched against `ifile` inside the analyzer. The jobs pass a line
-# index, so this only sets how many jobs there are.
+# Input list -- MUST be the one PbPb_caloTowerAnalyzer.C selects from
+# config_PbPb.h, because the jobs pass a line index that is matched against
+# `ifile` inside the analyzer. A mismatch here silently scans different files
+# than the indices claim.
 #
-# NOTE: these are inherited from the pfCandAnalyzer submission, which needs a
-# withPFCandidates forest. This analyzer does NOT -- CaloTowers are in every
-# standard AOD HiForest -- so other PbPb lists (HardProbes in particular) are
-# very likely usable here. That has not been verified against the forests on
-# EOS; the analyzer checks for rechitanalyzerpp/tower at run time and exits with
-# a clear message if it is absent, so a trial job will tell you.
-#dblist = '../../../fileNames/fileNames_HISingleMuon_withPFCandidates_partial.txt'
-dblist = '../../../fileNames/fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt'
+# This is the only forest production that carries rechitanalyzerpp towers:
+# forest_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh, CRAB
+# 260926, 1992 files. It requires doMinBiasSample_Part1 = true in config_PbPb.h
+# with every other sample flag false; the analyzer refuses to run otherwise.
+dblist = '../../../fileNames/fileNames_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh.txt'
 
 # How the analyzer is run.
 #
@@ -94,6 +91,9 @@ request_memory = 3000
 
 nsplit = 1                    # input files per condor job
 
+# Full submission: all 1992 files. Left at auto_submit = False so the trial job
+# printed at the end is run first -- this is a fresh forest production and the
+# first job is the only cheap chance to find out it is not what we think.
 auto_submit = False           # set True once a trial job has succeeded
 njobs_max = None              # e.g. 1 for a trial run; None = all files
 

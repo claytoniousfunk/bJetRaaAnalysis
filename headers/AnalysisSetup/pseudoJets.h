@@ -116,9 +116,20 @@ inline std::string constituentTag()
 //
 // Each entry is the same-event MinBias scan made with that cut, copied into
 // the EOS maps directory under its own file name.
-// first calo-constituent (map-making) run: no calo map exists yet, so subtract
-// the all-PF map with the SAME candidate cut (0 GeV); the random-cone map this
-// run writes is unaffected
+// MAP-MAKING OVERRIDE. Both the calo-constituent PF scan and, since
+// 2026-09-28, PbPb_caloTowerAnalyzer.C are in the same position: no background
+// map built from their own inputs exists yet, and the scan refuses to start
+// without one. So the first pass subtracts the all-PF map with the same
+// candidate cut (0 GeV). What that pass is FOR is the random-cone map it
+// writes, which is built from its own clustering and is unaffected by which map
+// was subtracted; its own RC- and dPT-subtracted spectra are not usable and
+// should not be read. Merge that pass's h_randConeEtaPhi_* into a map file,
+// point this override at it, and run again for the subtracted spectra.
+//
+// The tower map cannot reuse the PF one for real: measured on the first tower
+// run, the 0-5% random cone holds 54.9 GeV of tower ET against ~91 GeV of PF
+// candidates -- the 0.3 GeV tower threshold and the calorimeter's blindness to
+// soft particles are most of the difference.
 std::string bkgMapFileOverride = "/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-17_ultraFineCentBins.root";
 std::string bkgMapFileUsed     = "";   // set by the scan; written to provenance
 
