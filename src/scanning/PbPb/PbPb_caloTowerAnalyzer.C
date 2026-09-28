@@ -380,6 +380,14 @@ TProfile2D  *h_dPT_PFCsPTAbove60_map[NCentralityIndices];
 // a single local forest before it is submitted. Both default to "" and the
 // production path is then exactly what it was. Example:
 //   root -l 'PbPb_caloTowerAnalyzer.C+(1,"/tmp/one.txt","/tmp/out/")'
+// Set true only after the output file has been written and closed. main() in
+// main_caloTowerAnalyzer.cc returns non-zero when it is still false, so a job
+// that bailed out early -- missing background map, missing tower tree, bad file
+// list -- is reported to condor as FAILED instead of exiting 0 having written
+// nothing. Every early "return" in the scan below leaves this false, which is
+// the point: there is no list of failure modes to keep in sync.
+bool g_caloTowerScanCompletedOK = false;
+
 void PbPb_caloTowerAnalyzer(int group = 1,
                             TString fileListOverride     = "",
                             TString outputBaseDirOverride = ""){
@@ -2819,6 +2827,7 @@ void PbPb_caloTowerAnalyzer(int group = 1,
     writeProvenance(wf);
 
     wf->Close();
+    g_caloTowerScanCompletedOK = true;   // the only place this is set
     return;
     // END WRITE
 
