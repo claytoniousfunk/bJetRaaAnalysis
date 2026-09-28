@@ -15,7 +15,7 @@ bool skipGenParticles = false;
 // reweighting functions
 // pThat cross-section weight (em->weight); false fills every event with weight
 // 1, as in PYTHIAHYDJET. Output name: _pThat-<cut> or _pThat-unweighted.
-bool doPThatWeight = false;
+bool doPThatWeight = true;
 bool doVzReweight = true;
 bool doJetPtReweight = false;
 // jet-based filers
@@ -25,7 +25,7 @@ bool doXdumpReweight = false;
 bool doJetTrkMaxFilter = true;
 bool doRemoveHYDJETjet = true;
 bool doEtaPhiMask = false;
-bool doPThatCorrelationFilter = false;
+bool doPThatCorrelationFilter = true;
 // jet-energy alterations
 bool doBJetEnergyShift = false;
 bool doBJetNeutrinoEnergyShift = false;
