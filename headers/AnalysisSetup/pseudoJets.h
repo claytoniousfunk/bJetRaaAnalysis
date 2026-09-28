@@ -149,8 +149,32 @@ inline std::string bkgMapFile(double candPtMin)
 // Output-name tag saying which map the subtracted spectra used. Needed because
 // the 2026-09-15 2 GeV map-making pass subtracted the 0 GeV map, and a rerun
 // with the matched map would otherwise get exactly the same name.
+// BOOTSTRAP PASS. The scan refuses to start unless the background map contains
+// every centrality slice, because the FastJet loop dereferences those maps
+// without null checks. That is the right default, but it makes the maps
+// impossible to bootstrap: no map can exist for a new clustering input (calo
+// constituents, towers) until a pass has been run to write one, and that pass
+// cannot start without a map.
+//
+// It also bit the whole ultraFine scheme on 2026-09-19, when commit 53e4effb
+// extended NCentralityIndices from 17 to 19 (adding C17 80-85% and C18 85-90%).
+// Every map on EOS was built before that, so every one of them is now missing
+// C17 and C18 and NO complete map exists for any input.
+//
+// With this true, a slice absent from the map file is replaced by a zero
+// TProfile2D with the scan's own RC binning. Nothing is dereferenced null, and
+// every subtraction subtracts zero -- so the RC- and dPT-subtracted spectra
+// come out equal to the unsubtracted ones and are NOT results. What the pass is
+// for is the h_randConeEtaPhi_* it writes, which is built from its own
+// clustering and does not depend on what was subtracted.
+//
+// The output name carries "_bkgMapMaking" so such a file can never be mistaken
+// for a subtracted one.
+bool doBkgMapMakingPass = true;
+
 inline std::string bkgMapTag()
 {
+  if(doBkgMapMakingPass) return "_bkgMapMaking";
   return bkgMapFileOverride.empty() ? "_matchedBkgMap" : "_bkgMapOverride";
 }
 

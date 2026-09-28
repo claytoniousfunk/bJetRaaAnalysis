@@ -618,6 +618,35 @@ void PbPb_caloTowerAnalyzer(int group = 1,
     // RC-geoCorr, dPT, dPTAbove0 and PFCsPTAbove60 maps without a null check
     // (only h_RC_map is guarded, and dPT-geoCorr has its own), so a missing
     // one would segfault on the first jet.
+    //  In a bootstrap pass, fill any slice the map file does not have with a
+    //  zero profile on the scan's own RC binning (see doBkgMapMakingPass in
+    //  pseudoJets.h). Nothing below is then dereferenced null and every
+    //  subtraction subtracts zero, so the subtracted spectra equal the
+    //  unsubtracted ones -- which is the point: this pass exists to WRITE the
+    //  map, not to use one. Named _zeroBkg_* so they cannot be confused with
+    //  anything read from the file.
+    int nZeroed = 0;
+    if(doBkgMapMakingPass){
+      auto zeroProf = [&](TProfile2D *&h, const char *nm, int i){
+        if(h) return;
+        h = new TProfile2D(Form("_zeroBkg_%s_C%i", nm, i), "",
+                           NRC_EtaBins, etaMin, etaMax, NRC_PhiBins, phiMin, phiMax);
+        h->SetDirectory(nullptr);
+        for(int bx = 1; bx <= NRC_EtaBins; bx++)
+          for(int by = 1; by <= NRC_PhiBins; by++)
+            h->Fill(h->GetXaxis()->GetBinCenter(bx), h->GetYaxis()->GetBinCenter(by), 0.0);
+        nZeroed++;
+      };
+      for(int i = 0; i < NCentralityIndices; i++){
+        zeroProf(h_RC_map[i],                "randCone",          i);
+        zeroProf(h_RC_geoCorr_map[i],        "randCone_geoCorr",  i);
+        zeroProf(h_dPT_map[i],               "dPT",               i);
+        zeroProf(h_dPT_geoCorr_map[i],       "dPT_geoCorr",       i);
+        zeroProf(h_dPT_dPTAbove0_map[i],     "dPT_dPTAbove0",     i);
+        zeroProf(h_dPT_PFCsPTAbove60_map[i], "dPT_PFCsPTAbove60", i);
+      }
+    }
+
     bool mapsComplete = true;
     for(int i = 0; i < NCentralityIndices; i++){
       const char *miss[5] = {h_RC_map[i]                ? nullptr : "h_randConeEtaPhi",
@@ -628,6 +657,15 @@ void PbPb_caloTowerAnalyzer(int group = 1,
       for(const char *m : miss) if(m){ printf("ERROR: %s_C%i missing from the background map file\n", m, i); mapsComplete = false; }
     }
     if(!mapsComplete){ std::cout << "ERROR:  incomplete background map file.  Exiting...\n"; return; }
+
+    if(nZeroed > 0){
+      std::cout << "\n*** BACKGROUND MAP-MAKING PASS ***\n"
+                << "    " << nZeroed << " map slices were absent from " << bkgMapFileUsed << "\n"
+                << "    and have been replaced by ZERO profiles. The RC- and dPT-subtracted\n"
+                << "    spectra in this output are therefore NOT subtracted and are not results.\n"
+                << "    What this pass produces is h_randConeEtaPhi_*; merge those into a map,\n"
+                << "    point bkgMapFileOverride at it and rerun with doBkgMapMakingPass = false.\n\n";
+    }
 
     // define histograms
     h_eventsBeforeSelection = new TH1D("h_eventsBeforeSelection","events before selection",2,0,1);
