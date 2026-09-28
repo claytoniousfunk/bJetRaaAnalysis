@@ -247,8 +247,10 @@ void PYTHIA_scan_response(int group = 1){
 						 doPThatCorrelationFilter,
 						 useCaloJetsOverride,
 						 useManualJEC,
+						 caloFlavorFromPFMatch,
 						 onlyEvenEvents,
-						 onlyOddEvents);
+						 onlyOddEvents,
+						 onlyMuTaggedJets);
 
   //outputDatasetName.Append("_noNeutrinoInfo");
 
@@ -692,6 +694,13 @@ void PYTHIA_scan_response(int group = 1){
 	else{};
       }
     }
+    //  KNOWN BUG, found 2026-09-25, needs a rescan to fix.  Same defect as in
+    //  PYTHIAHYDJET_scan_response.C, documented at length there.  The filter
+    //  needs leadingRecoJetPt and so runs after the reco-jet loop that computes
+    //  it -- but that loop has already filled h_unmatchedRecoJetPt, so the
+    //  unfolding's fakes keep the very events this "continue" discards from the
+    //  response matrix.  FIX: split the loop above into a leadingRecoJetPt pass
+    //  and a filling pass, with this filter in between.
     if(doPThatCorrelationFilter){
 
       if(useCaloJetsOverride){
@@ -753,7 +762,9 @@ void PYTHIA_scan_response(int group = 1){
 	    hasRecoJetMatch = true;
 	    recoJetFlavorFlag = k;
 
-	    if(em->mupt[k] > muPtCut && fabs(em->mueta[k]) < 2.) hasRecoJetMuon = true;
+	    // assigned, not latched: a closer jet found later replaces this match,
+	    // so its muon status must replace this one's too
+	    hasRecoJetMuon = (em->mupt[k] > muPtCut && fabs(em->mueta[k]) < 2.);
 	    //if(em->mupt[k] > 7.0 && em->mupt[k] < 14.0) hasRecoJetMuon = true;
 
 	    JEC.SetJetPT(em->rawpt[k]);
@@ -882,7 +893,7 @@ void PYTHIA_scan_response(int group = 1){
 			
 			
       // fill response matrix
-      if(hasRecoJetMatch) {
+      if(hasRecoJetMatch && (!onlyMuTaggedJets || hasRecoJetMuon)) {
       //if(hasRecoJetMatch && matchedRecoJetPt > 60) {
       //if(hasRecoJetMatch && hasRecoJetMuon) {
       //if(hasRecoJetMatch && hasRecoJetMuon && triggerIsOn(triggerDecision,triggerDecision_Prescl)) {

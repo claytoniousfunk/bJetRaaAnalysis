@@ -32,8 +32,10 @@ TString configureOutputDatasetName(TString generator,
 				   bool doPThatCorrelationFilter,
 				   bool useCaloJetsOverride,
 				   bool useManualJEC,
+				   bool caloFlavorFromPFMatch,
 				   bool onlyEvenEvents,
-				   bool onlyOddEvents)
+				   bool onlyOddEvents,
+				   bool onlyMuTaggedJets)
 {
 
   TString result = "output";
@@ -44,8 +46,14 @@ TString configureOutputDatasetName(TString generator,
   result.Append(datasetIndicator);
 
   if(useCaloJetsOverride) result.Append("_caloJets");
+  // Calo-jet flavor taken from the matched PF jet rather than refparton_flavor.
+  // Tagged because the two definitions disagree on the same jet -- without it
+  // the two scans collide on one filename and become indistinguishable.
+  if(useCaloJetsOverride && caloFlavorFromPFMatch) result.Append("_PFflavor");
   // jet pT from the JEC text files rather than the forest jtpt
   if(useManualJEC) result.Append("_manualJEC");
+  // response filled from muon-tagged jets only
+  if(onlyMuTaggedJets) result.Append("_muTaggedJets");
   // half-sample outputs for the closure test
   if(onlyEvenEvents) result.Append("_evenEvents");
   if(onlyOddEvents)  result.Append("_oddEvents");

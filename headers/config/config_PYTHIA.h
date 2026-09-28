@@ -69,5 +69,8 @@ bool useManualJEC = true;
 // statistically independent halves unfoldClosureTest.C trains and tests on
 bool onlyEvenEvents = false;
 bool onlyOddEvents = true;
+// response scan: fill only jets whose jet-branch muon (mupt/mueta, no
+// muon-tree matching) passes muPtCut and |eta| < 2
+bool onlyMuTaggedJets = false;
 
 

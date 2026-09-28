@@ -80,3 +80,6 @@ bool useManualJEC = true;
 // for response scan
 bool onlyEvenEvents = false;
 bool onlyOddEvents = true;
+// response scan: fill only jets whose jet-branch muon (mupt/mueta, no
+// muon-tree matching) passes muPtCut and |eta| < 2
+bool onlyMuTaggedJets = true;

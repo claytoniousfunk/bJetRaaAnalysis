@@ -279,7 +279,8 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 						   caloFlavorFromPFMatch,
 						   useManualJEC,
 						   onlyEvenEvents,
-						   onlyOddEvents);
+						   onlyOddEvents,
+						   onlyMuTaggedJets);
 
 
     TString suffixEdit = "";
@@ -813,6 +814,22 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	  else{};
 	}
       }
+      //  KNOWN BUG, found 2026-09-25, needs a rescan to fix.  This filter sits
+      //  AFTER the reco-jet loop above, because it needs leadingRecoJetPt, which
+      //  that loop computes.  So its "continue" protects the response matrix and
+      //  h_unmatchedGenJetPt (filled further down) but NOT the histograms the
+      //  loop has already filled: h_unmatchedRecoJetPt (the unfolding's fakes),
+      //  h_recoJetPt_matchedDr, h_recoJetPt_unmatchedDr, h_recoPt_dRnearestGen
+      //  and h_recoPt_nearestGenPt.  Comparing the 2026-9-25 full-sample calo
+      //  scans with the filter on and off, C1 h_unmatchedRecoJetPt_allJets is
+      //  identical to five figures in every bin while the matched response loses
+      //  26% at 140-160 GeV -- the fakes keep exactly the high-recoPt/pThat
+      //  events the filter exists to throw away.  That leaves the response
+      //  internally inconsistent, and it is what breaks the C1 split-sample
+      //  unfolding closure (chi2/ndf ~ 9, a coherent +-15% wave in
+      //  unfolded/truth with a step at 200 GeV, where the fakes fall off a
+      //  cliff).  FIX: split the loop above -- a first pass computing only
+      //  leadingRecoJetPt, then this filter, then the filling pass.
       if(doPThatCorrelationFilter){
 	if(useCaloJetsOverride){
 	  if(CentralityIndex == 4){
@@ -973,7 +990,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	// fill response matrix
 	//if(hasRecoJetMatch && hasRecoJetMuon) {
 	//if(hasRecoJetMatch && hasRecoJetMuon && triggerIsOn(triggerDecision,triggerDecision_Prescl)) {
-	if(hasRecoJetMatch) {
+	if(hasRecoJetMatch && (!onlyMuTaggedJets || hasRecoJetMuon)) {
 	  //if(hasRecoJetMatch && matchedRecoJetPt >= 60.0) {
 
 	  if(doBJetSpectraReweightToData){

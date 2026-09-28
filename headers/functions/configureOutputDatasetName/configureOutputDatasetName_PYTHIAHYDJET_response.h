@@ -50,7 +50,8 @@ TString configureOutputDatasetName(TString generator,
 				   bool caloFlavorFromPFMatch,
 				   bool useManualJEC,
 				   bool onlyEvenEvents,
-				   bool onlyOddEvents)
+				   bool onlyOddEvents,
+				   bool onlyMuTaggedJets)
 {
 
   TString result = "output";
@@ -67,6 +68,8 @@ TString configureOutputDatasetName(TString generator,
   if(useCaloJetsOverride && caloFlavorFromPFMatch) result.Append("_PFflavor");
   // jet pT from the JEC text files rather than the forest jtpt
   if(useManualJEC) result.Append("_manualJEC");
+  // response filled from muon-tagged jets only
+  if(onlyMuTaggedJets) result.Append("_muTaggedJets");
 
   if(onlyEvenEvents) result.Append("_evenEvents");
   if(onlyOddEvents) result.Append("_oddEvents");
