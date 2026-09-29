@@ -43,6 +43,6 @@ bool doNoRhoModificationSample = false;
 bool doWithRhoModificationSample = false;
 // reweight functions (for bkg subtraction)
 bool doHiBinReweightToHardProbesJet80 = false;
-bool useCaloJetsOverride = false;
+bool useCaloJetsOverride = true;
 bool useFlowJetsOverride = false;
 bool useManualJEC = true;
