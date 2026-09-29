@@ -1878,17 +1878,6 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	      double muonJetDR_ij = 999.;
 
 	      if(fabs(jet.eta()) > 1.6) continue;
-	      std::vector<fastjet::PseudoJet> constituents = jet.constituents();
-	      double trackMaxPt = 0.0;
-	      for(const auto& c : constituents){
-		if(!c.has_user_info<CandInfo>()) continue;
-		const CandInfo &candinfo = c.user_info<CandInfo>();
-		if(candinfo.isCharged() && c.pt() > trackMaxPt) trackMaxPt = c.pt();
-	      }
-	      JEC_PF.SetJetPT(jet.pt());
-	      JEC_PF.SetJetEta(jet.eta());
-	      JEC_PF.SetJetPhi(jet.phi_std());
-	      double jetPt_JEC = JEC_PF.GetCorrectedPT();
 	      if(!h_RC_map[CentralityIndex]) continue;
 	      double rcMeanPt = h_RC_map[CentralityIndex]->GetBinContent(
                                 h_RC_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
@@ -1897,10 +1886,10 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	      double jetPt_JEC_rcSub = JEC_PF.GetCorrectedPT();
 
 	      if(jetPt_JEC_rcSub < 20.) continue;
-	      
-	      if(doJetTrkMaxFilter){
-		if(!passesJetTrkMaxFilter(trackMaxPt,jetPt_JEC)) continue;
-	      }
+	      // doJetTrkMaxFilter NOT applied: these are tower-clustered jets,
+	      // whose constituents carry no charged-track info (see the main
+	      // h_fastJetPt_PF fill above) -- trackMaxPt would always be 0 and
+	      // the filter would reject every jet here too.
 
 	      muonJetDR_ij = getDr(mixedEventPFCandidates_eta.at(i),mixedEventPFCandidates_phi.at(i),jet.eta(),jet.phi_std());
 	      if(muonJetDR_ij < fastJetMuonDR_i) {
@@ -2121,26 +2110,12 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 		if(fabs(jet.eta()) > 1.6) continue;
 		if(!h_RC_map[CentralityIndex]) continue;
 
-		// trackMaxPt over the jet's own constituents, then the same
-		// jetTrkMax filter the data, T3 and T4 jet loops all apply --
-		// without it this template accepts jets the other three reject.
-		// Applied against the JEC'd unsubtracted pT, matching how the
-		// neighbouring fastJet loops call it.
-		std::vector<fastjet::PseudoJet> constituents_m = jet.constituents();
-		double trackMaxPt_m = 0.0;
-		for(const auto& c : constituents_m){
-		  if(!c.has_user_info<CandInfo>()) continue;
-		  const CandInfo &candinfo_m = c.user_info<CandInfo>();
-		  if(candinfo_m.isCharged() && c.pt() > trackMaxPt_m) trackMaxPt_m = c.pt();
-		}
-		JEC_PF.SetJetPT(jet.pt());
-		JEC_PF.SetJetEta(jet.eta());
-		JEC_PF.SetJetPhi(jet.phi_std());
-		double jetPt_JEC_m = JEC_PF.GetCorrectedPT();
-		if(doJetTrkMaxFilter){
-		  if(!passesJetTrkMaxFilter(trackMaxPt_m,jetPt_JEC_m)) continue;
-		}
-
+		// doJetTrkMaxFilter NOT applied here (was applied against
+		// trackMaxPt_m computed from these tower constituents, which is
+		// always 0 -- towers carry no charged-track info, see the main
+		// h_fastJetPt_PF fill above). That silently zeroed this template
+		// (h_realMuonPtRel_mixedFastJetPt) until caught alongside the
+		// h_fastJetPt_PF bug, 2026-09-29.
 		double rcMeanPt_m = h_RC_map[CentralityIndex]->GetBinContent(
 				      h_RC_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
 		double jetPt_rcSub_m = jet.pt() - rcMeanPt_m;
