@@ -280,7 +280,7 @@ void pp_scan(int group = 1){
 
   std::string inputFileList = "";
   if(doSingleMuonSample) inputFileList = "../../../fileNames/fileNames_pp_SingleMuon.txt";
-  else if(doMinBiasSample) inputFileList = "../../../fileNames/fileNames_pp_ZeroBias_merge1234.txt";
+  else if(doMinBiasSample) inputFileList = "../../../fileNames/fileNames_pp_ZeroBias1_withCaloJets_fresh.txt";
   else if(doHighEGJetSample) inputFileList = "../../../fileNames/fileNames_pp_HighEGJet.txt";
 
   if(group == 0){ cout << "INPUTFILELIST=" << inputFileList << endl; return; } // query mode for condor submit scripts
