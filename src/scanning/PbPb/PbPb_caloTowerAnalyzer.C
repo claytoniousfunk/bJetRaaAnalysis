@@ -28,6 +28,12 @@
 //    - the PFCs (constituent-subtracted) clustering block is now gated on the
 //      pfCandAnalyzerCS tree existing, so this scan can also run on forests
 //      that carry no PF candidates at all.
+//    - doJetTrkMaxFilter is NOT applied to the tower-clustered jets (the
+//      h_fastJetPt_PF* fill, below). That filter needs a real charged-track
+//      max pT; towers carry no species label, so trackMaxPt is always 0 and
+//      the filter rejected every tower jet until this was caught (2026-09-29,
+//      h_fastJetPt_PF* came back entirely empty). Still applied to the PFCs
+//      comparison block, which clusters real PF candidates.
 //
 //  TOWERS ARE MASSLESS in the forest -- e/cosh(eta) reproduces et to 4e-7 and
 //  emEt + hadEt equals et exactly -- so the FastJet input is
@@ -1687,13 +1693,20 @@ void PbPb_caloTowerAnalyzer(int group = 1,
           JEC_PF.SetJetEta(jet.eta());
           JEC_PF.SetJetPhi(jet.phi_std());
           double fastJetPt_JEC = JEC_PF.GetCorrectedPT();
-	  
-	  if(doJetTrkMaxFilter){
-	    if(!passesJetTrkMaxFilter(trackMaxPt,fastJetPt_JEC)) continue;
-	  }
+
+	  // NOT applied here. doJetTrkMaxFilter rejects a jet whose leading
+	  // charged-track pT fraction is too low or too high -- a noise/fake-jet
+	  // cut that only means something for track-carrying constituents. Towers
+	  // carry no species label (id = 0 unconditionally, see the fjInputs loop
+	  // above), so isCharged() is false for every constituent, trackMaxPt
+	  // stays 0.0, and passesJetTrkMaxFilter(0, jetPt) fails for every single
+	  // tower jet -- silently zeroing h_fastJetPt_PF* and everything built on
+	  // it. Confirmed empty in the 2026-09-29 scan. The PFCs comparison block
+	  // below still applies it, correctly, since that one clusters real PF
+	  // candidates with real charge info.
 
 
-	  
+
 	  h_fastJetPt_PF[0]->Fill(jet.pt(), w_resample);
 	  h_fastJetPt_PF[CentralityIndex]->Fill(jet.pt(), w_resample);
 	  h_fastJetPt_PF_JEC[0]->Fill(fastJetPt_JEC, w_resample);
