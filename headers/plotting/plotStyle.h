@@ -14,6 +14,9 @@
 #include "TGaxis.h"
 #include "TStyle.h"
 #include "TLegend.h"
+#include "TCanvas.h"
+#include "TString.h"
+#include "TSystem.h"
 
 // ---------------------------------------------------------------- palette ---
 const char *okabeHex[8] = {
@@ -100,3 +103,18 @@ const int    nEdge_ptRel_0to5 = (int)(sizeof(edge_ptRel_0to5)/sizeof(double)) - 
 
 const double edge_dR_0to0p5[] = {0,0.05,0.10,0.15,0.20,0.25,0.30,0.35,0.40,0.45,0.50};
 const int    nEdge_dR_0to0p5 = (int)(sizeof(edge_dR_0to0p5)/sizeof(double)) - 1;
+
+// ------------------------------------------------------------------- PDF ---
+// ROOT puts a canvas at least as wide as it is tall onto a rotated PDF page and
+// leaves a large blank margin left of and below the pad; portrait canvases are
+// unaffected. Use this in place of SaveAs for any landscape or square canvas: it
+// saves, then trims the page to the drawn content with poppler's pdfcrop (8 pt
+// margin). If pdfcrop is missing the file is kept as ROOT wrote it.
+inline void savePdfTight(TCanvas *c, const TString &pdf)
+{
+  c->SaveAs(pdf);
+  const TString tmp = pdf + ".crop.pdf";
+  if(gSystem->Exec(Form("pdfcrop --margins 8 %s %s > /dev/null 2>&1", pdf.Data(), tmp.Data())) == 0)
+    gSystem->Rename(tmp, pdf);
+  else printf("  WARNING: pdfcrop failed, %s keeps ROOT's page margins\n", pdf.Data());
+}

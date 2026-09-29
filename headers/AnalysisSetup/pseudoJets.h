@@ -4,7 +4,13 @@
 #include <cmath>
 #include <string>
 
-bool doEventMixing = true;
+// 2026-09-29: off, for a same-event calo-tower scan. Now that the tower
+// bootstrap pass's h_randConeEtaPhi_* is merged and bkgMapFileOverride below
+// points at it, the scan has a real per-slice background to subtract and no
+// longer needs the mixed-event pool standing in for it. Flip back to true to
+// resume mixed-event running (e.g. to remake or extend the background map
+// itself, which needs the large independent-cone statistics mixing gives).
+bool doEventMixing = false;
 
 bool doFastJetClustering = true;      // true = run anti-kT R=0.4 on PF candidates via FastJet (requires -DDO_FASTJET at compile time)
 
@@ -130,12 +136,31 @@ inline std::string constituentTag()
 // run, the 0-5% random cone holds 54.9 GeV of tower ET against ~91 GeV of PF
 // candidates -- the 0.3 GeV tower threshold and the calorimeter's blindness to
 // soft particles are most of the difference.
-std::string bkgMapFileOverride = "/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_sameEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-17_ultraFineCentBins.root";
+//
+// 2026-09-29: the tower bootstrap pass (doBkgMapMakingPass, 2026-09-28) is
+// complete -- PbPb_caloTowerAnalyzer.C, towers, etMin 0.3, etaCluster 3.0,
+// mu12/pTmu-15to999/tight/jetTrkMaxFilter/WDecayFilter, MinBias Part1, all 19
+// ultraFine slices present with 51-55M cones each (no zero-filled slices, see
+// the 2026-09-19 C17/C18 gap above). Its own h_randConeEtaPhi_* IS the map --
+// the file needs no separate merge step, it already covers every slice.
+// bkgMapFileOverride below now points at that file (copy it to EOS under this
+// same name), and doBkgMapMakingPass is turned off so subsequent calo-tower
+// scans read it back and produce real RC-subtracted spectra instead of the
+// bootstrap's zero-subtracted placeholders.
+//
+// SCOPE: this override is gated on caloConstituentsOnly, so it applies to the
+// calo-constituent PF scan and PbPb_caloTowerAnalyzer.C ONLY. A plain PF scan
+// (caloConstituentsOnly = false) still falls through to the dir+stem lookup
+// below and is unaffected -- a towers-built map is not a valid background for
+// full PF-candidate clustering (see the 54.9 vs 91 GeV gap above), so it must
+// not silently become the default for every scan the way the old PF-map
+// override effectively did.
+std::string bkgMapFileOverride = "/eos/cms/store/group/phys_heavyions/cbennett/maps/PbPb_MinBias_Part1_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPFClustering_fastJetResamples-100_pseudoJetCandPtMin-0.0_towers_etMin-0.30_etaCluster-3.0_bkgMapMaking_2026-9-28_ultraFineCentBins.root";
 std::string bkgMapFileUsed     = "";   // set by the scan; written to provenance
 
 inline std::string bkgMapFile(double candPtMin)
 {
-  if(!bkgMapFileOverride.empty()) return bkgMapFileOverride;
+  if(!bkgMapFileOverride.empty() && caloConstituentsOnly) return bkgMapFileOverride;
   // every map below was built from all PF candidates; none is valid for a
   // calo-constituent scan (see caloConstituentsOnly above)
   if(caloConstituentsOnly) return "";
@@ -170,7 +195,11 @@ inline std::string bkgMapFile(double candPtMin)
 //
 // The output name carries "_bkgMapMaking" so such a file can never be mistaken
 // for a subtracted one.
-bool doBkgMapMakingPass = true;
+//
+// 2026-09-29: off. The tower bootstrap pass this produced is merged into
+// bkgMapFileOverride above, so PbPb_caloTowerAnalyzer.C now has a real map for
+// every slice and should run its normal (subtracted) pass.
+bool doBkgMapMakingPass = false;
 
 inline std::string bkgMapTag()
 {
