@@ -26,7 +26,7 @@ bool fillMu5 = false;
 bool fillMu7 = false;
 bool fillMu12 = true;
 // spectra alterations
-bool applyMu12TriggerEfficiencyCorrection = true;
+bool applyMu12TriggerEfficiencyCorrection = false;
 bool doJESCorrection = false;
 bool doBJetNeutrinoEnergyShift = false;
 bool doJERCorrection = false;
@@ -35,9 +35,9 @@ bool apply_JER_smear = false;
 bool apply_JEU_shift_up = false;
 bool apply_JEU_shift_down = false;
 // select dataset
-bool doSingleMuonSample = true;
-bool doMinBiasSample = false;
-bool doHighEGJetSample = true;
+bool doSingleMuonSample = false;
+bool doMinBiasSample = true;
+bool doHighEGJetSample = false;
 // jet mods
 bool useCaloJetsOverride = true;
 bool useManualJEC = true;
