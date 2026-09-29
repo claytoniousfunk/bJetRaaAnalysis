@@ -1,30 +1,16 @@
-from myProcesses.condor.condor_utility import jobManager
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../..')))
+from myProcesses.condor.scan_condor import submitScan
 
-jobname = 'PYTHIAHYDJET_DiJet_scan_Group1'
-
-#put the file list here
-#dblist = '../../../fileNames/fileNames_PYTHIAHYDJET_DiJet.txt'
-dblist = '../../../fileNames/fileNames_PYTHIAHYDJET_DiJet_19Sep23_Group1.txt'
-#dblist = '../../../fileNames/fileNames_PYTHIAHYDJET_DiJet_19Sep23_Group2.txt'
-#dblist = '../../../fileNames/fileNames_PYTHIAHYDJET_DiJet_19Sep23_Group3.txt'
-#dblist = '../../../fileNames/fileNames_PYTHIAHYDJET_BJet.txt'
-#dblist = '../../../fileNames/fileNames_PYTHIAHYDJET_BJet_onlyMuonTaggedJets.txt'
-#dblist = '../../../fileNames/fileNames_PYTHIAHYDJET_MuJet.txt'
-#dblist = '../../../fileNames/fileNames_PYTHIAHYDJET_DiJet_onlyMuJets_noRecoJetPtCut.txt'
-
+# input list is whatever the macro's sample flags select (set them in its config
+# header); the submit script asks the macro, so there is nothing to match here
 exe = 'PYTHIAHYDJET_scan.C'
+jobname = None   # default: <macro>_<list name>; set a string to override
 
-jm = jobManager(jobSite ='cern', 
-	jobname = jobname, 	
-	method = 'root',
-	executable = exe, 
-	runlist = dblist,
-	time = '8h',
-	output_dir = ''
+submitScan(exe, jobname,
+	time_flavour = 'workday',  # 8h
+	nsplit = 5,                # input files per condor job
+	njobs_max = None,          # e.g. 1 for a trial run
+	auto_submit = True
 )
-
-#how many files for each jobs
-jm.nsplit = 5 
-jm.make_tarball = False
-jm.generate_cfg()
-jm.submit()

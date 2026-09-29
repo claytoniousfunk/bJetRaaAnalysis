@@ -276,6 +276,8 @@ void PYTHIAHYDJET_scan(int group = 1){
   else if(doBJetSample) inputFileList = "../../../fileNames/fileNames_BJet_pThat-15_TuneCP5_HydjetDrumMB_5p02TeV_Pythia8.txt";
   else{};
 
+  if(group == 0){ cout << "INPUTFILELIST=" << inputFileList << endl; return; } // query mode for condor submit scripts
+
   std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
   if(!instr.is_open()){
     cout << "filelist not found!! Exiting..." << endl;

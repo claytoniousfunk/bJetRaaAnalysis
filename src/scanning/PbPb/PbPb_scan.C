@@ -315,6 +315,8 @@ void PbPb_scan(int group = 1){
   else if(doHardProbesSample) inputFileList = "../../../fileNames/fileNames_HIHardProbes_withCaloAndFlowJets.txt";
   else{};
 
+  if(group == 0){ cout << "INPUTFILELIST=" << inputFileList << endl; return; } // query mode for condor submit scripts
+
   std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
   if(!instr.is_open()){
     cout << "filelist not found!! Exiting..." << endl;

@@ -270,6 +270,8 @@ void PYTHIA_scan(int group = 1){
   // full HiForest, not the skims -- the same list PYTHIA_skim_simple.C read from
   std::string inputFileList = "../../../fileNames/fileNames_PYTHIA_DiJet_withGS.txt";
 
+  if(group == 0){ cout << "INPUTFILELIST=" << inputFileList << endl; return; } // query mode for condor submit scripts
+
   std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
   if(!instr.is_open()){ cout << "filelist not found!! Exiting..." << endl; return; }
   std::string filename; Int_t ifile = 0;
