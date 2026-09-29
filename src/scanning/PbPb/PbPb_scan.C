@@ -2,6 +2,8 @@
 #include <iostream>
 #include "TFile.h"
 #include "TRandom.h"
+#include "TRandom2.h"
+#include "TSystem.h"
 #include "TTree.h"
 #include "TH1F.h"
 #include "TH1D.h"
@@ -130,6 +132,16 @@ TH1D *h_hiBin_jet80;
 TH1D *h_vz_jet100[NCentralityIndices];
 TH1D *h_hiBin_jet100;
 TH1D *h_vz_jet100_withJetAbove130[NCentralityIndices];
+// LUMINOSITY CROSS-CHECK between primary datasets. An event firing both
+// HLT_HICsAK4PFJet100Eta1p5 and HLT_HIL3Mu12 is written to BOTH HardProbes and
+// SingleMuon, so a HardProbes scan and a SingleMuon scan must count the same
+// number of them -- unless the two scans cover different luminosity, which
+// would bias jets per Z directly. Filled after the event selection only, before
+// any config-dependent trigger requirement, so the count does not depend on
+// which dataset or trigger flags a scan was run with. The per-run version
+// localizes a mismatch to missing runs/files.
+TH1D *h_vz_jet100_mu12[NCentralityIndices];
+TH1D *h_run_jet100_mu12;
 TH1D *h_hiBin_jet100_withJetAbove130;
 // -----------------------------------------events w/ incl. reco jet -------
 TH1D *h_vz_jet[NCentralityIndices];
@@ -433,6 +445,8 @@ void PbPb_scan(int group = 1){
     // define histograms
     h_eventsBeforeSelection = new TH1D("h_eventsBeforeSelection","events before selection",2,0,1);
     h_eventsAfterSelection = new TH1D("h_eventsAfterSelection","events before selection",2,0,1);
+    // 2018 PbPb runs span 326381-327564; one bin per run
+    h_run_jet100_mu12 = new TH1D("h_run_jet100_mu12","events with jet100 && mu12, per run;run;events",1200,326370.5,327570.5);
     h_NEvents = new TH1D("h_NEvents","Number of events (L3Mu5 trigger)",100,0,10000);
     h_hiBin = new TH1D("h_hiBin","hiBin, inclusive events",200,0,200);
     h_nEventsNoJetTrigSel = new TH1D("h_nEventsNoJetTrigSel","0 = no jet-trigger selection applied, 1 = biased",2,0,2);
@@ -483,6 +497,7 @@ void PbPb_scan(int group = 1){
 	h_vz_jet60[i] = new TH1D(Form("h_vz_jet60_C%i",i),Form("vz, events with jet60, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NVzBins,vzMin,vzMax);
 	h_vz_jet80[i] = new TH1D(Form("h_vz_jet80_C%i",i),Form("vz, events with jet80, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NVzBins,vzMin,vzMax);
 	h_vz_jet100[i] = new TH1D(Form("h_vz_jet100_C%i",i),Form("vz, events with jet100, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NVzBins,vzMin,vzMax);
+	h_vz_jet100_mu12[i] = new TH1D(Form("h_vz_jet100_mu12_C%i",i),Form("vz, events with jet100 && mu12, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NVzBins,vzMin,vzMax);
 	h_vz_jet100_withJetAbove130[i] = new TH1D(Form("h_vz_jet100_withJetAbove130_C%i",i),Form("vz, events with jet100 & jet with p_{T} > 130 GeV, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NVzBins,vzMin,vzMax);
 	h_vz_jet[i] = new TH1D(Form("h_vz_jet_C%i",i),Form("vz, events with inclRecoJet, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NVzBins,vzMin,vzMax);
 	h_vz_inclRecoMuonTag[i] = new TH1D(Form("h_vz_inclRecoMuonTag_C%i",i),Form("vz, events with inclRecoJet-inclRecoMuonTag, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NVzBins,vzMin,vzMax);
@@ -557,6 +572,7 @@ void PbPb_scan(int group = 1){
 	h_vz_jet60[i] = new TH1D(Form("h_vz_jet60_C%i",i),Form("vz, events with jet60, hiBin %i - %i",centEdges[i-1],centEdges[i]),NVzBins,vzMin,vzMax);
 	h_vz_jet80[i] = new TH1D(Form("h_vz_jet80_C%i",i),Form("vz, events with jet80, hiBin %i - %i",centEdges[i-1],centEdges[i]),NVzBins,vzMin,vzMax);
 	h_vz_jet100[i] = new TH1D(Form("h_vz_jet100_C%i",i),Form("vz, events with jet100, hiBin %i - %i",centEdges[i-1],centEdges[i]),NVzBins,vzMin,vzMax);
+	h_vz_jet100_mu12[i] = new TH1D(Form("h_vz_jet100_mu12_C%i",i),Form("vz, events with jet100 && mu12, hiBin %i - %i",centEdges[i-1],centEdges[i]),NVzBins,vzMin,vzMax);
 	h_vz_jet100_withJetAbove130[i] = new TH1D(Form("h_vz_jet100_withJetAbove130_C%i",i),Form("vz, events with jet100 & jet with p_{T} > 130 GeV, hiBin %i - %i",centEdges[i-1],centEdges[i]),NVzBins,vzMin,vzMax);
 	h_vz_jet[i] = new TH1D(Form("h_vz_jet_C%i",i),Form("vz, events with inclRecoJet, hiBin %i - %i",centEdges[i-1],centEdges[i]),NVzBins,vzMin,vzMax);
 	h_vz_inclRecoMuonTag[i] = new TH1D(Form("h_vz_inclRecoMuonTag_C%i",i),Form("vz, events with inclRecoJet-inclRecoMuonTag, hiBin %i - %i",centEdges[i-1],centEdges[i]),NVzBins,vzMin,vzMax);
@@ -632,6 +648,7 @@ void PbPb_scan(int group = 1){
       h_vz_jet60[i]->Sumw2();
       h_vz_jet80[i]->Sumw2();
       h_vz_jet100[i]->Sumw2();
+      h_vz_jet100_mu12[i]->Sumw2();
       h_vz_jet100_withJetAbove130[i]->Sumw2();
       h_vz_jet[i]->Sumw2();
       h_vz_inclRecoMuonTag[i]->Sumw2();
@@ -883,6 +900,13 @@ void PbPb_scan(int group = 1){
 	h_vz_jet100[0]->Fill(em->vz,w);
 	h_vz_jet100[CentralityIndex]->Fill(em->vz,w);
 	h_hiBin_jet100->Fill(em->hiBin,w);
+      }
+
+      // in both HardProbes and SingleMuon; see the declaration
+      if(em->HLT_HICsAK4PFJet100Eta1p5_v1 == 1 && em->HLT_HIL3Mu12_v1 == 1){
+	h_vz_jet100_mu12[0]->Fill(em->vz,w);
+	h_vz_jet100_mu12[CentralityIndex]->Fill(em->vz,w);
+	h_run_jet100_mu12->Fill(em->runNumber);
       }
 
       h_Jet60HLT[0]->Fill(em->HLT_HICsAK4PFJet60Eta1p5_v1);
@@ -1502,6 +1526,7 @@ void PbPb_scan(int group = 1){
     h_hiBin_jet60->Write();
     h_hiBin_jet80->Write();
     h_hiBin_jet100->Write();
+    h_run_jet100_mu12->Write();
     h_hiBin_jet->Write();
     h_hiBin_inclRecoMuonTag->Write();
     h_hiBin_inclRecoMuonTag_triggerOn->Write();
@@ -1518,6 +1543,7 @@ void PbPb_scan(int group = 1){
       h_vz_jet60[i]->Write();
       h_vz_jet80[i]->Write();
       h_vz_jet100[i]->Write();
+      h_vz_jet100_mu12[i]->Write();
       h_vz_jet100_withJetAbove130[i]->Write();
       h_vz_jet[i]->Write();
       h_vz_inclRecoMuonTag[i]->Write();

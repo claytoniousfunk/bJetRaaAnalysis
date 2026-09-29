@@ -2,6 +2,8 @@
 #include <iostream>
 #include "TFile.h"
 #include "TRandom.h"
+#include "TRandom2.h"
+#include "TSystem.h"
 #include "TTree.h"
 #include "TH1F.h"
 #include "TH1D.h"
@@ -113,6 +115,16 @@ TH1D *h_vz_jet80;
 TH1D *h_hiBin_jet80;
 TH1D *h_vz_jet100;
 TH1D *h_hiBin_jet100;
+// LUMINOSITY CROSS-CHECK between primary datasets. An event firing both
+// HLT_HIAK4PFJet100 and HLT_HIL3Mu12 is written to BOTH HighEGJet and
+// SingleMuon, so a HighEGJet scan and a SingleMuon scan must count the same
+// number of them -- unless the two scans cover different luminosity, which
+// would bias jets per Z directly. Filled after the event selection only, before
+// any config-dependent trigger requirement, so the count does not depend on
+// which dataset or trigger flags a scan was run with. The per-run version
+// localizes a mismatch to missing runs/files.
+TH1D *h_vz_jet100_mu12;
+TH1D *h_run_jet100_mu12;
 // -----------------------------------------events w/ incl. reco jet -------
 TH1D *h_vz_jet;
 TH1D *h_hiBin_jet;
@@ -433,6 +445,9 @@ void pp_scan(TString inputFile, TString outputFile){
     h_vz_jet60 = new TH1D("h_vz_jet60","vz, events with jet60",NVzBins,vzMin,vzMax);
     h_vz_jet80 = new TH1D("h_vz_jet80","vz, events with jet80",NVzBins,vzMin,vzMax);
     h_vz_jet100 = new TH1D("h_vz_jet100","vz, events with jet100",NVzBins,vzMin,vzMax);
+    h_vz_jet100_mu12 = new TH1D("h_vz_jet100_mu12","vz, events with jet100 && mu12",NVzBins,vzMin,vzMax);
+    // 2017 5.02 TeV pp runs span 306546-306826; one bin per run
+    h_run_jet100_mu12 = new TH1D("h_run_jet100_mu12","events with jet100 && mu12, per run;run;events",300,306540.5,306840.5);
     h_vz_jet = new TH1D("h_vz_jet","vz, events with inclRecoJet",NVzBins,vzMin,vzMax);
     h_vz_inclRecoMuonTag = new TH1D("h_vz_inclRecoMuonTag","vz, events with inclRecoJet-inclRecoMuonTag",NVzBins,vzMin,vzMax);
     h_vz_inclRecoMuonTag_triggerOn = new TH1D("h_vz_inclRecoMuonTag_triggerOn","vz, events with inclRecoJet-inclRecoMuonTag-triggerOn",NVzBins,vzMin,vzMax);
@@ -553,6 +568,7 @@ void pp_scan(TString inputFile, TString outputFile){
     h_vz_jet60->Sumw2();
     h_vz_jet80->Sumw2();
     h_vz_jet100->Sumw2();
+    h_vz_jet100_mu12->Sumw2();
     h_vz_jet->Sumw2();
     h_vz_inclRecoMuonTag->Sumw2();
     h_vz_inclRecoMuonTag_triggerOn->Sumw2();
@@ -718,6 +734,12 @@ void pp_scan(TString inputFile, TString outputFile){
       if(em->HLT_HIAK4PFJet100_v1 == 1){
 	h_vz_jet100->Fill(em->vz,w);
 	h_hiBin_jet100->Fill(em->hiBin,w);
+      }
+
+      // in both HighEGJet and SingleMuon; see the declaration
+      if(em->HLT_HIAK4PFJet100_v1 == 1 && em->HLT_HIL3Mu12_v1 == 1){
+	h_vz_jet100_mu12->Fill(em->vz,w);
+	h_run_jet100_mu12->Fill(em->runNumber);
       }
 
     
@@ -1245,6 +1267,8 @@ void pp_scan(TString inputFile, TString outputFile){
     h_vz_jet60->Write();
     h_vz_jet80->Write();
     h_vz_jet100->Write();
+    h_vz_jet100_mu12->Write();
+    h_run_jet100_mu12->Write();
     h_vz_jet->Write();
     h_vz_inclRecoMuonTag->Write();
     h_vz_inclRecoMuonTag_triggerOn->Write();
