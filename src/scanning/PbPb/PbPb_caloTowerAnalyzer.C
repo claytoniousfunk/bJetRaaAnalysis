@@ -34,6 +34,19 @@
 //      the filter rejected every tower jet until this was caught (2026-09-29,
 //      h_fastJetPt_PF* came back entirely empty). Still applied to the PFCs
 //      comparison block, which clusters real PF candidates.
+//    - every tower-clustered jet (the h_fastJetPt_PF* fill, the mixed-event
+//      muon-jet loop, the real-mu/mixed-jet template, and the injection donor
+//      and injected jets, which are also built from towers) is corrected with
+//      JEC_Calo, not JEC_PF. Copied from PbPb_pfCandAnalyzer.C with JEC_PF
+//      left in place, this undercorrected every tower jet's pT (AK4Calo
+//      corrections run larger than AK4PF at the same raw pT, since calo
+//      response is lower) -- caught 2026-09-29 comparing this scan's per-event
+//      jet yield against the forest's akPu4Calo jets, which came out
+//      systematically low by roughly a factor 2-3 with no clear pT trend, the
+//      signature of jets failing pT thresholds under an undersized correction
+//      rather than a shape effect. The forest reco-jet branches and the PFCs
+//      block were already correct (JEC_Calo / JEC_PF respectively, chosen
+//      correctly for what each one clusters) and are unchanged.
 //
 //  TOWERS ARE MASSLESS in the forest -- e/cosh(eta) reproduces et to 4e-7 and
 //  emEt + hadEt equals et exactly -- so the FastJet input is
@@ -1689,10 +1702,10 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	    
 	  }
 	           
-          JEC_PF.SetJetPT(jet.pt());
-          JEC_PF.SetJetEta(jet.eta());
-          JEC_PF.SetJetPhi(jet.phi_std());
-          double fastJetPt_JEC = JEC_PF.GetCorrectedPT();
+          JEC_Calo.SetJetPT(jet.pt());
+          JEC_Calo.SetJetEta(jet.eta());
+          JEC_Calo.SetJetPhi(jet.phi_std());
+          double fastJetPt_JEC = JEC_Calo.GetCorrectedPT();
 
 	  // NOT applied here. doJetTrkMaxFilter rejects a jet whose leading
 	  // charged-track pT fraction is too low or too high -- a noise/fake-jet
@@ -1747,29 +1760,29 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	    double fastJetPt_dPTSub_dPTAbove0 = jet.pt() - dPTMeanPt_dPTAbove0;
 	    double fastJetPt_dPTSub_PFCsPTAbove60 = jet.pt() - dPTMeanPt_PFCsPTAbove60;
 
-	    JEC_PF.SetJetEta(jet.eta());
-	    JEC_PF.SetJetPhi(jet.phi_std());
+	    JEC_Calo.SetJetEta(jet.eta());
+	    JEC_Calo.SetJetPhi(jet.phi_std());
 	    
-	    JEC_PF.SetJetPT(fastJetPt_rcSub);
-	    double fastJetPt_JEC_rcSub = JEC_PF.GetCorrectedPT();
+	    JEC_Calo.SetJetPT(fastJetPt_rcSub);
+	    double fastJetPt_JEC_rcSub = JEC_Calo.GetCorrectedPT();
 
-	    JEC_PF.SetJetPT(fastJetPt_rcSub_geoCorr);
-	    double fastJetPt_JEC_rcSub_geoCorr = JEC_PF.GetCorrectedPT();
+	    JEC_Calo.SetJetPT(fastJetPt_rcSub_geoCorr);
+	    double fastJetPt_JEC_rcSub_geoCorr = JEC_Calo.GetCorrectedPT();
 
-	    JEC_PF.SetJetPT(fastJetPt_rcSub_geoCorr_etaReflect);
-	    double fastJetPt_JEC_rcSub_geoCorr_etaReflect = JEC_PF.GetCorrectedPT();
+	    JEC_Calo.SetJetPT(fastJetPt_rcSub_geoCorr_etaReflect);
+	    double fastJetPt_JEC_rcSub_geoCorr_etaReflect = JEC_Calo.GetCorrectedPT();
 
-	    JEC_PF.SetJetPT(fastJetPt_dPTSub);
-	    double fastJetPt_JEC_dPTSub = JEC_PF.GetCorrectedPT();
+	    JEC_Calo.SetJetPT(fastJetPt_dPTSub);
+	    double fastJetPt_JEC_dPTSub = JEC_Calo.GetCorrectedPT();
 
-	    JEC_PF.SetJetPT(fastJetPt_dPTSub_geoCorr);
-	    double fastJetPt_JEC_dPTSub_geoCorr = JEC_PF.GetCorrectedPT();
+	    JEC_Calo.SetJetPT(fastJetPt_dPTSub_geoCorr);
+	    double fastJetPt_JEC_dPTSub_geoCorr = JEC_Calo.GetCorrectedPT();
 
-	    JEC_PF.SetJetPT(fastJetPt_dPTSub_dPTAbove0);
-	    double fastJetPt_JEC_dPTSub_dPTAbove0 = JEC_PF.GetCorrectedPT();
+	    JEC_Calo.SetJetPT(fastJetPt_dPTSub_dPTAbove0);
+	    double fastJetPt_JEC_dPTSub_dPTAbove0 = JEC_Calo.GetCorrectedPT();
 
-	    JEC_PF.SetJetPT(fastJetPt_dPTSub_PFCsPTAbove60);
-	    double fastJetPt_JEC_dPTSub_PFCsPTAbove60 = JEC_PF.GetCorrectedPT();
+	    JEC_Calo.SetJetPT(fastJetPt_dPTSub_PFCsPTAbove60);
+	    double fastJetPt_JEC_dPTSub_PFCsPTAbove60 = JEC_Calo.GetCorrectedPT();
 
 
 	    
@@ -1882,8 +1895,8 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	      double rcMeanPt = h_RC_map[CentralityIndex]->GetBinContent(
                                 h_RC_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
 	      double jetPt_rcSub = jet.pt() - rcMeanPt;
-	      JEC_PF.SetJetPT(jetPt_rcSub);
-	      double jetPt_JEC_rcSub = JEC_PF.GetCorrectedPT();
+	      JEC_Calo.SetJetPT(jetPt_rcSub);
+	      double jetPt_JEC_rcSub = JEC_Calo.GetCorrectedPT();
 
 	      if(jetPt_JEC_rcSub < 20.) continue;
 	      // doJetTrkMaxFilter NOT applied: these are tower-clustered jets,
@@ -2003,10 +2016,10 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 		if(fabs(dj.eta()) > 1.6) continue;
 		double rc = h_RC_map[CentralityIndex]->GetBinContent(
 			      h_RC_map[CentralityIndex]->FindBin(dj.eta(), dj.phi_std()));
-		JEC_PF.SetJetPT(dj.pt() - rc);
-		JEC_PF.SetJetEta(dj.eta());
-		JEC_PF.SetJetPhi(dj.phi_std());
-		double djPt = JEC_PF.GetCorrectedPT();
+		JEC_Calo.SetJetPT(dj.pt() - rc);
+		JEC_Calo.SetJetEta(dj.eta());
+		JEC_Calo.SetJetPhi(dj.phi_std());
+		double djPt = JEC_Calo.GetCorrectedPT();
 		if(djPt < 20.) continue;
 		h_donorJetPt_noInject[0]->Fill(djPt, w_resample);
 		h_donorJetPt_noInject[CentralityIndex]->Fill(djPt, w_resample);
@@ -2040,10 +2053,10 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 		if(fabs(ij.eta()) > 1.6) continue;
 		double rc = h_RC_map[CentralityIndex]->GetBinContent(
 			      h_RC_map[CentralityIndex]->FindBin(ij.eta(), ij.phi_std()));
-		JEC_PF.SetJetPT(ij.pt() - rc);
-		JEC_PF.SetJetEta(ij.eta());
-		JEC_PF.SetJetPhi(ij.phi_std());
-		double ijPt = JEC_PF.GetCorrectedPT();
+		JEC_Calo.SetJetPT(ij.pt() - rc);
+		JEC_Calo.SetJetEta(ij.eta());
+		JEC_Calo.SetJetPhi(ij.phi_std());
+		double ijPt = JEC_Calo.GetCorrectedPT();
 		if(ijPt < 20.) continue;
 		h_donorJetPt_inject[0]->Fill(ijPt, w_resample);
 		h_donorJetPt_inject[CentralityIndex]->Fill(ijPt, w_resample);
@@ -2119,10 +2132,10 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 		double rcMeanPt_m = h_RC_map[CentralityIndex]->GetBinContent(
 				      h_RC_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
 		double jetPt_rcSub_m = jet.pt() - rcMeanPt_m;
-		JEC_PF.SetJetPT(jetPt_rcSub_m);
-		JEC_PF.SetJetEta(jet.eta());
-		JEC_PF.SetJetPhi(jet.phi_std());
-		double jetPt_JEC_rcSub_m = JEC_PF.GetCorrectedPT();
+		JEC_Calo.SetJetPT(jetPt_rcSub_m);
+		JEC_Calo.SetJetEta(jet.eta());
+		JEC_Calo.SetJetPhi(jet.phi_std());
+		double jetPt_JEC_rcSub_m = JEC_Calo.GetCorrectedPT();
 		if(jetPt_JEC_rcSub_m < 20.) continue;
 
 		// JEC-corrected pT, NOT the raw rcSub one, for both the ptRel and
