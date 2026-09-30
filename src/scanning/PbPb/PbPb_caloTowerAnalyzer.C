@@ -170,6 +170,10 @@ TF1 *fitFxn_PbPb_HLT_C4, *fitFxn_PbPb_HLT_C3, *fitFxn_PbPb_HLT_C2, *fitFxn_PbPb_
 #include "../../../headers/AnalysisSetup/pseudoJets.h"
 // tower ET threshold, clustering eta acceptance, em/had-only variants
 #include "../../../headers/AnalysisSetup/caloTowers.h"
+// forest-style (akPu) tower-level pileup subtraction, see doTowerPUSub
+#ifdef DO_FASTJET
+#include "../../../headers/functions/towerPUSubtraction.h"
+#endif
 // must follow pseudoJets.h and the config headers -- it reads their globals
 #include "../../../headers/functions/writeProvenance.h"
 // hibin fit parameters / functions
@@ -260,6 +264,13 @@ TH1D     *h_pseudoJetPt[NCentralityIndices];
 TH1D     *h_pseudoJetPt_geoCorr[NCentralityIndices];
 TH1D     *h_fastJetPt_PF[NCentralityIndices];
 TH1D     *h_fastJetPt_PF_JEC[NCentralityIndices];
+// Tower-clustered jets with the forest's akPu tower-level pileup subtraction
+// (doTowerPUSub), |eta| < etaMax. Raw = the subtracted pT, the analogue of the
+// forest's rawpt; _JEC adds JEC_Calo. _pu is the per-jet subtracted pileup
+// (the forest's jtpu) against raw pT. Same-event only; empty otherwise.
+TH1D     *h_fastJetPt_towerPUSub[NCentralityIndices];
+TH1D     *h_fastJetPt_towerPUSub_JEC[NCentralityIndices];
+TH2D     *h_towerPUSub_pu_fastJetPt[NCentralityIndices];
 TH1D     *h_fastJetPt_PFCs[NCentralityIndices];
 TH1D     *h_fastJetPt_PFCs_JEC[NCentralityIndices];
 TH1D     *h_nTower[NCentralityIndices];
@@ -800,6 +811,9 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	h_pseudoJetPt_geoCorr[i] = new TH1D(Form("h_pseudoJetPt_geoCorr_C%i",i),Form("PseudoJet pT, geometric correction, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF[i] = new TH1D(Form("h_fastJetPt_PF_C%i",i),Form("FastJet (PF) anti-kT pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_JEC[i] = new TH1D(Form("h_fastJetPt_PF_JEC_C%i",i),Form("FastJet anti-kT pT (PF, JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_towerPUSub[i] = new TH1D(Form("h_fastJetPt_towerPUSub_C%i",i),Form("tower anti-kT pT, forest-style tower PU sub, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_towerPUSub_JEC[i] = new TH1D(Form("h_fastJetPt_towerPUSub_JEC_C%i",i),Form("tower anti-kT pT (JEC), forest-style tower PU sub, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_towerPUSub_pu_fastJetPt[i] = new TH2D(Form("h_towerPUSub_pu_fastJetPt_C%i",i),Form("subtracted pileup vs raw tower-jet pT, forest-style tower PU sub, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,100,0,200);
 	h_fastJetPt_PFCs[i] = new TH1D(Form("h_fastJetPt_PFCs_C%i",i),Form("FastJet (PFCs) anti-kT pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PFCs_JEC[i] = new TH1D(Form("h_fastJetPt_PFCs_JEC_C%i",i),Form("FastJet anti-kT pT (PFCs, JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_bkgSub_RC[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, random-cone), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
@@ -902,6 +916,9 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	h_pseudoJetPt_geoCorr[i] = new TH1D(Form("h_pseudoJetPt_geoCorr_C%i",i),Form("PseudoJet pT, geometry correction, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF[i] = new TH1D(Form("h_fastJetPt_PF_C%i",i),Form("FastJet (PF) anti-kT pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_JEC[i] = new TH1D(Form("h_fastJetPt_PF_JEC_C%i",i),Form("FastJet (PF) anti-kT pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_towerPUSub[i] = new TH1D(Form("h_fastJetPt_towerPUSub_C%i",i),Form("tower anti-kT pT, forest-style tower PU sub, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_fastJetPt_towerPUSub_JEC[i] = new TH1D(Form("h_fastJetPt_towerPUSub_JEC_C%i",i),Form("tower anti-kT pT (JEC), forest-style tower PU sub, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_towerPUSub_pu_fastJetPt[i] = new TH2D(Form("h_towerPUSub_pu_fastJetPt_C%i",i),Form("subtracted pileup vs raw tower-jet pT, forest-style tower PU sub, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,100,0,200);
 	h_fastJetPt_PFCs[i] = new TH1D(Form("h_fastJetPt_PFCs_C%i",i),Form("FastJet (PFCs) anti-kT pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PFCs_JEC[i] = new TH1D(Form("h_fastJetPt_PFCs_JEC_C%i",i),Form("FastJet (PFCs) anti-kT pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 
@@ -987,6 +1004,9 @@ void PbPb_caloTowerAnalyzer(int group = 1,
       h_pseudoJetPt_geoCorr[i]->Sumw2();
       h_fastJetPt_PF[i]->Sumw2();
       h_fastJetPt_PF_JEC[i]->Sumw2();
+      h_fastJetPt_towerPUSub[i]->Sumw2();
+      h_fastJetPt_towerPUSub_JEC[i]->Sumw2();
+      h_towerPUSub_pu_fastJetPt[i]->Sumw2();
       h_fastJetPt_PFCs[i]->Sumw2();
       h_fastJetPt_PFCs_JEC[i]->Sumw2();
 
@@ -1291,6 +1311,41 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 
       h_nTower[0]->Fill(em->nTower, w);
       h_nTower[CentralityIndex]->Fill(em->nTower, w);
+
+#ifdef DO_FASTJET
+      // Forest-style tower-level PU subtraction on this event's own towers.
+      // Here, before the mixed-event pool loop, because that loop overwrites
+      // the em->tow* arrays with other events. Input = every tower above
+      // towerEtMin at ANY eta, as the forest's akPu4CaloJets take (not the
+      // towerEtaMaxCluster acceptance of the clustering below). Validated
+      // against the forest's own akPu4Calo rawpt in
+      // src/plots/towers/validateTowerPUSub.C.
+      if(doTowerPUSub && !doEventMixing){
+        std::vector<TowerPUInput> puIn;
+        puIn.reserve(em->nTower);
+        for(int l = 0; l < em->nTower; l++){
+          if(em->towEt[l] < towerEtMin) continue;
+          puIn.push_back({(double)em->towEt[l], (double)em->towEta[l], (double)em->towPhi[l],
+                          em->towIeta[l], em->towIphi[l]});
+        }
+        std::vector<TowerPUJet> puJets = clusterTowersWithPUSub(puIn, 0.4, towerPUSub_nSigma,
+                                                                towerPUSub_ptMin, towerPUSub_radius,
+                                                                towerPUSub_jetPtMin);
+        for(const auto &pj : puJets){
+          if(fabs(pj.eta) > etaMax) continue;
+          JEC_Calo.SetJetPT(pj.pt);
+          JEC_Calo.SetJetEta(pj.eta);
+          JEC_Calo.SetJetPhi(pj.phi);
+          const double ptJEC = JEC_Calo.GetCorrectedPT();
+          h_fastJetPt_towerPUSub[0]->Fill(pj.pt, w);
+          h_fastJetPt_towerPUSub[CentralityIndex]->Fill(pj.pt, w);
+          h_fastJetPt_towerPUSub_JEC[0]->Fill(ptJEC, w);
+          h_fastJetPt_towerPUSub_JEC[CentralityIndex]->Fill(ptJEC, w);
+          h_towerPUSub_pu_fastJetPt[0]->Fill(pj.pt, pj.pu, w);
+          h_towerPUSub_pu_fastJetPt[CentralityIndex]->Fill(pj.pt, pj.pu, w);
+        }
+      }
+#endif
       h_nPFCandCS[0]->Fill(em->nPFCspart, w);
       h_nPFCandCS[CentralityIndex]->Fill(em->nPFCspart, w);
 
@@ -2787,6 +2842,9 @@ void PbPb_caloTowerAnalyzer(int group = 1,
       h_pseudoJetPt_geoCorr[i]->Write();
       h_fastJetPt_PF[i]->Write();
       h_fastJetPt_PF_JEC[i]->Write();
+      h_fastJetPt_towerPUSub[i]->Write();
+      h_fastJetPt_towerPUSub_JEC[i]->Write();
+      h_towerPUSub_pu_fastJetPt[i]->Write();
       h_fastJetPt_PFCs[i]->Write();
       h_fastJetPt_PFCs_JEC[i]->Write();
       h_fastJetPt_PF_bkgSub_RC[i]->Write();
@@ -2855,7 +2913,18 @@ void PbPb_caloTowerAnalyzer(int group = 1,
     // Record the code version and configuration this file was produced with, so
     // a consumer never has to infer the generation from which histograms happen
     // to be present. See headers/functions/writeProvenance.h.
-    writeProvenance(wf);
+    {
+      char tb[512];
+      snprintf(tb, sizeof(tb),
+               "--- towers ---\n"
+               "towerEtMin / etaCluster    : %.2f / %.1f\n"
+               "towerUseEmOnly / HadOnly   : %d / %d\n"
+               "doTowerPUSub               : %d%s (nSigma %.2f, puPtMin %.1f, radiusPU %.2f, jetPtMin %.1f)\n",
+               towerEtMin, towerEtaMaxCluster, (int)towerUseEmOnly, (int)towerUseHadOnly,
+               (int)doTowerPUSub, (doTowerPUSub && doEventMixing) ? " -- SKIPPED, mixed-event run" : "",
+               towerPUSub_nSigma, towerPUSub_ptMin, towerPUSub_radius, towerPUSub_jetPtMin);
+      writeProvenance(wf, tb);
+    }
 
     wf->Close();
     g_caloTowerScanCompletedOK = true;   // the only place this is set

@@ -52,6 +52,29 @@ double towerEtaMaxCluster = 3.0;
 bool towerUseEmOnly  = false;
 bool towerUseHadOnly = false;
 
+// ---- forest-style (akPu) tower-level pileup subtraction --------------------
+//
+// doTowerPUSub runs, on each event's OWN towers, an emulation of the iterative
+// pileup subtraction the forest's akPu4CaloJets use (MultipleAlgoIterator):
+// per-ieta-ring mean + nSigma * RMS subtracted from every tower, towers that
+// go <= 0 dropped, cluster, exclude towers near jets above puPtMin, recompute
+// the pedestal from what is left, re-subtract, recluster. Implementation and
+// the differences from the forest that remain are documented in
+// headers/functions/towerPUSubtraction.h.
+//
+// Fills the h_fastJetPt_towerPUSub* histograms only. It does not touch the
+// existing RC-subtracted spectra, so the two background methods can be compared
+// in one scan. Same-event only: in mixed-event running the current event's
+// tower arrays are overwritten by the pool loop, and the forest's algorithm is
+// defined per real event anyway, so the fill is skipped when doEventMixing.
+// The histograms are booked unconditionally and stay empty when this is off;
+// read the provenance to tell "off" from "no jets".
+bool   doTowerPUSub        = true;
+double towerPUSub_nSigma   = 1.0;   // nSigmaPU
+double towerPUSub_ptMin    = 8.0;   // puPtMin for R = 0.4
+double towerPUSub_radius   = 0.5;   // radiusPU
+double towerPUSub_jetPtMin = 1.0;   // jetPtMin of akPu4CaloJets (akCaloJets_cfi.py)
+
 // et of the tower as it should enter the clustering
 inline double towerClusterEt(double et, double emEt, double hadEt)
 {

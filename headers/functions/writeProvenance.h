@@ -45,7 +45,9 @@ inline std::string shellLine(const char *cmd)
   return out.empty() ? std::string("unavailable") : out;
 }
 
-inline void writeProvenance(TFile *wf)
+// extra: scan-specific lines appended verbatim (e.g. the tower analyzer's
+// caloTowers.h settings, which the shared body cannot reference)
+inline void writeProvenance(TFile *wf, const char *extra = "")
 {
   if(!wf) return;
 
@@ -111,6 +113,7 @@ inline void writeProvenance(TFile *wf)
 
   s += "--- binning ---\n";
   snprintf(b, sizeof(b), "NCentralityIndices          : %d\n", NCentralityIndices);                 s += b;
+  if(extra && extra[0]) s += extra;
 
   wf->cd();
   TNamed prov("provenance", s.c_str());
