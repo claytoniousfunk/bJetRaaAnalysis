@@ -4,13 +4,16 @@
 #include <cmath>
 #include <string>
 
-// 2026-09-29: off, for a same-event calo-tower scan. Now that the tower
-// bootstrap pass's h_randConeEtaPhi_* is merged and bkgMapFileOverride below
-// points at it, the scan has a real per-slice background to subtract and no
-// longer needs the mixed-event pool standing in for it. Flip back to true to
-// resume mixed-event running (e.g. to remake or extend the background map
-// itself, which needs the large independent-cone statistics mixing gives).
-bool doEventMixing = false;
+// true  = mixed-event: FastJet inputs, random cones and the tower-level PU
+//         subtraction (doTowerPUSub) are built from a pool of
+//         N_mixedEventsInPool same-centrality events -- the combinatorial
+//         (fake) jet estimate. Slow.
+// false = same-event: each event's own towers; no other event is touched.
+// The output name carries _mixedEventPFClustering / _sameEventPFClustering.
+//
+// 2026-09-29 same-event scan (tower map in hand); 2026-09-30 back to
+// mixed-event for the fake-jet rate of the tower-subtracted calo jets.
+bool doEventMixing = true;
 
 bool doFastJetClustering = true;      // true = run anti-kT R=0.4 on PF candidates via FastJet (requires -DDO_FASTJET at compile time)
 
