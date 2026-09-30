@@ -37,7 +37,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
 				   int N_fastJetMixedEventResamples,
 				   double pseudoJetCandPt_min,
 				   const char *bkgMapTag,
-				   const char *towerTagStr)
+				   const char *towerTagStr,
+				   bool doTowerPUSub)
 {
 
   TString result = "output";
@@ -100,6 +101,11 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   // sit above the default 0.3 GeV threshold, so two scans at different
   // thresholds cluster substantially different input and must not share a name.
   result.Append(towerTagStr);
+  // forest-style tower-level PU subtraction (doTowerPUSub in caloTowers.h). It
+  // only adds histograms, but a file without it has them booked and empty, so
+  // the name says which kind this is. Tagged only when it actually ran: the
+  // scan skips it in mixed-event mode.
+  if(doTowerPUSub && !doEventMixing) result.Append("_towerPUSub");
   // which background map the subtracted spectra used (bkgMapTag() in pseudoJets.h)
   result.Append(bkgMapTag);
   if(skipSingleConstituentJets) result.Append("_skipSingleConstituentJets");

@@ -541,7 +541,8 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 						   N_fastJetMixedEventResamples,
 						   pseudoJetCandPt_min,
 						   bkgMapTag().c_str(),
-						   towerTag().c_str());
+						   towerTag().c_str(),
+						   doTowerPUSub);
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
