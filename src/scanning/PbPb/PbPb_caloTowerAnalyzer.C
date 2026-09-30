@@ -267,7 +267,8 @@ TH1D     *h_fastJetPt_PF_JEC[NCentralityIndices];
 // Tower-clustered jets with the forest's akPu tower-level pileup subtraction
 // (doTowerPUSub), |eta| < etaMax. Raw = the subtracted pT, the analogue of the
 // forest's rawpt; _JEC adds JEC_Calo. _pu is the per-jet subtracted pileup
-// (the forest's jtpu) against raw pT. Same-event only; empty otherwise.
+// (the forest's jtpu) against raw pT. Filled from the event's own towers in a
+// same-event scan, from cell-by-cell mixed events in a mixed-event one.
 TH1D     *h_fastJetPt_towerPUSub[NCentralityIndices];
 TH1D     *h_fastJetPt_towerPUSub_JEC[NCentralityIndices];
 TH2D     *h_towerPUSub_pu_fastJetPt[NCentralityIndices];
@@ -1314,21 +1315,14 @@ void PbPb_caloTowerAnalyzer(int group = 1,
       h_nTower[CentralityIndex]->Fill(em->nTower, w);
 
 #ifdef DO_FASTJET
-      // Forest-style tower-level PU subtraction on this event's own towers.
-      // Here, before the mixed-event pool loop, because that loop overwrites
-      // the em->tow* arrays with other events. Input = every tower above
+      // Forest-style tower-level PU subtraction (doTowerPUSub, caloTowers.h).
+      // One fill for both modes: the same-event call is right below, the
+      // mixed-event one after the pool loop. Input = every tower above
       // towerEtMin at ANY eta, as the forest's akPu4CaloJets take (not the
       // towerEtaMaxCluster acceptance of the clustering below). Validated
       // against the forest's own akPu4Calo rawpt in
       // src/plots/towers/validateTowerPUSub.C.
-      if(doTowerPUSub && !doEventMixing){
-        std::vector<TowerPUInput> puIn;
-        puIn.reserve(em->nTower);
-        for(int l = 0; l < em->nTower; l++){
-          if(em->towEt[l] < towerEtMin) continue;
-          puIn.push_back({(double)em->towEt[l], (double)em->towEta[l], (double)em->towPhi[l],
-                          em->towIeta[l], em->towIphi[l]});
-        }
+      auto fillTowerPUSub = [&](const std::vector<TowerPUInput> &puIn, double wFill){
         std::vector<TowerPUJet> puJets = clusterTowersWithPUSub(puIn, 0.4, towerPUSub_nSigma,
                                                                 towerPUSub_ptMin, towerPUSub_radius,
                                                                 towerPUSub_jetPtMin);
@@ -1338,13 +1332,25 @@ void PbPb_caloTowerAnalyzer(int group = 1,
           JEC_Calo.SetJetEta(pj.eta);
           JEC_Calo.SetJetPhi(pj.phi);
           const double ptJEC = JEC_Calo.GetCorrectedPT();
-          h_fastJetPt_towerPUSub[0]->Fill(pj.pt, w);
-          h_fastJetPt_towerPUSub[CentralityIndex]->Fill(pj.pt, w);
-          h_fastJetPt_towerPUSub_JEC[0]->Fill(ptJEC, w);
-          h_fastJetPt_towerPUSub_JEC[CentralityIndex]->Fill(ptJEC, w);
-          h_towerPUSub_pu_fastJetPt[0]->Fill(pj.pt, pj.pu, w);
-          h_towerPUSub_pu_fastJetPt[CentralityIndex]->Fill(pj.pt, pj.pu, w);
+          h_fastJetPt_towerPUSub[0]->Fill(pj.pt, wFill);
+          h_fastJetPt_towerPUSub[CentralityIndex]->Fill(pj.pt, wFill);
+          h_fastJetPt_towerPUSub_JEC[0]->Fill(ptJEC, wFill);
+          h_fastJetPt_towerPUSub_JEC[CentralityIndex]->Fill(ptJEC, wFill);
+          h_towerPUSub_pu_fastJetPt[0]->Fill(pj.pt, pj.pu, wFill);
+          h_towerPUSub_pu_fastJetPt[CentralityIndex]->Fill(pj.pt, pj.pu, wFill);
         }
+      };
+      // Same-event: here, before the mixed-event pool loop, because that loop
+      // overwrites the em->tow* arrays with other events.
+      if(doTowerPUSub && !doEventMixing){
+        std::vector<TowerPUInput> puIn;
+        puIn.reserve(em->nTower);
+        for(int l = 0; l < em->nTower; l++){
+          if(em->towEt[l] < towerEtMin) continue;
+          puIn.push_back({(double)em->towEt[l], (double)em->towEta[l], (double)em->towPhi[l],
+                          em->towIeta[l], em->towIphi[l]});
+        }
+        fillTowerPUSub(puIn, w);
       }
 #endif
       h_nPFCandCS[0]->Fill(em->nPFCspart, w);
@@ -1496,6 +1502,13 @@ void PbPb_caloTowerAnalyzer(int group = 1,
       // compared jet by jet.
       std::vector<double> donor_pfPt, donor_pfEta, donor_pfPhi;
       std::vector<int>    donor_pfId;
+#ifdef DO_FASTJET
+      // Per-event, per-cell copy of the pool for the tower-level PU
+      // subtraction's cell-by-cell mixing. Separate from pool_pf*: that one is
+      // a flat list cut to the clustering acceptance, this one keeps every
+      // tower above towerEtMin at any eta with its cell, as the forest takes.
+      std::vector<TowerPUPoolEvent> puPool;
+#endif
 
       if(doEventMixing){
 	int eventsInPool = 0;
@@ -1505,6 +1518,16 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	  em->getEvent(mixedEventIndex);
 	  em->towerTree->GetEntry(mixedEventIndex);
 	  if(getCentBin(em->hiBin) != CentralityIndex){ jPool++; continue; }
+#ifdef DO_FASTJET
+	  if(doTowerPUSub){
+	    puPool.emplace_back();
+	    for(int l = 0; l < em->nTower; l++){
+	      if(em->towEt[l] < towerEtMin) continue;
+	      puPool.back().add({(double)em->towEt[l], (double)em->towEta[l], (double)em->towPhi[l],
+	                         em->towIeta[l], em->towIphi[l]});
+	    }
+	  }
+#endif
 	  for(int l = 0; l < em->nTower; l++){
 	    const double etT = towerClusterEt(em->towEt[l], em->towEmEt[l], em->towHadEt[l]);
 	    // Select here, once, rather than at every consumer: the pool is drawn
@@ -1533,6 +1556,18 @@ void PbPb_caloTowerAnalyzer(int group = 1,
       std::mt19937 rng(std::random_device{}());
       double pi_pfcand = TMath::Pi();
       double dR_max_pfcand = 0.4;
+
+#ifdef DO_FASTJET
+      // Mixed-event tower-level PU subtraction: cell-by-cell mixed events from
+      // puPool, each filled at w / N so the per-event normalisation does not
+      // depend on the resample count. puPool is only ever filled when
+      // doEventMixing, so this never runs in a same-event scan.
+      if(doTowerPUSub && doEventMixing && !puPool.empty() && towerPUSub_nMixedResamples > 0){
+        const double wMix = w / towerPUSub_nMixedResamples;
+        for(int r = 0; r < towerPUSub_nMixedResamples; r++)
+          fillTowerPUSub(mixCellByCell(puPool, rng), wMix);
+      }
+#endif
 
 #ifdef DO_FASTJET
       // Baseline clustering of the donor event, done ONCE per event since the
@@ -2920,10 +2955,12 @@ void PbPb_caloTowerAnalyzer(int group = 1,
                "--- towers ---\n"
                "towerEtMin / etaCluster    : %.2f / %.1f\n"
                "towerUseEmOnly / HadOnly   : %d / %d\n"
-               "doTowerPUSub               : %d%s (nSigma %.2f, puPtMin %.1f, radiusPU %.2f, jetPtMin %.1f)\n",
+               "doTowerPUSub               : %d%s (nSigma %.2f, puPtMin %.1f, radiusPU %.2f, jetPtMin %.1f)\n"
+               "towerPUSub_nMixedResamples : %d%s\n",
                towerEtMin, towerEtaMaxCluster, (int)towerUseEmOnly, (int)towerUseHadOnly,
-               (int)doTowerPUSub, (doTowerPUSub && doEventMixing) ? " -- SKIPPED, mixed-event run" : "",
-               towerPUSub_nSigma, towerPUSub_ptMin, towerPUSub_radius, towerPUSub_jetPtMin);
+               (int)doTowerPUSub, !doTowerPUSub ? "" : (doEventMixing ? " -- cell-by-cell mixed events" : " -- same event"),
+               towerPUSub_nSigma, towerPUSub_ptMin, towerPUSub_radius, towerPUSub_jetPtMin,
+               towerPUSub_nMixedResamples, doEventMixing ? "" : " (unused, same-event)");
       writeProvenance(wf, tb);
     }
 

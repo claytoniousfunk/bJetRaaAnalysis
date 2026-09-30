@@ -103,9 +103,9 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   result.Append(towerTagStr);
   // forest-style tower-level PU subtraction (doTowerPUSub in caloTowers.h). It
   // only adds histograms, but a file without it has them booked and empty, so
-  // the name says which kind this is. Tagged only when it actually ran: the
-  // scan skips it in mixed-event mode.
-  if(doTowerPUSub && !doEventMixing) result.Append("_towerPUSub");
+  // the name says which kind this is. Runs in both modes; _sameEvent/
+  // _mixedEventPFClustering above already says which input it had.
+  if(doTowerPUSub) result.Append("_towerPUSub");
   // which background map the subtracted spectra used (bkgMapTag() in pseudoJets.h)
   result.Append(bkgMapTag);
   if(skipSingleConstituentJets) result.Append("_skipSingleConstituentJets");

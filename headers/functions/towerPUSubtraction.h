@@ -59,6 +59,7 @@
 #include <map>
 #include <set>
 #include <cmath>
+#include <random>
 #include "TMath.h"
 #include "fastjet/ClusterSequence.hh"
 
@@ -186,6 +187,53 @@ inline std::vector<fastjet::PseudoJet> subtracted(const std::vector<TowerPUInput
 }
 
 } // namespace towerPU
+
+// ---------------------------------------------------------------------------
+// CELL-BY-CELL MIXED EVENT, for running the same algorithm on a mixed-event
+// pool. A plain random draw of N towers from a pool (what the scan's other
+// mixed-event clustering does) cannot feed this algorithm: it can put two
+// towers in one cell and leave others empty, and the per-ring pedestal is a sum
+// over GEOMETRIC cells, so the occupancy would stop meaning anything. Instead
+// every geometric cell independently takes its tower -- or its emptiness --
+// from one pool event chosen at random. The mixed event then has exactly the
+// detector geometry, one tower per cell, per-ring occupancy and spread drawn
+// from real same-centrality events, and no jet correlations between cells.
+// It also has no coherent flow modulation (each cell comes from an event with
+// its own reaction plane), which the per-ring pedestal would not have removed
+// in a real event -- so fakes seeded by flow-enhanced regions are
+// under-represented.
+
+namespace towerPU {
+const int nCellIndex = 83 * 72;                        // ieta -41..41 x iphi 1..72
+inline int cellIndex(int ieta, int iphi){ return (ieta + 41) * 72 + (iphi - 1); }
+}
+
+// One pool event: its towers, and cell index -> position in `towers` (-1 empty).
+struct TowerPUPoolEvent {
+  std::vector<TowerPUInput> towers;
+  std::vector<int> cellToTower;
+  TowerPUPoolEvent() : cellToTower(towerPU::nCellIndex, -1) {}
+  void add(const TowerPUInput &t){
+    const int ci = towerPU::cellIndex(t.ieta, t.iphi);
+    if(ci < 0 || ci >= towerPU::nCellIndex) return;
+    cellToTower[ci] = (int)towers.size();
+    towers.push_back(t);
+  }
+};
+
+template <class RNG>
+inline std::vector<TowerPUInput> mixCellByCell(const std::vector<TowerPUPoolEvent> &pool, RNG &rng)
+{
+  std::vector<TowerPUInput> out;
+  if(pool.empty()) return out;
+  std::uniform_int_distribution<int> pick(0, (int)pool.size() - 1);
+  for(const towerPU::Cell &c : towerPU::allCells()){
+    const TowerPUPoolEvent &e = pool[pick(rng)];
+    const int k = e.cellToTower[towerPU::cellIndex(c.ieta, c.iphi)];
+    if(k >= 0) out.push_back(e.towers[k]);
+  }
+  return out;
+}
 
 // Towers must already have passed the input et cut (inputEtMin, 0.3 GeV). The
 // returned jets are sorted by pT and include every eta -- apply the analysis

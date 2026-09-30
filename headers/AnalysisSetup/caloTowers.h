@@ -64,16 +64,30 @@ bool towerUseHadOnly = false;
 //
 // Fills the h_fastJetPt_towerPUSub* histograms only. It does not touch the
 // existing RC-subtracted spectra, so the two background methods can be compared
-// in one scan. Same-event only: in mixed-event running the current event's
-// tower arrays are overwritten by the pool loop, and the forest's algorithm is
-// defined per real event anyway, so the fill is skipped when doEventMixing.
-// The histograms are booked unconditionally and stay empty when this is off;
-// read the provenance to tell "off" from "no jets".
+// in one scan. The histograms are booked unconditionally and stay empty when
+// this is off; read the provenance to tell "off" from "no jets".
+//
+// The input follows doEventMixing, like the rest of the scan -- the SAME
+// histograms, filled from whichever mode is selected (the file name already
+// says which):
+//   same-event   the event's own towers, once per event. Touches no other
+//                event: nothing mixed-event runs in a same-event scan.
+//   mixed-event  cell-by-cell mixed events built from the pool the scan
+//                already assembles (mixCellByCell in towerPUSubtraction.h),
+//                towerPUSub_nMixedResamples of them per event, each filled at
+//                w / towerPUSub_nMixedResamples so the per-event normalisation
+//                does not depend on the count. What survives is the
+//                combinatorial (fake) jet rate of akPu-style calo jets.
 bool   doTowerPUSub        = true;
 double towerPUSub_nSigma   = 1.0;   // nSigmaPU
 double towerPUSub_ptMin    = 8.0;   // puPtMin for R = 0.4
 double towerPUSub_radius   = 0.5;   // radiusPU
 double towerPUSub_jetPtMin = 1.0;   // jetPtMin of akPu4CaloJets (akCaloJets_cfi.py)
+// Mixed-event only. Each resample is two full clusterings of ~1000 towers plus
+// the exclusion step, so this is a real cost on top of an already slow mode.
+// It only reduces sampling noise; fake jets are rare, so more resamples buy
+// statistics at the same per-event normalisation.
+int    towerPUSub_nMixedResamples = 10;
 
 // et of the tower as it should enter the clustering
 inline double towerClusterEt(double et, double emEt, double hadEt)
