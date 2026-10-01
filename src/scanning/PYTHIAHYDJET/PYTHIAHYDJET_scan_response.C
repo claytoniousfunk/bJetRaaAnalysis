@@ -374,8 +374,6 @@ void PYTHIAHYDJET_scan_response(int group = 1){
     TH1D *h_unmatchedGenJetPt[NCentralityIndices];
 
     // distorted-truth response + misses for unfoldClosureTest.C's "tilt" mode --
-    // allJets only, since that is the only response the closure test reads
-    // distorted-truth response + misses for unfoldClosureTest.C's "tilt" mode --
     // allJets and bJets, fixed and variable pT binning. muTag=1 additionally
     // requires hasRecoJetMuon, so a muon-tagged-only closure test can be read
     // out of this (onlyMuTaggedJets=false) production instead of needing a
@@ -383,6 +381,12 @@ void PYTHIAHYDJET_scan_response(int group = 1){
     TH2D *h_matchedRecoJetPt_genJetPt_distTilt[NCentralityIndices][2][2][kNDistTilt];       // [.][flavor][muTag][tilt]
     TH2D *h_matchedRecoJetPt_genJetPt_var_distTilt[NCentralityIndices][2][2][kNDistTilt];   // same, variable bins
     TH1D *h_unmatchedGenJetPt_distTilt[NCentralityIndices][kNDistTilt];   // misses aren't flavor/muTag-split upstream either
+
+    // plain (undistorted) muon-tagged response -- allJets/bJets, fixed/var bins.
+    // The undistorted-response side of unfoldClosureTest.C's closure test (e.g.
+    // the odd half) needs this baseline alongside the distTilt histograms above.
+    TH2D *h_matchedRecoJetPt_genJetPt_muTagged[NCentralityIndices][2];       // [.][flavor], fixed bins
+    TH2D *h_matchedRecoJetPt_genJetPt_var_muTagged[NCentralityIndices][2];   // [.][flavor], variable bins
     // RooUnfoldResponse response_C4(NPtBins,ptMin,ptMax,"response_C4","response_C4");
     // RooUnfoldResponse response_C3(NPtBins,ptMin,ptMax,"response_C3","response_C3");
     // RooUnfoldResponse response_C2(NPtBins,ptMin,ptMax,"response_C2","response_C2");
@@ -488,6 +492,10 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	    h_matchedRecoJetPt_genJetPt_var_distTilt[i][f][m][t]->Sumw2();
 	  }
 	}
+	h_matchedRecoJetPt_genJetPt_muTagged[i][f] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_%s_C%i_muTagged",kDistTiltFlavorTag[f],i),Form("genJetPt vs. matchedRecoJetPt, %s, C%i, muon-tagged",kDistTiltFlavorTag[f],i),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt_muTagged[i][f]->Sumw2();
+	h_matchedRecoJetPt_genJetPt_var_muTagged[i][f] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_%s_C%i_muTagged",kDistTiltFlavorTag[f],i),Form("genJetPt vs. matchedRecoJetPt, var bins, %s, C%i, muon-tagged",kDistTiltFlavorTag[f],i),N1-1,ptAxis1,N1-1,ptAxis1);
+	h_matchedRecoJetPt_genJetPt_var_muTagged[i][f]->Sumw2();
       }
       for(int t = 0; t < kNDistTilt; t++){
 	h_unmatchedGenJetPt_distTilt[i][t] = new TH1D(Form("h_unmatchedGenJetPt_C%i_distTilt%.1f",i,kDistTiltExpo[t]),Form("unmatchedGenJetPt, C%i, gen reweighted w#propto p_{T,gen}^{%.1f}",i,kDistTiltExpo[t]),NPtBins,ptMin,ptMax);
@@ -1067,6 +1075,12 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	      h_matchedRecoJetPt_genJetPt_var_distTilt[CentralityIndex][0][1][t]->Fill(matchedRecoJetPt,x,wd);
 	    }
 	  }
+	  if(hasRecoJetMuon){
+	    h_matchedRecoJetPt_genJetPt_muTagged[0][0]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt_muTagged[CentralityIndex][0]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt_var_muTagged[0][0]->Fill(matchedRecoJetPt,x,w_jet);
+	    h_matchedRecoJetPt_genJetPt_var_muTagged[CentralityIndex][0]->Fill(matchedRecoJetPt,x,w_jet);
+	  }
 
 	  h_matchedRecoJetPt_genJetPt_var[0][0]->Fill(matchedRecoJetPt,x,w_jet);
 	  h_matchedRecoJetPt_genJetPt_var[CentralityIndex][0]->Fill(matchedRecoJetPt,x,w_jet);
@@ -1097,6 +1111,12 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 		h_matchedRecoJetPt_genJetPt_var_distTilt[0][1][1][t]->Fill(matchedRecoJetPt,x,wd);
 		h_matchedRecoJetPt_genJetPt_var_distTilt[CentralityIndex][1][1][t]->Fill(matchedRecoJetPt,x,wd);
 	      }
+	    }
+	    if(hasRecoJetMuon){
+	      h_matchedRecoJetPt_genJetPt_muTagged[0][1]->Fill(matchedRecoJetPt,x,w_jet);
+	      h_matchedRecoJetPt_genJetPt_muTagged[CentralityIndex][1]->Fill(matchedRecoJetPt,x,w_jet);
+	      h_matchedRecoJetPt_genJetPt_var_muTagged[0][1]->Fill(matchedRecoJetPt,x,w_jet);
+	      h_matchedRecoJetPt_genJetPt_var_muTagged[CentralityIndex][1]->Fill(matchedRecoJetPt,x,w_jet);
 	    }
 	    h_matchedRecoJetPtOverGenJetPt_genJetPt[0][1]->Fill(matchedRecoJetPt/x,x,w_jet);
 	    h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][1]->Fill(matchedRecoJetPt/x,x,w_jet);
@@ -1257,6 +1277,10 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	}
       }
       for(int t = 0; t < kNDistTilt; t++) h_unmatchedGenJetPt_distTilt[j][t]->Write();
+      for(int f = 0; f < 2; f++){
+	h_matchedRecoJetPt_genJetPt_muTagged[j][f]->Write();
+	h_matchedRecoJetPt_genJetPt_var_muTagged[j][f]->Write();
+      }
       h_unmatchedRecoJetPt[j][0]->Write();
       h_recoJetPt_all[j]->Write();
       h_recoJetPt_matchedDr[j]->Write();

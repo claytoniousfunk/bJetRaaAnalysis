@@ -351,6 +351,12 @@ void PYTHIA_scan_response(int group = 1){
   TH2D *h_matchedRecoJetPt_genJetPt_var_distTilt[2][2][kNDistTilt];   // same, variable bins
   TH1D *h_unmatchedGenJetPt_distTilt[kNDistTilt];   // misses aren't flavor/muTag-split upstream either
 
+  // plain (undistorted) muon-tagged response -- allJets/bJets, fixed/var bins.
+  // The undistorted-response side of unfoldClosureTest.C's closure test (e.g.
+  // the odd half) needs this baseline alongside the distTilt histograms above.
+  TH2D *h_matchedRecoJetPt_genJetPt_muTagged[2];       // [flavor], fixed bins
+  TH2D *h_matchedRecoJetPt_genJetPt_var_muTagged[2];   // [flavor], variable bins
+
   // debug histograms
   TH1D *h_weight_jetPT_200to250 = new TH1D("h_weight_jetPT_200to250","h_weight_jetPT_200to250",10000,0,1);
   h_weight_jetPT_200to250->Sumw2();
@@ -382,6 +388,10 @@ void PYTHIA_scan_response(int group = 1){
         h_matchedRecoJetPt_genJetPt_var_distTilt[f][m][t]->Sumw2();
       }
     }
+    h_matchedRecoJetPt_genJetPt_muTagged[f] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_%s_muTagged",kDistTiltFlavorTag[f]),Form("genJetPt vs. matchedRecoJetPt, %s, muon-tagged",kDistTiltFlavorTag[f]),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+    h_matchedRecoJetPt_genJetPt_muTagged[f]->Sumw2();
+    h_matchedRecoJetPt_genJetPt_var_muTagged[f] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_var_%s_muTagged",kDistTiltFlavorTag[f]),Form("genJetPt vs. matchedRecoJetPt, var bins, %s, muon-tagged",kDistTiltFlavorTag[f]),N1-1,ptAxis1,N1-1,ptAxis1);
+    h_matchedRecoJetPt_genJetPt_var_muTagged[f]->Sumw2();
   }
   for(int t = 0; t < kNDistTilt; t++){
     h_unmatchedGenJetPt_distTilt[t] = new TH1D(Form("h_unmatchedGenJetPt_distTilt%.1f",kDistTiltExpo[t]),Form("unmatchedGenJetPt, gen reweighted w#propto p_{T,gen}^{%.1f}",kDistTiltExpo[t]),NPtBins,ptMin,ptMax);
@@ -963,6 +973,10 @@ void PYTHIA_scan_response(int group = 1){
 	    h_matchedRecoJetPt_genJetPt_var_distTilt[0][1][t]->Fill(matchedRecoJetPt,x,wd);
 	  }
 	}
+	if(hasRecoJetMuon){
+	  h_matchedRecoJetPt_genJetPt_muTagged[0]->Fill(matchedRecoJetPt,x,w);
+	  h_matchedRecoJetPt_genJetPt_var_muTagged[0]->Fill(matchedRecoJetPt,x,w);
+	}
 	h_matchedNeutrinoPt_recoJetPt[0]->Fill(matchedNeutrinoPt,matchedRecoJetPt,w);
 	h_matchedNeutrinoPt_genJetPt[0]->Fill(matchedNeutrinoPt,x,w);
 
@@ -995,6 +1009,10 @@ void PYTHIA_scan_response(int group = 1){
 	      h_matchedRecoJetPt_genJetPt_distTilt[1][1][t]->Fill(matchedRecoJetPt,x,wd);
 	      h_matchedRecoJetPt_genJetPt_var_distTilt[1][1][t]->Fill(matchedRecoJetPt,x,wd);
 	    }
+	  }
+	  if(hasRecoJetMuon){
+	    h_matchedRecoJetPt_genJetPt_muTagged[1]->Fill(matchedRecoJetPt,x,w);
+	    h_matchedRecoJetPt_genJetPt_var_muTagged[1]->Fill(matchedRecoJetPt,x,w);
 	  }
 	  h_matchedNeutrinoPt_recoJetPt[1]->Fill(matchedNeutrinoPt,matchedRecoJetPt,w);
 	  h_matchedNeutrinoPt_genJetPt[1]->Fill(matchedNeutrinoPt,x,w);
@@ -1133,6 +1151,10 @@ void PYTHIA_scan_response(int group = 1){
     }
   }
   for(int t = 0; t < kNDistTilt; t++) h_unmatchedGenJetPt_distTilt[t]->Write();
+  for(int f = 0; f < 2; f++){
+    h_matchedRecoJetPt_genJetPt_muTagged[f]->Write();
+    h_matchedRecoJetPt_genJetPt_var_muTagged[f]->Write();
+  }
   for(int i = 0; i < 6; i++){
     h_unmatchedRecoJetPt[i]->Write();
     h_matchedRecoJetPt_genJetPt[i]->Write();

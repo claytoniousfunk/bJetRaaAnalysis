@@ -326,6 +326,46 @@ TH1D* projY(TH2D *h, const char *name){
 }
 
 
+//====================================================================================
+//  manual variable-bin rebin, straight from the native 5 GeV response
+//
+//  Same edges as the scan's own "_var_" booking (PYTHIA_scan_response.C /
+//  PYTHIAHYDJET_scan_response.C's N1/ptAxis1), but built here from the native
+//  fixed-bin histogram instead of trusting the scan's separately-booked "_var_"
+//  histogram -- a cross-check for whether that booking itself is behaving, and
+//  the only option where a plain "_var_" histogram for a given
+//  flavor/muTag combination was never booked at all.
+//
+//  Content below the lowest edge (60 GeV) has nowhere to go and is dropped --
+//  FindBin returns 0 (underflow) for it, same as it would fall outside the
+//  scan's own var-binned axis.
+//====================================================================================
+
+const int    kVarBinN = 10;
+const double kVarBinEdges[kVarBinN] = {60,70,80,90,100,120,150,200,300,500};
+
+TH2D* rebinToVarBins(TH2D *h, const char *name){
+  TH2D *out = new TH2D(name,h->GetTitle(),kVarBinN-1,kVarBinEdges,kVarBinN-1,kVarBinEdges);
+  out->SetDirectory(0);
+  out->Sumw2();
+  for(int ix = 1; ix <= h->GetNbinsX(); ix++){
+    int jx = out->GetXaxis()->FindBin(h->GetXaxis()->GetBinCenter(ix));
+    if(jx < 1 || jx > out->GetNbinsX()) continue;
+    for(int iy = 1; iy <= h->GetNbinsY(); iy++){
+      int jy = out->GetYaxis()->FindBin(h->GetYaxis()->GetBinCenter(iy));
+      if(jy < 1 || jy > out->GetNbinsY()) continue;
+      double c  = h->GetBinContent(ix,iy);
+      double e  = h->GetBinError(ix,iy);
+      double c0 = out->GetBinContent(jx,jy);
+      double e0 = out->GetBinError(jx,jy);
+      out->SetBinContent(jx,jy, c0 + c);
+      out->SetBinError  (jx,jy, std::sqrt(e0*e0 + e*e));
+    }
+  }
+  return out;
+}
+
+
 //  Okabe-Ito qualitative palette: eight hues chosen to stay distinguishable
 //  under deuteranopia, protanopia and tritanopia.  Used for the summary curves,
 //  which are categorical rather than ordered.
@@ -604,12 +644,28 @@ double distortionWeight(double pt, double expo, double pTref){
   return std::pow(x/pTref, expo);
 }
 
-//  How much the tilt distorts the input: the reco spectrum that gets unfolded,
-//  before and after the distortion, and their ratio.
-void drawTiltDerivation(TH1D *h_truthOrig, TH1D *h_truthDist,
-                        TH1D *h_measOrig,  TH1D *h_measDist,
-                        double expo, double pTref, double ptLow, double ptHigh,
-                        const char *titleStr, const char *outPath){
+//  Spectrum panels only: with variable bins, counts per bin make a wide bin read
+//  as a tall one, so divide by width for display.  Metrics and ratio panels keep
+//  using the unscaled histograms (counts), where the width cancels anyway.
+bool hasVariableBins(const TH1 *h){ return h->GetXaxis()->GetXbins()->GetSize() > 0; }
+
+TH1D* displayClone(const TH1D *h, const char *name){
+  TH1D *c = (TH1D*) h->Clone(name);
+  c->SetDirectory(0);
+  if(hasVariableBins(h)) c->Scale(1.,"width");
+  return c;
+}
+
+const char* spectrumYTitle(const TH1 *h){
+  return hasVariableBins(h) ? "counts / GeV" : "counts";
+}
+
+//  Original vs. distorted spectrum, with a ratio panel underneath. Used for
+//  both the reco-level input to the unfolding (h_meas*) and the gen-level
+//  truth the distortion is actually defined on (h_truth*) -- see
+//  drawTiltDerivation below, which calls this once for each.
+void drawSpectrumPair(TH1D *hOrig, TH1D *hDist, const char *xTitle,
+                      const char *titleStr, const char *outPath){
 
   const double xLo = 40., xHi = 400.;
 
@@ -625,13 +681,13 @@ void drawTiltDerivation(TH1D *h_truthOrig, TH1D *h_truthDist,
   dn->SetTickx(1); dn->SetTicky(1);
   up->Draw(); dn->Draw();
 
-  //---- input spectrum, original and distorted -----------------------------------
+  //---- spectrum, original and distorted ------------------------------------------
   up->cd();
-  TH1D *mO = (TH1D*) h_measOrig->Clone("tilt_mO"); mO->SetDirectory(0);
-  TH1D *mD = (TH1D*) h_measDist->Clone("tilt_mD"); mD->SetDirectory(0);
+  TH1D *mO = displayClone(hOrig,"tilt_mO");
+  TH1D *mD = displayClone(hDist,"tilt_mD");
   mO->SetStats(0); mO->SetTitle("");
   mO->GetXaxis()->SetRangeUser(xLo,xHi);
-  mO->GetYaxis()->SetTitle("counts");
+  mO->GetYaxis()->SetTitle(spectrumYTitle(hOrig));
   mO->GetYaxis()->SetTitleSize(0.055); mO->GetYaxis()->SetTitleOffset(1.25);
   mO->GetYaxis()->SetLabelSize(0.045);
   mO->SetLineColor(kBlack);    mO->SetLineWidth(3);
@@ -641,8 +697,8 @@ void drawTiltDerivation(TH1D *h_truthOrig, TH1D *h_truthDist,
 
   TLegend *leg = new TLegend(0.55,0.70,0.93,0.86);
   leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.045);
-  leg->AddEntry(mO,"input, original","l");
-  leg->AddEntry(mD,"input, distorted","l");
+  leg->AddEntry(mO,"original","l");
+  leg->AddEntry(mD,"distorted","l");
   leg->Draw();
 
   TLatex lat; lat.SetNDC(); lat.SetTextSize(0.050);
@@ -658,7 +714,7 @@ void drawTiltDerivation(TH1D *h_truthOrig, TH1D *h_truthDist,
   }
   yLo = std::min(yLo, 1.) - 0.1; yHi = std::max(yHi, 1.) + 0.1;
   TH1F *fr = dn->DrawFrame(xLo,yLo,xHi,yHi);
-  fr->GetXaxis()->SetTitle("Jet #it{p}_{T} [GeV]");
+  fr->GetXaxis()->SetTitle(xTitle);
   fr->GetYaxis()->SetTitle("distorted / original");
   fr->GetXaxis()->SetTitleSize(0.105); fr->GetXaxis()->SetTitleOffset(1.15);
   fr->GetYaxis()->SetTitleSize(0.085); fr->GetYaxis()->SetTitleOffset(0.78);
@@ -672,6 +728,23 @@ void drawTiltDerivation(TH1D *h_truthOrig, TH1D *h_truthDist,
   li->DrawLine(xLo,1.,xHi,1.);
 
   canv->SaveAs(outPath);
+
+}
+
+//  How much the tilt distorts (a) the reco spectrum that actually gets
+//  unfolded and (b) the gen-level truth the distortion is defined on -- two
+//  separate figures, since the reco-level shift is smeared by the response
+//  and is not the same curve as w(genPt) itself.
+void drawTiltDerivation(TH1D *h_truthOrig, TH1D *h_truthDist,
+                        TH1D *h_measOrig,  TH1D *h_measDist,
+                        double expo, double pTref, double ptLow, double ptHigh,
+                        const char *titleStr, const char *outPath){
+
+  drawSpectrumPair(h_measOrig,h_measDist,"Reco jet #it{p}_{T} [GeV]",titleStr,outPath);
+
+  TString truthPath(outPath);
+  truthPath.ReplaceAll(".pdf","_genTruth.pdf");
+  drawSpectrumPair(h_truthOrig,h_truthDist,"Gen jet #it{p}_{T} [GeV]",titleStr,truthPath);
 
 }
 
@@ -801,20 +874,25 @@ void drawClosure(int N_iter_max, TH1D **h_unfold, TH1D *h_truth,
   //---- spectra ----------------------------------------------------------------
   pad_upper->cd();
 
-  h_truth->SetStats(0);
-  h_truth->SetTitle("");
-  h_truth->SetLineColor(kBlack); h_truth->SetLineWidth(3);
-  h_truth->GetXaxis()->SetRangeUser(drawPtLow,drawPtHigh);
-  h_truth->GetYaxis()->SetTitle("counts");
-  h_truth->GetYaxis()->SetTitleSize(0.055); h_truth->GetYaxis()->SetTitleOffset(1.3);
-  h_truth->GetYaxis()->SetLabelSize(0.045);
-  h_truth->Draw("hist");
+  TH1D *td = displayClone(h_truth,"disp_closure_truth");
+  td->SetStats(0);
+  td->SetTitle("");
+  td->SetLineColor(kBlack); td->SetLineWidth(3);
+  td->GetXaxis()->SetRangeUser(drawPtLow,drawPtHigh);
+  td->GetYaxis()->SetTitle(spectrumYTitle(h_truth));
+  td->GetYaxis()->SetTitleSize(0.055); td->GetYaxis()->SetTitleOffset(1.3);
+  td->GetYaxis()->SetLabelSize(0.045);
+  td->Draw("hist");
 
-  for(int n = 0; n <= N_iter_max; n++) h_unfold[n]->Draw("hist same");
-  h_truth->Draw("hist same");
+  std::vector<TH1D*> ud(N_iter_max+1);
+  for(int n = 0; n <= N_iter_max; n++){
+    ud[n] = displayClone(h_unfold[n],Form("disp_closure_iter%i",n));
+    ud[n]->Draw("hist same");
+  }
+  td->Draw("hist same");
 
-  leg->AddEntry(h_truth,"gen truth","l");
-  for(int n = 0; n <= N_iter_max; n++) leg->AddEntry(h_unfold[n],iterLabel(n),"l");
+  leg->AddEntry(td,"gen truth","l");
+  for(int n = 0; n <= N_iter_max; n++) leg->AddEntry(ud[n],iterLabel(n),"l");
   leg->Draw();
 
   TLatex lat; lat.SetNDC(); lat.SetTextSize(0.050);
@@ -917,23 +995,26 @@ void drawClosureReduced(TH1D *h_meas, TH1D *h_opt, int nOpt, bool nOptMeaningful
   //---- spectra ----------------------------------------------------------------
   pad_upper->cd();
 
-  t->SetStats(0);
-  t->SetTitle("");
-  t->GetXaxis()->SetRangeUser(drawPtLow,drawPtHigh);
-  t->GetYaxis()->SetTitle("counts");
-  t->GetYaxis()->SetTitleSize(0.055); t->GetYaxis()->SetTitleOffset(1.3);
-  t->GetYaxis()->SetLabelSize(0.045);
-  t->Draw("hist");
-  m->Draw("hist same");
-  u->Draw("hist same");
-  t->Draw("hist same");   // back on top: it is the reference being judged
+  TH1D *td = displayClone(t,"red_disp_truth");
+  TH1D *md = displayClone(m,"red_disp_meas");
+  TH1D *ud = displayClone(u,"red_disp_opt");
+  td->SetStats(0);
+  td->SetTitle("");
+  td->GetXaxis()->SetRangeUser(drawPtLow,drawPtHigh);
+  td->GetYaxis()->SetTitle(spectrumYTitle(t));
+  td->GetYaxis()->SetTitleSize(0.055); td->GetYaxis()->SetTitleOffset(1.3);
+  td->GetYaxis()->SetLabelSize(0.045);
+  td->Draw("hist");
+  md->Draw("hist same");
+  ud->Draw("hist same");
+  td->Draw("hist same");   // back on top: it is the reference being judged
 
   TLegend *leg = new TLegend(0.55,0.60,0.93,0.84);
   leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.040);
-  leg->AddEntry(t,"gen truth","l");
-  leg->AddEntry(m,"#it{N} = 0 (meas.)","l");
-  leg->AddEntry(u, nOptMeaningful ? Form("#it{N} = %i (min MSE)",nOpt)
-                                  : Form("#it{N} = %i",nOpt), "l");
+  leg->AddEntry(td,"gen truth","l");
+  leg->AddEntry(md,"#it{N} = 0 (meas.)","l");
+  leg->AddEntry(ud, nOptMeaningful ? Form("#it{N} = %i (min MSE)",nOpt)
+                                   : Form("#it{N} = %i",nOpt), "l");
   leg->Draw();
 
   TLatex lat; lat.SetNDC(); lat.SetTextSize(0.050);
@@ -1176,7 +1257,16 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
                        TString trainOverride = "",         // explicit response/prior file
                        TString testOverride  = "",         // explicit unfolded/truth file
                        TString outLabel      = "",         // appended to the output tag
-                       int    removeXJetsOpt = -1){        // -1 default, 0 keep x, 1 drop x
+                       int    removeXJetsOpt = -1,         // -1 default, 0 keep x, 1 drop x
+                       TString responseNameOverride = "",  // e.g. a bJets / muTagged / var-bin response
+                       TString distNameOverride = "",      // tiltScan: base name for "<name>_distTilt<expo>",
+                                                            // defaults to responseNameOverride/cfg.responseName.
+                                                            // Lets the (even) distorted pseudo-data come from a
+                                                            // more specific selection (e.g. muTagged) than the
+                                                            // (odd) response actually being unfolded with.
+                       bool   varRebin = false){           // manually rebin the native (fixed-bin) response(s)
+                                                            // to kVarBinEdges here, instead of reading the scan's
+                                                            // separately-booked "_var_" histogram
 
   //  The spectrum that gets unfolded, and the truth it is compared to, are
   //  ALWAYS the pThat-weighted ones.  Only the response changes:
@@ -1234,6 +1324,11 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
     if(!trainOverride.IsNull()) cfg.trainFile = trainOverride;
     if(!testOverride.IsNull())  cfg.testFile  = testOverride;
     std::cout << "file overrides:\n   train: " << cfg.trainFile << "\n   test : " << cfg.testFile << "\n";
+  }
+
+  if(!responseNameOverride.IsNull()){
+    cfg.responseName = responseNameOverride;
+    std::cout << "response name override: " << cfg.responseName << "\n";
   }
 
   if(useUnwMatrix && cfg.trainFileUnw.IsNull()){
@@ -1299,16 +1394,22 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
     outTag    += Form("_rebin%d", rebinFactor);
     respTitle += Form(", %d GeV bins", 5*rebinFactor);
   }
+  if(varRebin){
+    outTag    += "_varRebin";
+    respTitle += ", manual variable bins";
+  }
 
   //---- distortion selection ---------------------------------------------------
   distortion.ToLower();
-  const bool doDataMC = (distortion == "datamc");
-  const bool doTilt   = distortion.BeginsWith("tilt");
-  const bool doDistort = doDataMC || doTilt;
+  const bool doDataMC   = (distortion == "datamc");
+  const bool doTiltScan = distortion.BeginsWith("tiltscan");
+  const bool doTilt     = distortion.BeginsWith("tilt") && !doTiltScan;
+  const bool doDistort  = doDataMC || doTilt || doTiltScan;
 
   if(distortion != "none" && !doDistort){
     std::cout << "unfoldClosureTest: unknown distortion \"" << distortion << "\"\n"
-              << "                   choose one of: none, dataMC, tilt, tilt:<exponent>\n";
+              << "                   choose one of: none, dataMC, tilt, tilt:<exponent>,\n"
+              << "                   tiltScan, tiltScan:<exponent>\n";
     return;
   }
 
@@ -1325,7 +1426,7 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
   }
 
   double tiltExpo = 0.3;
-  if(doTilt && distortion.Contains(":"))
+  if((doTilt || doTiltScan) && distortion.Contains(":"))
     tiltExpo = TString(distortion(distortion.Index(":")+1,distortion.Length())).Atof();
 
   const double drawPtLow  =  40.;   // x-range of the closure plot
@@ -1387,6 +1488,20 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
     }
     std::cout << "rebinned by " << rebinFactor << ": "
               << h_response_train->GetXaxis()->GetBinWidth(1) << " GeV bins\n";
+  }
+
+  //  Manual variable-bin rebin, straight from the native response -- see
+  //  rebinToVarBins above for why this exists alongside the scan's own "_var_"
+  //  booking.
+  if(varRebin){
+    h_response_train = rebinToVarBins(h_response_train,"h_resp_train_varRebin");
+    h_response_test  = rebinToVarBins(h_response_test ,"h_resp_test_varRebin");
+    if(includeUnmatched){
+      std::cout << "unfoldClosureTest: varRebin does not support includeUnmatched\n";
+      return;
+    }
+    std::cout << "manually rebinned to " << kVarBinN-1 << " variable-width bins ("
+              << kVarBinEdges[0] << "-" << kVarBinEdges[kVarBinN-1] << " GeV)\n";
   }
 
   //  Rescale every gen row of the unweighted matrix by (weighted truth) /
@@ -1500,13 +1615,37 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
         return;
     }
 
-    TH2D *h_dist = (TH2D*) h_response_train->Clone("h_response_distorted");
-    h_dist->SetDirectory(0);
-    for(int iy = 1; iy <= h_dist->GetNbinsY(); iy++){
-      double w = distortionWeight(h_dist->GetYaxis()->GetBinCenter(iy),expo,pTref);
-      for(int ix = 1; ix <= h_dist->GetNbinsX(); ix++){
-        h_dist->SetBinContent(ix,iy, w * h_dist->GetBinContent(ix,iy));
-        h_dist->SetBinError  (ix,iy, w * h_dist->GetBinError  (ix,iy));
+    //  "tilt"/"dataMC" scale each gen row of the already-filled training
+    //  response by w evaluated at the row's bin CENTER -- a discretised
+    //  approximation of the per-event weight.  "tiltScan" instead reads the
+    //  response PYTHIA_scan_response.C / PYTHIAHYDJET_scan_response.C already
+    //  built with w(genPt) applied to each event's own continuous gen pT at
+    //  fill time, so there is no bin-center approximation. Either way
+    //  P(reco|gen) is untouched, so the only thing the unfolding has to
+    //  recover from is the wrong prior.
+    TH2D *h_dist = 0;
+
+    if(doTiltScan){
+      TString distBase = distNameOverride.IsNull() ? cfg.responseName : distNameOverride;
+      TString distName = distBase + Form("_distTilt%.1f",expo);
+      h_dist = loadResponse(file_train,distName,false,"h_response_distorted");
+      if(!h_dist){
+        std::cout << "unfoldClosureTest: could not find \"" << distName << "\" in\n  "
+                  << trainFile << "\n";
+        return;
+      }
+      if(rebinFactor > 1) h_dist->Rebin2D(rebinFactor,rebinFactor);
+      if(varRebin) h_dist = rebinToVarBins(h_dist,"h_response_distorted_varRebin");
+    }
+    else{
+      h_dist = (TH2D*) h_response_train->Clone("h_response_distorted");
+      h_dist->SetDirectory(0);
+      for(int iy = 1; iy <= h_dist->GetNbinsY(); iy++){
+        double w = distortionWeight(h_dist->GetYaxis()->GetBinCenter(iy),expo,pTref);
+        for(int ix = 1; ix <= h_dist->GetNbinsX(); ix++){
+          h_dist->SetBinContent(ix,iy, w * h_dist->GetBinContent(ix,iy));
+          h_dist->SetBinError  (ix,iy, w * h_dist->GetBinError  (ix,iy));
+        }
       }
     }
 
@@ -1517,7 +1656,9 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
     //  unmatched jets come from there too.  Misses are a gen-level quantity and
     //  follow the reweighting; fakes are underlying-event background and do not
     //  depend on the signal truth shape, so they are left unweighted.
-    if(includeUnmatched){
+    //  (tiltScan has no per-flavor/muTag miss histogram to read -- dead code
+    //  either way while includeUnmatched is hardcoded off, above.)
+    if(includeUnmatched && !doTiltScan){
       TH1D *h_unmGen_w = (TH1D*) h_unmGen_train->Clone("h_unmGen_distorted");
       h_unmGen_w->SetDirectory(0);
       for(int b = 1; b <= h_unmGen_w->GetNbinsX(); b++){
@@ -1533,12 +1674,14 @@ void unfoldClosureTest(TString sample = "C1",              // pp, C1, C2, C3, C4
       for(int b = 1; b <= h_meas_test->GetNbinsX() && b < (int)relErr.size(); b++)
         h_meas_test->SetBinError(b, relErr[b] * h_meas_test->GetBinContent(b));
 
-    distTitle = Form("distorted truth: #it{w} #propto #it{p}_{T}^{%.2f}",expo);
+    distTitle = doTiltScan
+      ? Form("distorted truth (scan-level, per-event #it{w}): #it{w} #propto #it{p}_{T,gen}^{%.2f}",expo)
+      : Form("distorted truth: #it{w} #propto #it{p}_{T}^{%.2f}",expo);
     usedExpo  = expo;
-    outTag   += doDataMC ? "_distDataMC" : Form("_distTilt%.2f",expo);
+    outTag   += doDataMC ? "_distDataMC" : Form("_distTilt%s%.2f", doTiltScan ? "Scan" : "", expo);
 
     //  the tilt's own derivation figure (dataMC draws its own, above)
-    if(doTilt)
+    if(doTilt || doTiltScan)
       drawTiltDerivation(h_truth_train, h_truth_test, h_meas_train, h_meas_test,
                          expo, pTref, ptLow, ptHigh, cfg.title,
                          Form("%sdistortion_%s.pdf",outDir.Data(),outTag.Data()));
