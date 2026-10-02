@@ -323,7 +323,7 @@ void PYTHIAHYDJET_scan(int group = 1){
 
   
   std::string inputFileList = "";
-  if(doDiJetSample) inputFileList = "../../../fileNames/fileNames_DiJet_pThat-15_TuneCP5_HydjetDrumMB_5p02TeV_Pythia8.txt";
+  if(doDiJetSample) inputFileList = "../../../fileNames/fileNames_PH_DiJet_withCaloAndFlowJets_fix2_partial.txt"; // same list as PYTHIAHYDJET_scan_response.C: has the calo and flow jet trees
   else if(doMuJetSample) inputFileList = "../../../fileNames/fileNames_MuJet_pThat-15_TuneCP5_HydjetDrumMB_5p02TeV_Pythia8.txt";
   else if(doBJetSample) inputFileList = "../../../fileNames/fileNames_BJet_pThat-15_TuneCP5_HydjetDrumMB_5p02TeV_Pythia8.txt";
   else{};
