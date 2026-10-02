@@ -97,6 +97,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <random>
+#include <map>
 #include <memory>
 #include "TSystem.h"
 #include "TRandom2.h"
@@ -543,7 +544,8 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 						   pseudoJetCandPt_min,
 						   bkgMapTag().c_str(),
 						   towerTag().c_str(),
-						   doTowerPUSub);
+						   doTowerPUSub,
+						   towerPUSub_poolJetVeto);
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
@@ -551,6 +553,18 @@ void PbPb_caloTowerAnalyzer(int group = 1,
     TString outputDir = Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data());
 
     TString output = Form("%s/PbPb_caloTowerAnalyzer_output_%i.root",outputDir.Data(),group);
+
+    // One path component may be at most 255 characters (ext4 and EOS). The
+    // tag-per-flag naming is long -- 249 for the 2026-09-30 mixed scan -- and a
+    // longer one fails only at mkdir, with an unhelpful message, after the
+    // job has started. Catch it here.
+    const int dirNameLen = (outputDatasetName + suffixEdit).Length();
+    if(dirNameLen > 255){
+      std::cout << "ERROR: output directory name is " << dirNameLen << " characters, over the 255 limit:\n  "
+                << outputDatasetName << suffixEdit << "\n"
+                << "       Shorten a tag in configureOutputDatasetName_PbPb_caloTowerAnalyzer.h. Exiting...\n";
+      return;
+    }
 
     std::cout << "output dataset = " << output << std::endl;
 
@@ -1236,6 +1250,22 @@ void PbPb_caloTowerAnalyzer(int group = 1,
     // event loop
     int eventCounter = 0;
     int evi_frac = 0;
+#ifdef DO_FASTJET
+    // Pool-jet veto masks (towerPUSub_poolJetVeto), keyed by event index. A
+    // pool is the next N_mixedEventsInPool same-class events, so consecutive
+    // events share ~99% of it: tagging each pool event once here instead of
+    // re-clustering it for every event that draws on it saves ~N_pool
+    // clusterings per event. Entries behind the current event are pruned; the
+    // live window is ~N_pool x (number of classes) events, ~10 MB.
+    std::map<int, std::vector<char>> puVetoCache;
+    if(doTowerPUSub && doEventMixing && towerPUSub_poolJetVeto &&
+       NCentralityIndices != (int)(sizeof(towerPUSub_vetoPtMin)/sizeof(double))){
+      std::cout << "ERROR: towerPUSub_vetoPtMin has one threshold per ultraFine slice ("
+                << sizeof(towerPUSub_vetoPtMin)/sizeof(double) << ") but NCentralityIndices = "
+                << NCentralityIndices << ". Fix caloTowers.h for this centrality scheme. Exiting...\n";
+      return;
+    }
+#endif
     for(int evi = 0; evi < NEvents; evi++){
 
 
@@ -1526,6 +1556,13 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	      puPool.back().add({(double)em->towEt[l], (double)em->towEta[l], (double)em->towPhi[l],
 	                         em->towIeta[l], em->towIphi[l]});
 	    }
+	    if(towerPUSub_poolJetVeto){
+	      auto it = puVetoCache.find(mixedEventIndex);
+	      if(it == puVetoCache.end())
+	        it = puVetoCache.emplace(mixedEventIndex,
+	               tagJetCells(puPool.back().towers, towerPUSub_vetoPtMin[CentralityIndex], towerPUSub_vetoDR)).first;
+	      puPool.back().veto = it->second;
+	    }
 	  }
 #endif
 	  for(int l = 0; l < em->nTower; l++){
@@ -1550,6 +1587,11 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	}
 	em->getEvent(evi); // restore current event
 	em->towerTree->GetEntry(evi);
+#ifdef DO_FASTJET
+	// pools only look ahead, so masks for events at or behind this one are done
+	// (bar the wrap-around at the end of the file, which just recomputes)
+	puVetoCache.erase(puVetoCache.begin(), puVetoCache.upper_bound(evi));
+#endif
       }
 
       int poolSize = (int)pool_pfPt.size();
@@ -2950,17 +2992,20 @@ void PbPb_caloTowerAnalyzer(int group = 1,
     // a consumer never has to infer the generation from which histograms happen
     // to be present. See headers/functions/writeProvenance.h.
     {
-      char tb[512];
+      char tb[1024];
       snprintf(tb, sizeof(tb),
                "--- towers ---\n"
                "towerEtMin / etaCluster    : %.2f / %.1f\n"
                "towerUseEmOnly / HadOnly   : %d / %d\n"
                "doTowerPUSub               : %d%s (nSigma %.2f, puPtMin %.1f, radiusPU %.2f, jetPtMin %.1f)\n"
-               "towerPUSub_nMixedResamples : %d%s\n",
+               "towerPUSub_nMixedResamples : %d%s\n"
+               "towerPUSub_poolJetVeto     : %d%s (dR %.2f; pT min per slice from %.0f to %.0f GeV)\n",
                towerEtMin, towerEtaMaxCluster, (int)towerUseEmOnly, (int)towerUseHadOnly,
                (int)doTowerPUSub, !doTowerPUSub ? "" : (doEventMixing ? " -- cell-by-cell mixed events" : " -- same event"),
                towerPUSub_nSigma, towerPUSub_ptMin, towerPUSub_radius, towerPUSub_jetPtMin,
-               towerPUSub_nMixedResamples, doEventMixing ? "" : " (unused, same-event)");
+               towerPUSub_nMixedResamples, doEventMixing ? "" : " (unused, same-event)",
+               (int)towerPUSub_poolJetVeto, doEventMixing ? "" : " (unused, same-event)", towerPUSub_vetoDR,
+               towerPUSub_vetoPtMin[1], towerPUSub_vetoPtMin[NCentralityIndices-1]);
       writeProvenance(wf, tb);
     }
 

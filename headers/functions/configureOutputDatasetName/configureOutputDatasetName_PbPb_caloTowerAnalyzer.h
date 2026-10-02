@@ -38,7 +38,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
 				   double pseudoJetCandPt_min,
 				   const char *bkgMapTag,
 				   const char *towerTagStr,
-				   bool doTowerPUSub)
+				   bool doTowerPUSub,
+				   bool towerPUSubPoolJetVeto)
 {
 
   TString result = "output";
@@ -105,7 +106,10 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   // only adds histograms, but a file without it has them booked and empty, so
   // the name says which kind this is. Runs in both modes; _sameEvent/
   // _mixedEventPFClustering above already says which input it had.
-  if(doTowerPUSub) result.Append("_towerPUSub");
+  // "_towerPUSubVeto" when the mixed-event pool-jet veto ran (it changes what
+  // the mixed-event towerPUSub histograms contain). One merged tag rather than
+  // "_towerPUSub_poolJetVeto": the name is close to the 255-character limit.
+  if(doTowerPUSub) result.Append((doEventMixing && towerPUSubPoolJetVeto) ? "_towerPUSubVeto" : "_towerPUSub");
   // which background map the subtracted spectra used (bkgMapTag() in pseudoJets.h)
   result.Append(bkgMapTag);
   if(skipSingleConstituentJets) result.Append("_skipSingleConstituentJets");

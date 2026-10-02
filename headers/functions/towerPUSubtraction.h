@@ -202,6 +202,17 @@ inline std::vector<fastjet::PseudoJet> subtracted(const std::vector<TowerPUInput
 // its own reaction plane), which the per-ring pedestal would not have removed
 // in a real event -- so fakes seeded by flow-enhanced regions are
 // under-represented.
+//
+// POOL-JET VETO. Copying cells also copies the cores of REAL jets in the pool
+// events: a mixed event receives about one real event's worth of jet-core
+// towers, whatever the pool size, and a single copied core tower clusters into
+// a "jet" by itself. On a power-law spectrum that is a pT-independent fraction
+// of the real jet rate -- measured ~0.08-0.12 above ~60 GeV in every class
+// (src/plots/towers/explainCellMixingArtifact.C). The fix: tag, in each pool
+// event, the cells within dR of its own jets above a threshold (tagJetCells
+// below, same forest-style subtraction), store the mask in veto, and have
+// mixCellByCell re-draw any vetoed cell from another pool event. An empty
+// veto vector means no veto for that event.
 
 namespace towerPU {
 const int nCellIndex = 83 * 72;                        // ieta -41..41 x iphi 1..72
@@ -212,6 +223,7 @@ inline int cellIndex(int ieta, int iphi){ return (ieta + 41) * 72 + (iphi - 1); 
 struct TowerPUPoolEvent {
   std::vector<TowerPUInput> towers;
   std::vector<int> cellToTower;
+  std::vector<char> veto;            // cell index -> 1: do not donate (empty = no veto)
   TowerPUPoolEvent() : cellToTower(towerPU::nCellIndex, -1) {}
   void add(const TowerPUInput &t){
     const int ci = towerPU::cellIndex(t.ieta, t.iphi);
@@ -228,9 +240,13 @@ inline std::vector<TowerPUInput> mixCellByCell(const std::vector<TowerPUPoolEven
   if(pool.empty()) return out;
   std::uniform_int_distribution<int> pick(0, (int)pool.size() - 1);
   for(const towerPU::Cell &c : towerPU::allCells()){
-    const TowerPUPoolEvent &e = pool[pick(rng)];
-    const int k = e.cellToTower[towerPU::cellIndex(c.ieta, c.iphi)];
-    if(k >= 0) out.push_back(e.towers[k]);
+    const int ci = towerPU::cellIndex(c.ieta, c.iphi);
+    const TowerPUPoolEvent *e = &pool[pick(rng)];
+    // vetoed cell: re-draw from another pool event. The cap only matters for a
+    // cell vetoed in (nearly) every pool event; it then takes the last draw.
+    for(int tries = 0; !e->veto.empty() && e->veto[ci] && tries < 50; tries++) e = &pool[pick(rng)];
+    const int k = e->cellToTower[ci];
+    if(k >= 0) out.push_back(e->towers[k]);
   }
   return out;
 }
@@ -296,4 +312,17 @@ inline std::vector<TowerPUJet> clusterTowersWithPUSub(const std::vector<TowerPUI
     result.push_back({j.perp(), j.eta(), j.phi_std(), pu, (int)cons.size()});
   }
   return result;
+}
+
+// Cells within dR of the event's own jets above ptMin (raw, forest-style
+// subtracted pT), as a mask indexed by towerPU::cellIndex -- the pool-jet veto.
+inline std::vector<char> tagJetCells(const std::vector<TowerPUInput> &in, double ptMin, double dR)
+{
+  std::vector<char> m(towerPU::nCellIndex, 0);
+  for(const auto &j : clusterTowersWithPUSub(in, 0.4)){
+    if(j.pt < ptMin) continue;
+    for(const towerPU::Cell &c : towerPU::allCells())
+      if(towerPU::dR(c.eta, c.phi, j.eta, j.phi) < dR) m[towerPU::cellIndex(c.ieta, c.iphi)] = 1;
+  }
+  return m;
 }

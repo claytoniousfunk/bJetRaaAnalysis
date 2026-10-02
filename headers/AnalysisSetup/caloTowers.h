@@ -89,6 +89,29 @@ double towerPUSub_jetPtMin = 1.0;   // jetPtMin of akPu4CaloJets (akCaloJets_cfi
 // statistics at the same per-event normalisation.
 int    towerPUSub_nMixedResamples = 10;
 
+// Pool-jet veto for the mixed-event tower subtraction (see towerPUSubtraction.h).
+// Without it, cell-by-cell mixing copies the cores of real pool-event jets into
+// the mixed events and makes a flat ~10% "fake" rate up to 300 GeV in every
+// class -- real jets, not combinatorial ones.
+//
+// The tagging threshold is the hard part: a pool-event "jet" above a low
+// threshold in central events is as often an upward background fluctuation as
+// a real jet, and vetoing those removes genuine fakes too (a 10 GeV veto tags
+// 14% of all cells in 0-30% and cuts the 15-20 GeV fake rate by 4x). So the
+// threshold follows centrality: per ultraFine slice, the raw pT above which
+// the UN-vetoed mixed-event jet rate drops below 0.01 per event (full
+// 2026-09-30 mixed scan), floor 10 GeV -- above it real jets outnumber
+// background-made ones ~5:1. In central events this lands in 20-40 GeV, where
+// the stitched-spectrum region (>= ~40 GeV raw) was found insensitive to the
+// exact choice (local forest, 0-30%: 30-40 GeV raw mixed/real 0.020 / 0.032 /
+// 0.041 for 20 / 30 / 40 GeV, tail above 40 GeV removed by all three).
+// Indexed by CentralityIndex; C0 (inclusive) is never a pool class.
+bool   towerPUSub_poolJetVeto   = true;
+double towerPUSub_vetoDR        = 0.4;
+double towerPUSub_vetoPtMin[19] = { 40.,                                   // C0, unused
+                                    40., 35., 30., 30., 25., 25., 25., 20., 20.,   //  0-45%
+                                    20., 15., 15., 15., 15., 10., 10., 10., 10. }; // 45-90%
+
 // et of the tower as it should enter the clustering
 inline double towerClusterEt(double et, double emEt, double hadEt)
 {
