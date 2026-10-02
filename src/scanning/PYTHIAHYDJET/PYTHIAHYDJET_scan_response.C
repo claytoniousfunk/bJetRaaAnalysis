@@ -44,12 +44,23 @@
 // jet uncertainty
 #include "../../../JetEnergyCorrections/JetUncertainty.h"
 // general analysis variables
-#include "../../../headers/AnalysisSetupV2p3.h" // nominal cent bins
-//#include "../../../headers/AnalysisSetupV2p4.h" // ultra fine cent bins
-// getCentBin function
-#include "../../../headers/functions/getCentBin.h" // nominal cent bins
-//#include "../../../headers/functions/getCentBin_V2p4.h" // ultra-fine cent bins
-//#include "../../../headers/functions/getCentBin_v2.h" // course cent bins
+// analysis constants + centrality scheme (classes, getCentBin, CENT_SCHEME_SUFFIX):
+// switch CENT_SCHEME in config_centrality.h, as for the data scans. Under
+// CENT_ULTRAFINE the classes are 5% slices out to 90%, so a 50-90% response can
+// be built by summing slices 11-18.
+#include "../../../headers/config/config_centrality.h"
+
+// Nominal class (1 = 0-10, 2 = 10-30, 3 = 30-50, 4 = 50-80%) of a hiBin, for the
+// fits that exist only for those four classes (pThat correlation, JER, b-jet
+// spectrum reweight). Under CENT_NOMINAL it equals the histogram index; under
+// CENT_ULTRAFINE the histogram index is a 5% slice and must not pick the fit.
+// 80-90% takes the 50-80% fits, as PbPb_scan.C does for its trigger fits.
+inline int nominalCentClass(int hiBin){
+  if(hiBin < 20) return 1;
+  if(hiBin < 60) return 2;
+  if(hiBin < 100) return 3;
+  return 4;
+}
 // vz-fit parameters
 //#include "../../../headers/fitParameters/vzFitParams_PH_mu5.h"
 //#include "../../../headers/fitParameters/vzFitParams_PH_mu7.h"
@@ -226,6 +237,8 @@ void PYTHIAHYDJET_scan_response(int group = 1){
   std::string inputFileList = "";
   inputFileList = "../../../fileNames/fileNames_PH_DiJet_withCaloAndFlowJets_fix2_partial.txt";
 
+  if(group == 0){ cout << "INPUTFILELIST=" << inputFileList << endl; return; } // query mode for condor submit scripts
+
   std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
   if(!instr.is_open()){
     cout << "filelist not found!! Exiting..." << endl;
@@ -302,8 +315,8 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 						   onlyMuTaggedJets);
 
 
-    TString suffixEdit = "";
-    TString output = Form("%s%s/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
+    TString suffixEdit = CENT_SCHEME_SUFFIX;   // "_ultraFineCentBins" etc., "" for nominal
+    TString output = Form("%s%s%s/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data(),group);
     //TString output = Form("%s%s_muTaggedJetsNoTrigger/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
     //TString output = Form("%s%s_evenEvents/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
     //TString output = Form("%s%s_oddEvents/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
@@ -755,6 +768,8 @@ void PYTHIAHYDJET_scan_response(int group = 1){
     
       if(CentralityIndex < 0) continue;
 
+      const int nominalClass = nominalCentClass(em->hiBin-hiBinShift);   // for the 4-class fits
+
 
     
       double w_reweight_hiBin = fitFxn_hiBin->Eval(em->hiBin-hiBinShift);
@@ -884,16 +899,16 @@ void PYTHIAHYDJET_scan_response(int group = 1){
       //  leadingRecoJetPt, then this filter, then the filling pass.
       if(doPThatCorrelationFilter){
 	if(useCaloJetsOverride){
-	  if(CentralityIndex == 4){
+	  if(nominalClass == 4){
 	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C4->Eval(em->pthat)) continue;
 	  }
-	  else if(CentralityIndex == 3){
+	  else if(nominalClass == 3){
 	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C3->Eval(em->pthat)) continue;
 	  }
-	  else if(CentralityIndex == 2){
+	  else if(nominalClass == 2){
 	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C2->Eval(em->pthat)) continue;
 	  }
-	  else if(CentralityIndex == 1){
+	  else if(nominalClass == 1){
 	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C1->Eval(em->pthat)) continue;
 	  }
 	  else{
@@ -901,16 +916,16 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	  };
 	}
 	else{
-	  if(CentralityIndex == 4){
+	  if(nominalClass == 4){
 	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C4->Eval(em->pthat)) continue;
 	  }
-	  else if(CentralityIndex == 3){
+	  else if(nominalClass == 3){
 	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C3->Eval(em->pthat)) continue;
 	  }
-	  else if(CentralityIndex == 2){
+	  else if(nominalClass == 2){
 	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C2->Eval(em->pthat)) continue;
 	  }
-	  else if(CentralityIndex == 1){
+	  else if(nominalClass == 1){
 	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C1->Eval(em->pthat)) continue;
 	  }
 	  else{
@@ -1005,7 +1020,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	    double smear = 0.0;
 
 	    if(apply_JER_smear){
-	      sigma = 0.663*JER_fxn[CentralityIndex]->Eval(matchedRecoJetPt); // apply a 20% smear
+	      sigma = 0.663*JER_fxn[nominalClass]->Eval(matchedRecoJetPt); // apply a 20% smear
 	      smear = randomGenerator->Gaus(mu,sigma);
 	      matchedRecoJetPt = matchedRecoJetPt * smear;
 	    }
@@ -1016,7 +1031,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	    double k_JERCorrection = 0.0; // smearing parameter
 	    if(doJERCorrection){
 	      k_JERCorrection = TMath::Sqrt(fitFxn_PYTHIA_JERCorrection->Eval(x)*fitFxn_PYTHIA_JERCorrection->Eval(x) - 1.);
-	      sigma_JERCorrection = k_JERCorrection*JER_fxn[CentralityIndex]->Eval(matchedRecoJetPt);
+	      sigma_JERCorrection = k_JERCorrection*JER_fxn[nominalClass]->Eval(matchedRecoJetPt);
 	      smear_JERCorrection = randomGenerator->Gaus(mu_JERCorrection,sigma_JERCorrection);
 	      matchedRecoJetPt = matchedRecoJetPt * smear_JERCorrection;
 	    }
@@ -1046,10 +1061,10 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	  //if(hasRecoJetMatch && matchedRecoJetPt >= 60.0) {
 
 	  if(doBJetSpectraReweightToData){
-	    if(CentralityIndex == 4) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C4->Eval(matchedRecoJetPt);
-	    else if(CentralityIndex == 3) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C3->Eval(matchedRecoJetPt);
-	    else if(CentralityIndex == 2) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C2->Eval(matchedRecoJetPt);
-	    else if(CentralityIndex == 1) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C1->Eval(matchedRecoJetPt);
+	    if(nominalClass == 4) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C4->Eval(matchedRecoJetPt);
+	    else if(nominalClass == 3) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C3->Eval(matchedRecoJetPt);
+	    else if(nominalClass == 2) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C2->Eval(matchedRecoJetPt);
+	    else if(nominalClass == 1) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C1->Eval(matchedRecoJetPt);
 	    else{};
 	  }
 
