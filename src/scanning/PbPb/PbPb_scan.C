@@ -324,7 +324,7 @@ void PbPb_scan(int group = 1){
   else if(doMinBiasSample_Part2) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part2.txt";
   else if(doMinBiasSample_Part3) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part3.txt";
   else if(doMinBiasSample_Part4) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part4.txt";
-  else if(doHardProbesSample) inputFileList = "../../../fileNames/fileNames_HIHardProbes_withCaloAndFlowJets.txt";
+  else if(doHardProbesSample) inputFileList = "../../../fileNames/fileNames_HIHardProbes_withCaloAndFlowJets_fresh_partial.txt";
   else{};
 
   if(group == 0){ cout << "INPUTFILELIST=" << inputFileList << endl; return; } // query mode for condor submit scripts

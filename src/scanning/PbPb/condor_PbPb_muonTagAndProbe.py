@@ -38,7 +38,7 @@ jobname = 'PbPb_SingleMuon_muonTagAndProbe'
 # the scan's header for the bound.
 #
 # For the unbiased cross-check, set requireTrigger = false in the scan and use
-#   ../../../fileNames/fileNames_HIHardProbes_withCaloAndFlowJets.txt
+#   ../../../fileNames/fileNames_HIHardProbes_withCaloAndFlowJets_fresh_partial.txt
 # with jobname/outdir changed so the two outputs do not mix.
 dblist = '../../../fileNames/fileNames_HISingleMuon_HIRun2018A-04Apr2019-v1.txt'
 isMC = False
