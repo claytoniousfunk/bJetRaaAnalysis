@@ -59,7 +59,8 @@ TString configureOutputDatasetName(TString generator,
 				   bool fillMu7,
 				   bool fillMu12,
 				   bool doPThatCorrelationFilter,
-				   bool useManualJEC)
+				   bool useManualJEC,
+				   bool useCaloJetsOverride)
 {
 
   TString result = "output";
@@ -88,6 +89,8 @@ TString configureOutputDatasetName(TString generator,
   else if(doDiJetSample_batch15) datasetIndicator = "_DiJet_batch15";
   else{};
   result.Append(datasetIndicator);
+  // akPu4CaloJetAnalyzer jets instead of akCs4PF
+  if(useCaloJetsOverride) result.Append("_caloJets");
   if(doPThatWeight) result.Append(Form("_pThat-%2.0f",pThat));
   else result.Append("_pThat-unweighted");
 

@@ -14,6 +14,7 @@
 #include "assert.h"
 #include <fstream>
 #include "TMath.h"
+#include "TVector2.h"
 #include "TH2F.h"
 #include "TH2D.h"
 #include "TMath.h"
@@ -58,6 +59,7 @@
 #include "../../../headers/fitParameters/jetPtFitParams_C1_mu12.h"
 // pThat correlation
 #include "../../../headers/fitFunctions/fitFxn_PYTHIAHYDJET_pThatCorrelation.h"
+#include "../../../headers/fitFunctions/fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets.h"
 // hadronPtRel parameters
 #include "../../../headers/fitParameters/hadronPtRelFitParams_PbPb.h"
 // dR parameters
@@ -128,6 +130,52 @@ TF1 *fitFxn_PYTHIAHYDJET_HLT_C4, *fitFxn_PYTHIAHYDJET_HLT_C3, *fitFxn_PYTHIAHYDJ
 #include "../../../headers/functions/configureOutputDatasetName/configureOutputDatasetName_PYTHIAHYDJET.h"
 #include "../scan_mc_jet_variants.h"
 #include "../scan_mc_muon_tag.h"
+
+// ---- calo-jet flavor --------------------------------------------------------
+// akPu4CaloJetAnalyzer/t has no matchedPartonFlavor, matchedHadronFlavor or
+// bHadronNumber the way akCs4PF does, so calo jets are labelled from
+// refparton_flavorForB, as PYTHIAHYDJET_scan_response.C does, or optionally from
+// the nearest PF jet's jtPartonFlavor (caloFlavorFromPFMatch; default off, to
+// match the response scan). refparton_flavorForB marks a jet with no matched
+// parton as -999 where matchedPartonFlavor uses 0; map it to 0 so those jets
+// land in the x-jet class. The gluon-splitting b class (17) needs bHadronNumber
+// and is therefore empty for calo jets.
+bool   caloFlavorFromPFMatch = false;
+double caloPFMatchDR         = 0.3;   // looser than pp: calo is Pu-, PF is Cs-subtracted
+
+static TTree  *g_pfFlavTree = nullptr;
+static Int_t   g_pfN        = 0;
+static const int g_pfMax = eventMap::jetMax;   // class member, not a global
+static Float_t g_pfPt [g_pfMax], g_pfEta[g_pfMax], g_pfPhi[g_pfMax], g_pfFlav[g_pfMax];
+static long    g_nPFMatched = 0, g_nPFUnmatched = 0;
+
+inline int caloFlavorByPFMatch(double caloEta, double caloPhi, int fallback)
+{
+  if(!g_pfFlavTree) return fallback;
+  double best = caloPFMatchDR; int bestIdx = -1;
+  for(int j = 0; j < g_pfN; j++){
+    double dEta = caloEta - g_pfEta[j];
+    double dPhi = TVector2::Phi_mpi_pi(caloPhi - g_pfPhi[j]);
+    double dr   = sqrt(dEta*dEta + dPhi*dPhi);
+    if(dr < best){ best = dr; bestIdx = j; }
+  }
+  if(bestIdx < 0){ g_nPFUnmatched++; return fallback; }
+  g_nPFMatched++;
+  return (int) g_pfFlav[bestIdx];
+}
+
+// one place that decides a reco jet's flavor / b-hadron count / hadron flavor, so
+// every read site agrees
+inline int recoJetPartonFlavor(int idx, eventMap *em)
+{
+  if(!useCaloJetsOverride) return em->matchedPartonFlavor[idx];
+  const int ref = em->refparton_flavorForB[idx];
+  const int fallback = ref < -900 ? 0 : ref;
+  if(caloFlavorFromPFMatch) return caloFlavorByPFMatch(em->jeteta[idx], em->jetphi[idx], fallback);
+  return fallback;
+}
+inline int recoJetBHadronNumber(int idx, eventMap *em){ return useCaloJetsOverride ? 0 : (int) em->bHadronNumber[idx]; }
+inline int recoJetHadronFlavor(int idx, eventMap *em){ return useCaloJetsOverride ? 0 : (int) em->matchedHadronFlavor[idx]; }
 
 //~~~~~~~~~~~  initialize histograms ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // >>>>>>>>>> Reco jets
@@ -343,13 +391,6 @@ void PYTHIAHYDJET_scan(int group = 1){
 
     std::cout << "input dataset = " << input << std::endl;
 
-    // The jet tree is hard-coded to akCs4PF, so a calo request would run on PF
-    // jets with a PF JEC. Refuse before any output directory is created.
-    if(useCaloJetsOverride){
-      cout << "ERROR: useCaloJetsOverride is not implemented in PYTHIAHYDJET_scan.C (jet tree is akCs4PF). Exiting..." << endl;
-      return;
-    }
-
     TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
 
     TString outputDatasetName = "";
@@ -413,7 +454,8 @@ void PYTHIAHYDJET_scan(int group = 1){
 						   fillMu7,
 						   fillMu12,
 						   doPThatCorrelationFilter,
-						   useManualJEC);
+						   useManualJEC,
+						   useCaloJetsOverride);
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
 
@@ -442,11 +484,14 @@ void PYTHIAHYDJET_scan(int group = 1){
   
     // JET ENERGY CORRECTIONS
     vector<string> Files;
-    Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_L2Relative_AK4PF.txt"); // LXPLUS
+    // calo jets need the AK4Calo payload and uncertainty (as the response scan)
+    if(useCaloJetsOverride) Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_L2Relative_AK4Calo.txt");
+    else                    Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_L2Relative_AK4PF.txt"); // LXPLUS
 
     JetCorrector JEC(Files);
   
-    JetUncertainty JEU("../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4PF.txt");
+    JetUncertainty JEU(useCaloJetsOverride ? "../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4Calo.txt"
+                                           : "../../../JetEnergyCorrections/Autumn18_HI_V8_MC_Uncertainty_AK4PF.txt");
 
   
     // printIntroduction_PYTHIAHYDJET_scan_V3p7();
@@ -956,7 +1001,29 @@ void PYTHIAHYDJET_scan(int group = 1){
     cout << "	Initializing variables ... " << endl;
     em->init();
     cout << "	Loading jet..." << endl;
-    em->loadJet("akCs4PFJetAnalyzer/t");
+    em->loadJet(useCaloJetsOverride ? "akPu4CaloJetAnalyzer/t" : "akCs4PFJetAnalyzer/t");
+
+    // second, un-friended read of the PF jet tree, for calo flavor by dR match.
+    // It cannot go through eventMap: loadJet() attaches the jet tree as a FRIEND
+    // of evtTree, so a second one would collide on jtpt, jteta and the rest.
+    g_pfFlavTree = nullptr;
+    if(useCaloJetsOverride && caloFlavorFromPFMatch){
+      g_pfFlavTree = (TTree*) f->Get("akCs4PFJetAnalyzer/t");
+      if(!g_pfFlavTree)
+	cout << "	WARNING: caloFlavorFromPFMatch set but akCs4PFJetAnalyzer/t is absent; falling back to refparton_flavorForB\n";
+      else if(!g_pfFlavTree->GetBranch("jtPartonFlavor")){
+	cout << "	WARNING: akCs4PFJetAnalyzer/t has no jtPartonFlavor; falling back to refparton_flavorForB\n";
+	g_pfFlavTree = nullptr;
+      }
+      else{
+	g_pfFlavTree->SetBranchAddress("nref",           &g_pfN);
+	g_pfFlavTree->SetBranchAddress("jtpt",            g_pfPt);
+	g_pfFlavTree->SetBranchAddress("jteta",           g_pfEta);
+	g_pfFlavTree->SetBranchAddress("jtphi",           g_pfPhi);
+	g_pfFlavTree->SetBranchAddress("jtPartonFlavor",  g_pfFlav);
+	cout << "	calo flavor from the PF jet within dR < " << caloPFMatchDR << "\n";
+      }
+    }
     cout << "	Loading muon..." << endl;
     em->loadMuon("ggHiNtuplizerGED/EventTree");
     cout << "	Loading muon triggers..." << endl;
@@ -1034,6 +1101,7 @@ void PYTHIAHYDJET_scan(int group = 1){
     loadFitFxn_PYTHIAHYDJET_HLT();
     loadFitFxn_PYTHIAHYDJET_BJetSpectraReweightToData();
     loadFitFxn_PYTHIAHYDJET_pThatCorrelation();
+    loadFitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets();
 
     TFile *f_neutrino_energy_map = TFile::Open("/eos/cms/store/group/phys_heavyions/cbennett/maps/neutrino_energy_map.root");
     TH2D *neutrino_energy_map;
@@ -1057,6 +1125,7 @@ void PYTHIAHYDJET_scan(int group = 1){
       if(evi == 0) cout << "Processing events..." << endl;
 
       em->getEvent(evi); // load event info from eventMap
+      if(g_pfFlavTree) g_pfFlavTree->GetEntry(evi);
 
       if((100*evi / NEvents) % 5 == 0 && (100*evi / NEvents) > evi_frac){
 
@@ -1247,7 +1316,7 @@ void PYTHIAHYDJET_scan(int group = 1){
 	  double testJetPt_j = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[j];
 	  double testJetEta_j = em->jeteta[j];
 	  double testJetPhi_j = em->jetphi[j];
-	  int testJetFlavor_j = em->matchedPartonFlavor[j];
+	  int testJetFlavor_j = recoJetPartonFlavor(j, em);
 
 	  if(fabs(testJetEta_j) > etaMax) continue;
       
@@ -1353,21 +1422,15 @@ void PYTHIAHYDJET_scan(int group = 1){
 	double recoJetPhi_i = em->jetphi[i]; // recoJetPhi
 
 	if(doPThatCorrelationFilter){
-	  if(CentralityIndex == 4){
-	    if((recoJetPt_i / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C4->Eval(em->pthat)) continue;
+	  // class 1-4 fit; anything else defaults to C4. Calo jets have their own fits.
+	  TF1 *fPThatCorr = nullptr;
+	  switch(CentralityIndex){
+	  case 1: fPThatCorr = useCaloJetsOverride ? fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C1 : fitFxn_PYTHIAHYDJET_pThatCorrelation_C1; break;
+	  case 2: fPThatCorr = useCaloJetsOverride ? fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C2 : fitFxn_PYTHIAHYDJET_pThatCorrelation_C2; break;
+	  case 3: fPThatCorr = useCaloJetsOverride ? fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C3 : fitFxn_PYTHIAHYDJET_pThatCorrelation_C3; break;
+	  default: fPThatCorr = useCaloJetsOverride ? fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C4 : fitFxn_PYTHIAHYDJET_pThatCorrelation_C4; break;
 	  }
-	  else if(CentralityIndex == 3){
-	    if((recoJetPt_i / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C3->Eval(em->pthat)) continue;
-	  }
-	  else if(CentralityIndex == 2){
-	    if((recoJetPt_i / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C2->Eval(em->pthat)) continue;
-	  }
-	  else if(CentralityIndex == 1){
-	    if((recoJetPt_i / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C1->Eval(em->pthat)) continue;
-	  }
-	  else{
-	    if((recoJetPt_i / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C4->Eval(em->pthat)) continue; // default to C4 if we have more centrality bins
-	  };
+	  if((recoJetPt_i / em->pthat) > fPThatCorr->Eval(em->pthat)) continue;
 	}
 	
 
@@ -1434,10 +1497,10 @@ void PYTHIAHYDJET_scan(int group = 1){
 		
 	bool hasGenJetMatch = false;
 		     		
-	int matchedPartonFlavor = em->matchedPartonFlavor[i];
+	int matchedPartonFlavor = recoJetPartonFlavor(i, em);
 	int refPartonFlavorForB = em->refparton_flavorForB[i];
-	int hadronFlavorInt = em->matchedHadronFlavor[i];
-	int bHadronNumber = em->bHadronNumber[i];
+	int hadronFlavorInt = recoJetHadronFlavor(i, em);
+	int bHadronNumber = recoJetBHadronNumber(i, em);
 
 	int jetFlavorInt = matchedPartonFlavor;
 
@@ -2197,8 +2260,8 @@ void PYTHIAHYDJET_scan(int group = 1){
 	double w_jet = w;
      
 	if(hasRecoJetMatch) {
-	  jetFlavorInt = em->matchedPartonFlavor[recoJetFlavorFlag];
-	  bHadronNumber = em->bHadronNumber[recoJetFlavorFlag];
+	  jetFlavorInt = recoJetPartonFlavor(recoJetFlavorFlag, em);
+	  bHadronNumber = recoJetBHadronNumber(recoJetFlavorFlag, em);
 	  if(fabs(jetFlavorInt) == 5 && bHadronNumber == 2) jetFlavorInt = 17;
 	  matchedRecoJetPt_i = em->jetpt[recoJetFlavorFlag];
 	  //cout << "genJet flavor match: (event#" << evi << ", genJet#" << i << ", recoJet#" << recoJetFlavorFlag << ") = " << jetFlavorInt << endl;
@@ -2400,6 +2463,8 @@ void PYTHIAHYDJET_scan(int group = 1){
  
     delete f;
     // WRITE
+    if(useCaloJetsOverride && g_pfFlavTree) cout << "	calo->PF flavor match: " << g_nPFMatched << " matched, " << g_nPFUnmatched << " fell back to refparton_flavorForB" << endl;
+
     auto wf = TFile::Open(output,"recreate");
 
     h_NEvents->Write();
