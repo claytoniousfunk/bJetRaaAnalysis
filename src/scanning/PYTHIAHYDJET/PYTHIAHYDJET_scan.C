@@ -177,6 +177,20 @@ inline int recoJetPartonFlavor(int idx, eventMap *em)
 inline int recoJetBHadronNumber(int idx, eventMap *em){ return useCaloJetsOverride ? 0 : (int) em->bHadronNumber[idx]; }
 inline int recoJetHadronFlavor(int idx, eventMap *em){ return useCaloJetsOverride ? 0 : (int) em->matchedHadronFlavor[idx]; }
 
+// Nominal class (1 = 0-10, 2 = 10-30, 3 = 30-50, 4 = 50-80%) of a hiBin, for the
+// fits that exist only for those four classes (pThat correlation, JER, jet-pT
+// reweight, HLT efficiency, b-jet spectrum reweight). Under CENT_NOMINAL it equals
+// CentralityIndex; under CENT_ULTRAFINE CentralityIndex is a 5% slice and must NOT
+// pick the fit: before this was added slices 4+ fell through to the C4 (50-80%)
+// pThat-correlation curve, which cuts harder than the right class. 80-90% takes
+// the 50-80% fits. Same function as PYTHIAHYDJET_scan_response.C.
+inline int nominalCentClass(int hiBin){
+  if(hiBin < 20) return 1;
+  if(hiBin < 60) return 2;
+  if(hiBin < 100) return 3;
+  return 4;
+}
+
 //~~~~~~~~~~~  initialize histograms ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // >>>>>>>>>> Reco jets
 // ----------------------------------------- event histograms -----------------
@@ -455,7 +469,8 @@ void PYTHIAHYDJET_scan(int group = 1){
 						   fillMu12,
 						   doPThatCorrelationFilter,
 						   useManualJEC,
-						   useCaloJetsOverride);
+						   useCaloJetsOverride,
+						   doRemoveUnmatchedJets);
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
 
@@ -1149,6 +1164,7 @@ void PYTHIAHYDJET_scan(int group = 1){
       if(hiBin_shifted < 0) continue;
     
       int CentralityIndex = getCentBin(hiBin_shifted);
+      const int nominalClass = nominalCentClass(hiBin_shifted);   // for the 4-class fits
 
       //cout << "Event " << evi << " | hiBin_raw = " << hiBin_raw << " | hiBin_shifted = " << hiBin_shifted << " | CentralityIndex = " << CentralityIndex << endl;
 
@@ -1415,6 +1431,12 @@ void PYTHIAHYDJET_scan(int group = 1){
 	// manual JEC on rawpt, or the forest jtpt (config_PYTHIAHYDJET.h: useManualJEC)
 	double recoJetPt_i = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[i];  // recoJetPt
 	double refJetPt_i = em->refpt[i];
+
+	// reco jets with no matched gen jet are HYDJET background fakes: the data analysis
+	// subtracts the fake background from data, and in this MC they carry the pThat
+	// weight of the event they sit in although their rate does not depend on pThat
+	// (a few low-pThat events then dominate the low-pT error). Drop them entirely.
+	if(doRemoveUnmatchedJets && refJetPt_i < 0) continue;
 	double recoJetPt_JERSmear_i = recoJetPt_i;
 	double recoJetPt_JEUShiftUp_i = recoJetPt_i;
 	double recoJetPt_JEUShiftDown_i = recoJetPt_i;
@@ -1422,9 +1444,9 @@ void PYTHIAHYDJET_scan(int group = 1){
 	double recoJetPhi_i = em->jetphi[i]; // recoJetPhi
 
 	if(doPThatCorrelationFilter){
-	  // class 1-4 fit; anything else defaults to C4. Calo jets have their own fits.
+	  // fit of the nominal class (not the slice index); calo jets have their own fits.
 	  TF1 *fPThatCorr = nullptr;
-	  switch(CentralityIndex){
+	  switch(nominalClass){
 	  case 1: fPThatCorr = useCaloJetsOverride ? fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C1 : fitFxn_PYTHIAHYDJET_pThatCorrelation_C1; break;
 	  case 2: fPThatCorr = useCaloJetsOverride ? fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C2 : fitFxn_PYTHIAHYDJET_pThatCorrelation_C2; break;
 	  case 3: fPThatCorr = useCaloJetsOverride ? fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C3 : fitFxn_PYTHIAHYDJET_pThatCorrelation_C3; break;
@@ -1456,7 +1478,7 @@ void PYTHIAHYDJET_scan(int group = 1){
 	JEU.SetJetPT(recoJetPt_i);
 	JEU.SetJetEta(recoJetEta_i);
 	JEU.SetJetPhi(recoJetPhi_i);
-	computeJetPtVariants(recoJetPt_i, JEU, randomGenerator, JER_fxn, CentralityIndex,
+	computeJetPtVariants(recoJetPt_i, JEU, randomGenerator, JER_fxn, nominalClass,
 	                      recoJetPt_JEUShiftUp_i, recoJetPt_JEUShiftDown_i, recoJetPt_JERSmear_i);
 
 	double jetPtArray[NTemplateIndices] = {recoJetPt_i,recoJetPt_JERSmear_i,recoJetPt_JEUShiftUp_i,recoJetPt_JEUShiftDown_i};
@@ -1786,10 +1808,10 @@ void PYTHIAHYDJET_scan(int group = 1){
 	if(doJetPtReweight){
 	  // reweight by centrality index
 	  if(hasInclRecoMuonTag && evtTriggerDecision){
-	    if(CentralityIndex == 1) w_jet = w_pthat * w_reweight_vz * w_reweight_hiBin * fitFxn_jetPt_C1->Eval(recoJetPt_i);
-	    else if(CentralityIndex == 2) w_jet = w_pthat * w_reweight_vz * w_reweight_hiBin * fitFxn_jetPt_C2->Eval(recoJetPt_i);
-	    else if(CentralityIndex == 3) w_jet = w_pthat * w_reweight_vz * w_reweight_hiBin * fitFxn_jetPt_C3->Eval(recoJetPt_i);
-	    else if(CentralityIndex == 4) w_jet = w_pthat * w_reweight_vz * w_reweight_hiBin * fitFxn_jetPt_C4->Eval(recoJetPt_i);
+	    if(nominalClass == 1) w_jet = w_pthat * w_reweight_vz * w_reweight_hiBin * fitFxn_jetPt_C1->Eval(recoJetPt_i);
+	    else if(nominalClass == 2) w_jet = w_pthat * w_reweight_vz * w_reweight_hiBin * fitFxn_jetPt_C2->Eval(recoJetPt_i);
+	    else if(nominalClass == 3) w_jet = w_pthat * w_reweight_vz * w_reweight_hiBin * fitFxn_jetPt_C3->Eval(recoJetPt_i);
+	    else if(nominalClass == 4) w_jet = w_pthat * w_reweight_vz * w_reweight_hiBin * fitFxn_jetPt_C4->Eval(recoJetPt_i);
 	    else{};
 	  }
 	}
@@ -1804,19 +1826,19 @@ void PYTHIAHYDJET_scan(int group = 1){
 
 	if(applyMu12TriggerEfficiencyCorrection){
 	  if(hasInclRecoMuonTag && evtTriggerDecision){
-	    if(CentralityIndex == 4) w_jet = w_jet / fitFxn_PYTHIAHYDJET_HLT_C4->Eval(muPt_i);
-	    else if(CentralityIndex == 3) w_jet = w_jet / fitFxn_PYTHIAHYDJET_HLT_C3->Eval(muPt_i);
-	    else if(CentralityIndex == 2) w_jet = w_jet / fitFxn_PYTHIAHYDJET_HLT_C2->Eval(muPt_i);
-	    else if(CentralityIndex == 1) w_jet = w_jet / fitFxn_PYTHIAHYDJET_HLT_C1->Eval(muPt_i);
+	    if(nominalClass == 4) w_jet = w_jet / fitFxn_PYTHIAHYDJET_HLT_C4->Eval(muPt_i);
+	    else if(nominalClass == 3) w_jet = w_jet / fitFxn_PYTHIAHYDJET_HLT_C3->Eval(muPt_i);
+	    else if(nominalClass == 2) w_jet = w_jet / fitFxn_PYTHIAHYDJET_HLT_C2->Eval(muPt_i);
+	    else if(nominalClass == 1) w_jet = w_jet / fitFxn_PYTHIAHYDJET_HLT_C1->Eval(muPt_i);
 	    else{};
 	  }
 	}
 
 	if(doBJetSpectraReweightToData){
-	  if(CentralityIndex == 4) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C4->Eval(recoJetPt_i);
-	  else if(CentralityIndex == 3) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C3->Eval(recoJetPt_i);
-	  else if(CentralityIndex == 2) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C2->Eval(recoJetPt_i);
-	  else if(CentralityIndex == 1) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C1->Eval(recoJetPt_i);
+	  if(nominalClass == 4) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C4->Eval(recoJetPt_i);
+	  else if(nominalClass == 3) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C3->Eval(recoJetPt_i);
+	  else if(nominalClass == 2) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C2->Eval(recoJetPt_i);
+	  else if(nominalClass == 1) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C1->Eval(recoJetPt_i);
 	  else{};
 	}
 			
@@ -2266,10 +2288,10 @@ void PYTHIAHYDJET_scan(int group = 1){
 	  matchedRecoJetPt_i = em->jetpt[recoJetFlavorFlag];
 	  //cout << "genJet flavor match: (event#" << evi << ", genJet#" << i << ", recoJet#" << recoJetFlavorFlag << ") = " << jetFlavorInt << endl;
 	  if(doBJetSpectraReweightToData){
-	    if(CentralityIndex == 4) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C4->Eval(matchedRecoJetPt_i);
-	    else if(CentralityIndex == 3) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C3->Eval(matchedRecoJetPt_i);
-	    else if(CentralityIndex == 2) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C2->Eval(matchedRecoJetPt_i);
-	    else if(CentralityIndex == 1) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C1->Eval(matchedRecoJetPt_i);
+	    if(nominalClass == 4) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C4->Eval(matchedRecoJetPt_i);
+	    else if(nominalClass == 3) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C3->Eval(matchedRecoJetPt_i);
+	    else if(nominalClass == 2) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C2->Eval(matchedRecoJetPt_i);
+	    else if(nominalClass == 1) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C1->Eval(matchedRecoJetPt_i);
 	    else{};
 	  }
 	}

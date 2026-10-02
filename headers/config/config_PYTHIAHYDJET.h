@@ -36,6 +36,11 @@ bool doJetAxisSmearing = false;
 bool doWDecayFilter = true;
 bool doBJetSpectraReweightToData = false;
 bool doPThatCorrelationFilter = true;
+// drop reco jets with no matched gen jet (refpt < 0): the HYDJET background fakes.
+// Their count is pThat-independent but they carry the pThat weight of the event,
+// so a few low-pThat events dominate the error at low pT; the fake background is
+// subtracted from data instead. Only PYTHIAHYDJET_scan.C reads this.
+bool doRemoveUnmatchedJets = true;
 // shifting the hiBin distribution by this amount
 int hiBinShift = 10;
 // jet-alterations for closure
