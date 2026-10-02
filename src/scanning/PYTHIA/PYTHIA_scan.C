@@ -164,6 +164,10 @@ TH1D *h_vz_inclRecoMuonTag;
 TH1D *h_vz_inclRecoMuonTag_triggerOn;
 // ------------------------------- incl. reco jets per flavor -----------------
 TH2D *h_inclRecoJetPt_flavor;
+// jet pT with the nominal / JER-smear / JEU-up / JEU-down variants (templateIndexNames);
+// [0] duplicates h_inclRecoJetPt_flavor. Selection and weights follow the nominal jet pT.
+TH2D *h_inclRecoJetPt_flavor_var[NTemplateIndices];
+TH2D *h_inclRecoJetPt_inclRecoMuonTag_flavor_var[NTemplateIndices];
 TH2D *h_inclRecoJetEta_flavor;
 TH2D *h_inclRecoJetPhi_flavor;
 TH2D *h_inclRecoJetPt_inclRecoJetEta;
@@ -412,6 +416,12 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 	
   // Define histograms
   h_inclRecoJetPt_flavor = new TH2D("h_inclRecoJetPt_flavor","JetFlavorID vs incl. reco p_{T}^{jet}",NPtBins,ptMin,ptMax,27,-5,22);
+  for(int t = 0; t < NTemplateIndices; t++){
+    h_inclRecoJetPt_flavor_var[t] = new TH2D(Form("h_inclRecoJetPt_flavor_%s",templateIndexNames[t].c_str()),Form("JetFlavorID vs incl. reco p_{T}^{jet}, %s",templateIndexNames[t].c_str()),NPtBins,ptMin,ptMax,27,-5,22);
+    h_inclRecoJetPt_inclRecoMuonTag_flavor_var[t] = new TH2D(Form("h_inclRecoJetPt_inclRecoMuonTag_flavor_%s",templateIndexNames[t].c_str()),Form("JetFlavorID vs incl. reco p_{T}^{jet}, tagged with incl. reco muon, %s",templateIndexNames[t].c_str()),NPtBins,ptMin,ptMax,27,-5,22);
+    h_inclRecoJetPt_flavor_var[t]->Sumw2();
+    h_inclRecoJetPt_inclRecoMuonTag_flavor_var[t]->Sumw2();
+  }
   h_inclRecoJetEta_flavor = new TH2D("h_inclRecoJetEta_flavor","JetFlavorID vs incl. reco #eta^{jet}",NEtaBins,etaMin,etaMax,27,-5,22);
   h_inclRecoJetPhi_flavor = new TH2D("h_inclRecoJetPhi_flavor","JetFlavorID vs incl. reco #phi^{jet}",NPhiBins,phiMin,phiMax,27,-5,22);
   h_inclRecoJetPt_inclRecoJetEta = new TH2D("h_inclRecoJetPt_inclRecoJetEta","incl. reco p_{T}^{jet} vs. incl. reco #eta^{jet}",NPtBins,ptMin,ptMax,NEtaBins,etaMin,etaMax);
@@ -1534,6 +1544,7 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
       // Fill the jet histograms
       evtHasGoodJet = true;
       h_inclRecoJetPt_flavor->Fill(recoJetPt_i,jetFlavorInt,w_jet);
+      for(int t = 0; t < NTemplateIndices; t++) h_inclRecoJetPt_flavor_var[t]->Fill(jetPtArray[t],jetFlavorInt,w_jet);
       h_inclRecoJetEta_flavor->Fill(recoJetEta_i,jetFlavorInt,w_jet);
       h_inclRecoJetPhi_flavor->Fill(recoJetPhi_i,jetFlavorInt,w_jet);
       h_inclRecoJetPt_inclRecoJetEta->Fill(recoJetPt_i,recoJetEta_i,w_jet);
@@ -1567,6 +1578,7 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 	evtHasGoodMuonTaggedJet = true;
 
 	h_inclRecoJetPt_inclRecoMuonTag_flavor->Fill(recoJetPt_i,jetFlavorInt,w_jet);
+	for(int t = 0; t < NTemplateIndices; t++) h_inclRecoJetPt_inclRecoMuonTag_flavor_var[t]->Fill(jetPtArray[t],jetFlavorInt,w_jet);
 	h_inclRecoJetEta_inclRecoMuonTag_flavor->Fill(recoJetEta_i,jetFlavorInt,w_jet);
 	h_inclRecoJetPhi_inclRecoMuonTag_flavor->Fill(recoJetPhi_i,jetFlavorInt,w_jet);
 	h_inclRecoJetPt_inclRecoJetEta_inclRecoMuonTag->Fill(recoJetPt_i,recoJetEta_i,w_jet);
@@ -1964,6 +1976,10 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
   h_vz_inclRecoMuonTag_triggerOn->Write();
   
   h_inclRecoJetPt_flavor->Write();
+  for(int t = 0; t < NTemplateIndices; t++){
+    h_inclRecoJetPt_flavor_var[t]->Write();
+    h_inclRecoJetPt_inclRecoMuonTag_flavor_var[t]->Write();
+  }
   h_inclRecoJetEta_flavor->Write();
   h_inclRecoJetPhi_flavor->Write();
   h_inclRecoJetPt_inclRecoJetEta->Write();
