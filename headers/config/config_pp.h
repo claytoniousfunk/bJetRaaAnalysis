@@ -18,7 +18,7 @@ bool applyJet30Trigger = false;
 bool applyJet40Trigger = false;
 bool applyJet60Trigger = false;
 bool applyJet80Trigger = false;
-bool applyJet100Trigger = false;
+bool applyJet100Trigger = true;
 bool applyAntiMu5Jet30Trigger = false;
 bool applyAntiMu5Jet40Trigger = false;
 bool applyAntiMu5Jet60Trigger = false;
@@ -26,7 +26,7 @@ bool fillMu5 = false;
 bool fillMu7 = false;
 bool fillMu12 = true;
 // spectra alterations
-bool applyMu12TriggerEfficiencyCorrection = true;
+bool applyMu12TriggerEfficiencyCorrection = false;
 bool doJESCorrection = false;
 bool doBJetNeutrinoEnergyShift = false;
 bool doJERCorrection = false;
@@ -35,9 +35,19 @@ bool apply_JER_smear = false;
 bool apply_JEU_shift_up = false;
 bool apply_JEU_shift_down = false;
 // select dataset
-bool doSingleMuonSample = true;
+bool doSingleMuonSample = false;
 bool doMinBiasSample = false;
-bool doHighEGJetSample = false;
+bool doHighEGJetSample = true;
 // jet mods
 bool useCaloJetsOverride = true;
 bool useManualJEC = true;
+// Drop the data-only L2L3Residual from the calo-jet JEC (useCaloJetsOverride &&
+// useManualJEC only). The AK4Calo residual files in JetEnergyCorrections/ are
+// byte-identical copies of the AK4PF ones, so calo jets get a PF-derived
+// data/MC correction: +2.3-2.9% in pp (Spring18_ppRef5TeV_V6) against +0.8-1.0%
+// in PbPb (Autumn18_HI_V8) at 200-450 GeV, |eta| < 1.6. The MC responses get
+// no residual, so that offset survives unfolding and raises pp relative to
+// PbPb, by roughly (1.029/1.010)^5 ~ 1.10 in R_AA terms. Flip both pp and PbPb
+// together, or the comparison mixes conventions. Adds _noL2L3Residual to the
+// output name.
+bool skipCaloL2L3Residual = true;

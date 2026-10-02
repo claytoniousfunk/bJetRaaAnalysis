@@ -388,7 +388,8 @@ void PbPb_scan(int group = 1){
 						   fillMu7,
 						   fillMu12,
 						   useCaloJetsOverride,
-						   useManualJEC);
+						   useManualJEC,
+						   skipCaloL2L3Residual);
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
@@ -408,9 +409,12 @@ void PbPb_scan(int group = 1){
     vector<string> Files;
     if(useCaloJetsOverride){
       Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2Relative_AK4Calo.txt");
-      Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2L3Residual_AK4Calo.txt");
+      // the AK4Calo residual is a copy of the AK4PF one (config_PbPb.h: skipCaloL2L3Residual)
+      if(!skipCaloL2L3Residual) Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2L3Residual_AK4Calo.txt");
+      else std::cout << "\033[1;33m calo jets: L2L3Residual NOT applied (skipCaloL2L3Residual) \033[0m" << std::endl;
     }
     else{
+      if(skipCaloL2L3Residual) std::cout << "\033[1;33m WARNING: skipCaloL2L3Residual is set but these are PF jets; ignored \033[0m" << std::endl;
       Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2Relative_AK4PF.txt");
       Files.push_back("../../../JetEnergyCorrections/Autumn18_HI_V8_DATA_L2L3Residual_AK4PF.txt");
     }

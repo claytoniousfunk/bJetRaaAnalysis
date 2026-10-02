@@ -313,7 +313,7 @@ void pp_scan(int group = 1){
     applyAntiMu5Jet30Trigger,applyAntiMu5Jet40Trigger,applyAntiMu5Jet60Trigger,
     applyMu12TriggerEfficiencyCorrection,doJetTrkMaxFilter,doEtaPhiMask,doWDecayFilter,
     doJESCorrection,doBJetNeutrinoEnergyShift,doJERCorrection,
-							 apply_JER_smear,apply_JEU_shift_up,apply_JEU_shift_down,muPtCut,muPtMaxCut,fillMu5,fillMu7,fillMu12, useCaloJetsOverride, useManualJEC);
+							 apply_JER_smear,apply_JEU_shift_up,apply_JEU_shift_down,muPtCut,muPtMaxCut,fillMu5,fillMu7,fillMu12, useCaloJetsOverride, useManualJEC, skipCaloL2L3Residual);
   TString outputFile = Form("%s%s/pp_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
 
   if(gSystem->AccessPathName(Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()))){
@@ -394,7 +394,8 @@ void pp_scan(TString inputFile, TString outputFile){
 						   fillMu7,
 						   fillMu12,
 						   useCaloJetsOverride,
-						   useManualJEC);
+						   useManualJEC,
+						   skipCaloL2L3Residual);
 
     TString output = outputFile;
 
@@ -407,9 +408,12 @@ void pp_scan(TString inputFile, TString outputFile){
     // the jet pT came from the forest jtpt
     if(useCaloJetsOverride){
       Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2Relative_AK4Calo.txt"); // L2Relative correction
-      Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2L3Residual_AK4Calo.txt"); // L2L3Residual correction
+      // the AK4Calo residual is a copy of the AK4PF one (config_pp.h: skipCaloL2L3Residual)
+      if(!skipCaloL2L3Residual) Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2L3Residual_AK4Calo.txt"); // L2L3Residual correction
+      else std::cout << "\033[1;33m calo jets: L2L3Residual NOT applied (skipCaloL2L3Residual) \033[0m" << std::endl;
     }
     else{
+      if(skipCaloL2L3Residual) std::cout << "\033[1;33m WARNING: skipCaloL2L3Residual is set but these are PF jets; ignored \033[0m" << std::endl;
       Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2Relative_AK4PF.txt"); // L2Relative correction
       Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2L3Residual_AK4PF.txt"); // L2L3Residual correction
     }

@@ -25,7 +25,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
 				   bool fillMu7,
 				   bool fillMu12,
 				   bool useCaloJetsOverride,
-				   bool useManualJEC)
+				   bool useManualJEC,
+				   bool skipCaloL2L3Residual = false)
 {
 
   TString result = "output";
@@ -44,6 +45,8 @@ TString configureOutputDatasetName(bool doSingleMuonSample,
   if(useCaloJetsOverride) result.Append("_caloJets");
   // jet pT from the JEC text files rather than the forest jtpt
   if(useManualJEC) result.Append("_manualJEC");
+  // calo jets without the (PF-copied) L2L3Residual; see config_*.h
+  if(useCaloJetsOverride && useManualJEC && skipCaloL2L3Residual) result.Append("_noL2L3Residual");
 
   // general information
   if(applyMinBiasTrigger) result.Append("_MinBiasHLT");
