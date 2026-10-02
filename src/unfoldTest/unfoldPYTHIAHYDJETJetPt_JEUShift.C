@@ -25,13 +25,23 @@
 // reco jets only. Ratio errors are the shifted-spectrum statistics only (same
 // jets as nominal; covariance not propagated).
 //
+// ALTERNATIVE INPUT (third argument): the reco spectra are taken instead from a
+// PYTHIAHYDJET_scan (ultraFine) output carrying h_inclRecoJetPt_flavor_{nominal,
+// JEUShiftUp,JEUShiftDown}_C<slice>, flavors summed and slices merged into the 4
+// coarse classes (headers/plotting/coarseCent.h). Only the NOMINAL response is
+// then needed (shiftTag is ignored). This is the full reco spectrum, fakes
+// included, unfolded with a response that has none, and from a different run
+// than the response -- so the unfolded spectra are not a physics result, only
+// the shifted/nominal ratio is, and the first bins of the central classes carry
+// the fake contribution.
+//
 // Arguments are substrings that select the files in the PYTHIAHYDJET scan
 // directory, e.g. the date of each generation ("2026-9-25", "2026-10-3"); the
 // newest match by modification time wins. nominalTag must match a file WITHOUT
 // _applyJ..., and shiftTag one WITH each of _applyJEUShiftUp / Down.
 //
 // Output  figures/unfoldTest/unfold_PYTHIAHYDJET_caloJets_JEUShiftRatio.pdf
-//         (one panel per class: gen ratio points, reco ratio dashed)
+//         (one file per class, _0to10pct ... _50to80pct: unfolded spectra on top, gen ratio below)
 //
 // Usage: root -l -b -q -e 'gSystem->Load("/home/clayton/Programs/RooUnfold/build/libRooUnfold.so");
 //                          gInterpreter->AddIncludePath("/home/clayton/Programs/RooUnfold/build");'
@@ -51,6 +61,7 @@
 #include "TPad.h"
 #include "TLegend.h"
 #include "TLatex.h"
+#include "../../headers/plotting/coarseCent.h"
 #include "TSystemDirectory.h"
 #include "TList.h"
 #include "TSystemFile.h"
@@ -158,17 +169,23 @@ const char *centLabel[5] = {"", "0-10%", "10-30%", "30-50%", "50-80%"};
 
 } // namespace
 
-void unfoldPYTHIAHYDJETJetPt_JEUShift(const char *nominalTag, const char *shiftTag)
+void unfoldPYTHIAHYDJETJetPt_JEUShift(const char *nominalTag, const char *shiftTag, const char *scanFile = "")
 {
   initPlotStyle();
   TFile *fe[3], *fo[3];
   const char *shiftName[3] = {"", "_applyJEUShiftUp", "_applyJEUShiftDown"};
   printf("input scans:\n");
-  for(int v = 0; v < 3; v++)
+  const bool fromScan = scanFile && scanFile[0];
+  TFile *fscan = nullptr;
+  if(fromScan){
+    fscan = TFile::Open(scanFile);
+    if(!fscan || fscan->IsZombie()){ printf("ERROR: cannot open %s\n", scanFile); return; }
+    printf("  reco spectra from %s\n", scanFile);
+  }
+  for(int v = 0; v < (fromScan ? 1 : 3); v++)
     if(!openHalves(v == 0 ? nominalTag : shiftTag, shiftName[v], fe[v], fo[v])) return;
 
-  TCanvas *c = new TCanvas("c", "", 1100, 900);
-  c->Divide(2, 2, 0.001, 0.001);
+  gSystem->mkdir(gSystem->DirName(outPdf), kTRUE);
 
   for(int ci = 1; ci <= 4; ci++){
     TH2D *resp2D = sumHalves(fe[0], fo[0], Form("h_matchedRecoJetPt_genJetPt_allJets_C%d", ci), Form("resp2D_%d", ci));
@@ -179,6 +196,14 @@ void unfoldPYTHIAHYDJETJetPt_JEUShift(const char *nominalTag, const char *shiftT
 
     TH1D *reco[3];
     for(int v = 0; v < 3; v++){
+      if(fromScan){
+        const char *vn[3] = {"nominal", "JEUShiftUp", "JEUShiftDown"};
+        TH2D *R = coarseSum2(fscan, Form("h_inclRecoJetPt_flavor_%s", vn[v]), ci - 1, Form("scan%d", v));
+        if(!R){ printf("ERROR: scan lacks h_inclRecoJetPt_flavor_%s_C<slice> for class %d\n", vn[v], ci); return; }
+        reco[v] = recoOf(R, Form("reco_%d_C%d", v, ci));
+        delete R;
+        continue;
+      }
       TH2D *R = (v == 0) ? resp2D : sumHalves(fe[v], fo[v], Form("h_matchedRecoJetPt_genJetPt_allJets_C%d", ci), Form("respShift%d_%d", v, ci));
       if(!R) return;
       reco[v] = recoOf(R, Form("reco_%d_C%d", v, ci));
@@ -220,34 +245,48 @@ void unfoldPYTHIAHYDJETJetPt_JEUShift(const char *nominalTag, const char *shiftT
       printf("\n");
     }
 
-    c->cd(ci);
-    gPad->SetLeftMargin(0.15); gPad->SetBottomMargin(0.14); gPad->SetTopMargin(0.06); gPad->SetRightMargin(0.04);
+    // same layout as unfoldPYTHIAJetPt_JEUShift.C: unfolded spectra on top, gen ratio below
+    TH1D *gN = (TH1D*) gen[0][nIterNominal]->Clone(Form("gN_C%d", ci)), *gU = (TH1D*) gen[1][nIterNominal]->Clone(Form("gU_C%d", ci)),
+         *gD = (TH1D*) gen[2][nIterNominal]->Clone(Form("gD_C%d", ci));
+    divideByBinwidth(gN); divideByBinwidth(gU); divideByBinwidth(gD);
+    styleH(gN, okabeHex[0], markFilledCircle, 0.8);
+    styleH(gU, okabeHex[6], markFilledSquare, 0.8);
+    styleH(gD, okabeHex[5], markFilledDiamond, 1.0);
+
+    TCanvas *c = new TCanvas(Form("c_C%d", ci), "", 700, 800);
+    TPad *top, *bot; splitPads(top, bot);
+    top->cd(); top->SetLogy();
+    gN->SetTitle("");
+    gN->GetXaxis()->SetRangeUser(xLo, xHi);
+    gN->GetYaxis()->SetTitle("dN/dp_{T}^{gen} (arb.)");
+    gN->GetYaxis()->SetTitleSize(0.055); gN->GetYaxis()->SetLabelSize(0.050);
+    gN->GetXaxis()->SetLabelSize(0);
+    gN->Draw("E1"); gU->Draw("E1 SAME"); gD->Draw("E1 SAME");
+    TLegend *leg = makeLegend(0.55, 0.66, 0.90, 0.88, 0.048);
+    leg->AddEntry(gN, "Unfolded nominal", "lp");
+    leg->AddEntry(gU, "Unfolded JEU up", "lp");
+    leg->AddEntry(gD, "Unfolded JEU down", "lp");
+    leg->Draw();
+    TLatex t; t.SetNDC(); t.SetTextSize(0.05);
+    t.SetTextSize(0.045);
+    t.DrawLatex(0.20, 0.17, Form("PYTHIA+HYDJET %s", centLabel[ci]));
+    t.SetTextSize(0.038);
+    t.DrawLatex(0.20, 0.11, Form("calo jets, Bayes %d iterations", nIterNominal));
+
+    bot->cd();
     TH1D *fr = rGen[0][nIterNominal];
-    fr->SetTitle("");
+    styleRatioAxes(fr, "Jet p_{T} (GeV)", "Shifted / nominal");
     fr->GetXaxis()->SetRangeUser(xLo, xHi);
     fr->GetYaxis()->SetRangeUser(0.6, 1.5);
-    fr->GetXaxis()->SetTitle("Jet p_{T} (GeV)"); fr->GetYaxis()->SetTitle("Shifted / nominal");
-    fr->GetXaxis()->SetTitleSize(0.055); fr->GetYaxis()->SetTitleSize(0.055);
-    fr->GetXaxis()->SetLabelSize(0.05);  fr->GetYaxis()->SetLabelSize(0.05);
-    fr->GetYaxis()->SetTitleOffset(1.2);
     styleH(fr, okabeHex[6], markFilledSquare, 1.0);
     styleH(rGen[1][nIterNominal], okabeHex[5], markFilledDiamond, 1.2);
     fr->Draw("E1"); rGen[1][nIterNominal]->Draw("E1 SAME");
-    for(int s = 0; s < 2; s++){
-      rReco[s]->SetLineColor(TColor::GetColor(okabeHex[s ? 5 : 6])); rReco[s]->SetLineStyle(2);
-      rReco[s]->SetLineWidth(2); rReco[s]->SetMarkerSize(0);
-      rReco[s]->Draw("HIST SAME");
-    }
     unityLine(xLo, xHi)->Draw();
-    TLegend *l2 = makeLegend(0.18, 0.70, 0.60, 0.88, 0.05);
-    l2->AddEntry(fr, "JEU up, gen", "p");
-    l2->AddEntry(rGen[1][nIterNominal], "JEU down, gen", "p");
-    l2->AddEntry(rReco[0], "reco", "l");
-    l2->Draw();
-    TLatex t; t.SetNDC(); t.SetTextSize(0.05);
-    t.DrawLatex(0.50, 0.86, Form("PYTHIA+HYDJET %s", centLabel[ci]));
+
+    TString outC = outPdf;
+    outC.ReplaceAll(".pdf", Form("_%s.pdf", coarseTag[ci - 1]));
+    savePdfTight(c, outC);
+    delete c;
   }
 
-  gSystem->mkdir(gSystem->DirName(outPdf), kTRUE);
-  c->SaveAs(outPdf);
 }

@@ -3,7 +3,7 @@
 // Reads h_inclRecoJetPt[_inclRecoMuonTag]_flavor_{nominal,JEUShiftUp,JEUShiftDown},
 // booked in PYTHIA_scan.C (the JEU variants were added 2026-10-02; scans before
 // that do not have them). Four figures: {all jets, b jets} x {inclusive,
-// muon-tagged}. Flavor is the PF-style JetFlavorID, b = 5 (abs).
+// muon-tagged}. Flavor is the signed JetFlavorID; b jets are |flavor| = 5.
 //
 // The shift is applied to the jet pT only: the jetPtCut, jetTrkMax filter and
 // weights all follow the NOMINAL pT, so below ~jetPtCut/(1-JEU) the down ratio
@@ -34,14 +34,20 @@ const char *outDir = "../../../../figures/jetKinematics/jetEnergyUncertainty/";
 const double ptLo = 30, ptHi = 400;
 const int    ptRebin = 4;   // 5 GeV -> 20 GeV bins
 
-// flavor axis of the *_flavor histograms: 27 bins on [-5,22), bin center = flavor + 0.5
+// flavor axis of the *_flavor histograms: 27 bins on [-5,22), signed, so a b jet
+// is flavor +5 OR -5 (both populated: the bbar bin holds as many as the b bin)
 TH1D* spectrum(TFile *f, const char *base, const char *var, bool bOnly, const char *name)
 {
   auto *H = (TH2D*) f->Get(Form("%s_%s", base, var));
   if(!H){ printf("missing %s_%s -- scan predates the JEU histograms?\n", base, var); return nullptr; }
-  int lo = bOnly ? H->GetYaxis()->FindBin(5.5) : 1;
-  int hi = bOnly ? lo : H->GetNbinsY();
-  TH1D *h = H->ProjectionX(name, lo, hi);
+  TH1D *h;
+  if(bOnly){
+    int bm = H->GetYaxis()->FindBin(-4.5), bp = H->GetYaxis()->FindBin(5.5);
+    h = H->ProjectionX(name, bm, bm);
+    TH1D *hp = H->ProjectionX(Form("%s_bbar", name), bp, bp);
+    h->Add(hp); delete hp;
+  }
+  else h = H->ProjectionX(name, 1, H->GetNbinsY());
   h->SetDirectory(nullptr);
   h->Rebin(ptRebin);
   return h;
