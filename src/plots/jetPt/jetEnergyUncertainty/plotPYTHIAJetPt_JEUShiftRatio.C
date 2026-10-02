@@ -82,8 +82,8 @@ void oneFigure(TFile *f, const char *base, bool bOnly, const char *label, const 
   leg->AddEntry(dn,  "JEU down", "lp");
   leg->Draw();
   TLatex t; t.SetNDC(); t.SetTextSize(0.05);
-  t.DrawLatex(0.20, 0.86, "PYTHIA8 calo jets");
-  t.DrawLatex(0.20, 0.79, label);
+  t.DrawLatex(0.20, 0.30, "PYTHIA8 calo jets");
+  t.DrawLatex(0.20, 0.23, label);
 
   bot->cd();
   rUp->GetXaxis()->SetRangeUser(ptLo, ptHi);

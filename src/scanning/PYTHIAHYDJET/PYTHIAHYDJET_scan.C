@@ -158,6 +158,10 @@ TH1D *h_hiBin_inclRecoMuonTag_triggerOn;
 TH1D *h_hiBin_matchedRecoMuonTag_triggerOn;
 // ------------------------------- incl. reco jets per flavor -----------------
 TH2D *h_inclRecoJetPt_flavor[NCentralityIndices];
+// jet pT with the nominal / JER-smear / JEU-up / JEU-down variants (templateIndexNames);
+// [.][0] duplicates h_inclRecoJetPt_flavor. Selection and weights follow the nominal jet pT.
+TH2D *h_inclRecoJetPt_flavor_var[NCentralityIndices][NTemplateIndices];
+TH2D *h_inclRecoJetPt_inclRecoMuonTag_flavor_var[NCentralityIndices][NTemplateIndices];
 TH2D *h_inclRecoJetEta_flavor[NCentralityIndices];
 TH2D *h_inclRecoJetPhi_flavor[NCentralityIndices];
 TH2D *h_inclRecoJetPt_inclRecoJetEta[NCentralityIndices];
@@ -528,6 +532,12 @@ void PYTHIAHYDJET_scan(int group = 1){
 	h_NMuTaggedJetPerEvent[i] = new TH1D(Form("h_NMuTaggedJetPerEvent_C%i",i),Form("Number of #it{#mu}-tagged jets per event, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),100,0,100);
 	// ------------------------------- incl. reco jets per flavor -----------------
 	h_inclRecoJetPt_flavor[i] = new TH2D(Form("h_inclRecoJetPt_flavor_C%i",i),Form("JetFlavorID vs incl. reco p_{T}^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,27,-5,22);
+	for(int t = 0; t < NTemplateIndices; t++){
+	  h_inclRecoJetPt_flavor_var[i][t] = new TH2D(Form("h_inclRecoJetPt_flavor_%s_C%i",templateIndexNames[t].c_str(),i),Form("JetFlavorID vs incl. reco p_{T}^{jet}, %s, C%i",templateIndexNames[t].c_str(),i),NPtBins,ptMin,ptMax,27,-5,22);
+	  h_inclRecoJetPt_inclRecoMuonTag_flavor_var[i][t] = new TH2D(Form("h_inclRecoJetPt_inclRecoMuonTag_flavor_%s_C%i",templateIndexNames[t].c_str(),i),Form("JetFlavorID vs incl. reco p_{T}^{jet}, tagged with incl. reco muon, %s, C%i",templateIndexNames[t].c_str(),i),NPtBins,ptMin,ptMax,27,-5,22);
+	  h_inclRecoJetPt_flavor_var[i][t]->Sumw2();
+	  h_inclRecoJetPt_inclRecoMuonTag_flavor_var[i][t]->Sumw2();
+	}
 	h_inclRecoJetEta_flavor[i] = new TH2D(Form("h_inclRecoJetEta_flavor_C%i",i),Form("JetFlavorID vs incl. reco #eta^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NEtaBins,etaMin,etaMax,27,-5,22);
 	h_inclRecoJetPhi_flavor[i] = new TH2D(Form("h_inclRecoJetPhi_flavor_C%i",i),Form("JetFlavorID vs incl. reco #phi^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPhiBins,phiMin,phiMax,27,-5,22);
 	h_inclRecoJetPt_inclRecoJetEta[i] = new TH2D(Form("h_inclRecoJetPt_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet} vs. incl reco p_{T}^{jet}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,NEtaBins,etaMin,etaMax);
@@ -605,6 +615,12 @@ void PYTHIAHYDJET_scan(int group = 1){
 	h_NMuTaggedJetPerEvent[i] = new TH1D(Form("h_NMuTaggedJetPerEvent_C%i",i),Form("Number of #it{#mu}-tagged jets per event, hiBin %i - %i",centEdges[i-1],centEdges[i]),100,0,100);
 	// ------------------------------- incl. reco jets per flavor -----------------
 	h_inclRecoJetPt_flavor[i] = new TH2D(Form("h_inclRecoJetPt_flavor_C%i",i),Form("JetFlavorID vs incl. reco p_{T}^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,27,-5,22);
+	for(int t = 0; t < NTemplateIndices; t++){
+	  h_inclRecoJetPt_flavor_var[i][t] = new TH2D(Form("h_inclRecoJetPt_flavor_%s_C%i",templateIndexNames[t].c_str(),i),Form("JetFlavorID vs incl. reco p_{T}^{jet}, %s, C%i",templateIndexNames[t].c_str(),i),NPtBins,ptMin,ptMax,27,-5,22);
+	  h_inclRecoJetPt_inclRecoMuonTag_flavor_var[i][t] = new TH2D(Form("h_inclRecoJetPt_inclRecoMuonTag_flavor_%s_C%i",templateIndexNames[t].c_str(),i),Form("JetFlavorID vs incl. reco p_{T}^{jet}, tagged with incl. reco muon, %s, C%i",templateIndexNames[t].c_str(),i),NPtBins,ptMin,ptMax,27,-5,22);
+	  h_inclRecoJetPt_flavor_var[i][t]->Sumw2();
+	  h_inclRecoJetPt_inclRecoMuonTag_flavor_var[i][t]->Sumw2();
+	}
 	h_inclRecoJetEta_flavor[i] = new TH2D(Form("h_inclRecoJetEta_flavor_C%i",i),Form("JetFlavorID vs incl. reco #eta^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NEtaBins,etaMin,etaMax,27,-5,22);
 	h_inclRecoJetPhi_flavor[i] = new TH2D(Form("h_inclRecoJetPhi_flavor_C%i",i),Form("JetFlavorID vs incl. reco #phi^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPhiBins,phiMin,phiMax,27,-5,22);
 	h_inclRecoJetPt_inclRecoJetEta[i] = new TH2D(Form("h_inclRecoJetPt_inclRecoJetEta_C%i",i),Form("incl. reco #eta^{jet} vs. incl reco p_{T}^{jet}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,NEtaBins,etaMin,etaMax);
@@ -1675,6 +1691,10 @@ void PYTHIAHYDJET_scan(int group = 1){
 	inclJetCounter++;
 	h_inclRecoJetPt_flavor[0]->Fill(recoJetPt_i,jetFlavorInt,w);
 	h_inclRecoJetPt_flavor[CentralityIndex]->Fill(recoJetPt_i,jetFlavorInt,w);
+	for(int t = 0; t < NTemplateIndices; t++){
+	  h_inclRecoJetPt_flavor_var[0][t]->Fill(jetPtArray[t],jetFlavorInt,w);
+	  h_inclRecoJetPt_flavor_var[CentralityIndex][t]->Fill(jetPtArray[t],jetFlavorInt,w);
+	}
 	h_inclRecoJetEta_flavor[0]->Fill(recoJetEta_i,jetFlavorInt,w);
 	h_inclRecoJetEta_flavor[CentralityIndex]->Fill(recoJetEta_i,jetFlavorInt,w);
 	h_inclRecoJetPhi_flavor[0]->Fill(recoJetPhi_i,jetFlavorInt,w);
@@ -1883,6 +1903,10 @@ void PYTHIAHYDJET_scan(int group = 1){
 	  muTaggedJetCounter++;
 	  h_inclRecoJetPt_inclRecoMuonTag_flavor[0]->Fill(recoJetPt_i,jetFlavorInt,w_jet);
 	  h_inclRecoJetPt_inclRecoMuonTag_flavor[CentralityIndex]->Fill(recoJetPt_i,jetFlavorInt,w_jet);
+	  for(int t = 0; t < NTemplateIndices; t++){
+	    h_inclRecoJetPt_inclRecoMuonTag_flavor_var[0][t]->Fill(jetPtArray[t],jetFlavorInt,w_jet);
+	    h_inclRecoJetPt_inclRecoMuonTag_flavor_var[CentralityIndex][t]->Fill(jetPtArray[t],jetFlavorInt,w_jet);
+	  }
 	  h_inclRecoJetEta_inclRecoMuonTag_flavor[0]->Fill(recoJetEta_i,jetFlavorInt,w_jet);
 	  h_inclRecoJetEta_inclRecoMuonTag_flavor[CentralityIndex]->Fill(recoJetEta_i,jetFlavorInt,w_jet);
 	  h_inclRecoJetPhi_inclRecoMuonTag_flavor[0]->Fill(recoJetPhi_i,jetFlavorInt,w_jet);
@@ -2415,6 +2439,10 @@ void PYTHIAHYDJET_scan(int group = 1){
       h_vz_matchedRecoMuonTag_triggerOn[i]->Write();
 
       h_inclRecoJetPt_flavor[i]->Write();
+      for(int t = 0; t < NTemplateIndices; t++){
+	h_inclRecoJetPt_flavor_var[i][t]->Write();
+	h_inclRecoJetPt_inclRecoMuonTag_flavor_var[i][t]->Write();
+      }
       h_inclRecoJetEta_flavor[i]->Write();
       h_inclRecoJetPhi_flavor[i]->Write();
       h_inclRecoJetPt_inclRecoJetEta[i]->Write();
