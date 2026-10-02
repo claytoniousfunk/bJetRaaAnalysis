@@ -1,4 +1,4 @@
-// Muon reco + tight-ID efficiency from Z -> mu mu tag-and-probe in pp data.
+// Muon reco + tight-ID efficiency from Z -> mu mu tag-and-probe, pp or PbPb data.
 //
 // Reads the tnp TREE written by src/scanning/pp/pp_muonTagAndProbe_scan.C, not
 // its histograms: the analysis cuts muons at |eta| < 2.0 (scan_muon_tag.h), and
@@ -36,14 +36,25 @@
 //
 // MC. An optional second file -- the same scan run with isMC = true -- adds the
 // MC-truth h_gen* ratios for comparison. Truth uses the scan's |eta| edges, so
-// its acceptance is |eta| < 2.1, not 2.0; the printout says so. The analysis
+// in pp its acceptance is |eta| < 2.1, not 2.0 (PbPb has the 2.0 edge); the
+// printout says which. The analysis
 // value 0.9708 is tight | gen muon, which also counts muons that leave no muon
 // object at all -- a step the tag-and-probe cannot see (scan header). It is
 // printed for orientation, not as a like-for-like comparison.
 //
+// PbPb. Output of src/scanning/PbPb/PbPb_muonTagAndProbe_scan.C, recognised by
+// its centHiBin branch. centLo/centHi select centHiBin in [centLo, centHi), in
+// the scan's 0.5% hiBin units -- any range, since it cuts the tree. When the
+// range is one of the four nominal classes the analysis MC value for that class
+// is drawn as the reference, and the MC truth uses that class's histograms;
+// otherwise neither is shown. Check the same-sign and sideband levels in the
+// mass figures per class: the PbPb tag has no isolation cut, so the background
+// grows toward central.
+//
 // Usage (from this directory):
 //   root -l -b -q 'muonTagAndProbeEfficiency.C("pp_HighEGJet_tnp.root")'
 //   root -l -b -q 'muonTagAndProbeEfficiency.C("pp_HighEGJet_tnp.root", "pp_MC_tnp.root")'
+//   root -l -b -q 'muonTagAndProbeEfficiency.C("PbPb_HIHardProbes_tnp.root", "", 0, 20)'   // 0-10%
 
 #include "TFile.h"
 #include "TTree.h"
@@ -61,6 +72,7 @@
 #include "TMath.h"
 #include <vector>
 #include <cstdio>
+#include <cstring>
 #include <cmath>
 
 #include "../../headers/plotting/plotStyle.h"
@@ -71,6 +83,14 @@ const double probePtMin = 15.;     // analysis muon cut
 const double etaMaxAna  = 2.0;     // analysis muon |eta| cut
 const double dupDR      = 0.3;
 const double effMC_analysis = 0.9708;   // tight | gen, PYTHIA, as applied in the analysis
+
+// PbPb: the analysis MC values (PYTHIA+HYDJET, tight | gen) for the nominal
+// classes, and the scan's class index for each, so the matching h_gen*_C<k>
+// truth histograms are used
+const int    nClsAA = 4;
+const int    clsAA_lo[nClsAA]  = {0, 20, 60, 100};
+const int    clsAA_hi[nClsAA]  = {20, 60, 100, 160};
+const double effMC_AA[nClsAA]  = {0.8627, 0.9069, 0.9856, 0.9778};
 
 const std::vector<double> ptEdges  = {15, 20, 25, 30, 40, 50, 70, 100};
 const std::vector<double> etaEdges = {0., 0.4, 0.8, 1.2, 1.6, 2.0};
@@ -147,7 +167,7 @@ Eff measure(const std::vector<Pair> &P, int s, double ptLo, double ptHi, double 
   return r;
 }
 
-// MC truth ratio num/den from the scan's h_gen* histograms, pT > ptLo, |eta| < 2.1
+// MC truth ratio num/den from the scan's h_gen* histograms, pT > ptLo, |eta| < etaHi
 bool truth(TFile *f, const char *num, const char *den, double &e, double &err,
            double ptLo = probePtMin, double ptHi = 1e4, double etaHi = 2.1)
 {
@@ -181,7 +201,8 @@ TGraphAsymmErrors* makeGraph(const std::vector<Eff> &E, const std::vector<double
 
 } // namespace tpe
 
-void muonTagAndProbeEfficiency(TString dataFile = "pp_HighEGJet_tnp.root", TString mcFile = "")
+void muonTagAndProbeEfficiency(TString dataFile = "pp_HighEGJet_tnp.root", TString mcFile = "",
+                               int centLo = -1, int centHi = -1)
 {
   using namespace tpe;
   initPlotStyle();
@@ -201,13 +222,39 @@ void muonTagAndProbeEfficiency(TString dataFile = "pp_HighEGJet_tnp.root", TStri
   t->SetBranchAddress("pEta", &pEta);       t->SetBranchAddress("pMinDRTrkMu", &pMinDRTrkMu);
   t->SetBranchAddress("pairOS", &pairOS);   t->SetBranchAddress("pIsSTA", &pIsSTA);
   t->SetBranchAddress("pHasTrk", &pHasTrk); t->SetBranchAddress("pTightProd", &pTightProd);
+
+  // PbPb trees carry centHiBin; pp trees do not
+  const bool isPbPb = (t->GetBranch("centHiBin") != nullptr);
+  // a scan that required a muon trigger records it in provenance; its probes
+  // can be the muon that fired, which biases the efficiency up (PbPb scan header)
+  const bool muonTriggered = prov && TString(prov->GetTitle()).Contains("required");
+  Int_t centHiBin = -1;
+  if(isPbPb) t->SetBranchAddress("centHiBin", &centHiBin);
+  const bool centSel = (centLo >= 0 && centHi > centLo);
+  if(centSel && !isPbPb){ printf("ERROR: a centrality range was given but %s is a pp tree\n", dataFile.Data()); return; }
+
+  // reference value, label and figure tag for this selection
+  double refEff = isPbPb ? -1. : effMC_analysis;
+  int    truthCls = isPbPb ? 0 : -1;    // -1: pp names (no suffix); PbPb inclusive is C0 (0-90%)
+  TString sample = "pp data", figTag = "";
+  if(isPbPb){
+    sample = centSel ? Form("PbPb data, %g-%g%%", centLo/2., centHi/2.) : "PbPb data, 0-90%";
+    figTag = centSel ? Form("_PbPb_hiBin%dto%d", centLo, centHi) : "_PbPb";
+    if(centSel){
+      truthCls = -2;                   // no matching truth class unless found below
+      for(int k = 0; k < nClsAA; k++)
+        if(centLo == clsAA_lo[k] && centHi == clsAA_hi[k]){ refEff = effMC_AA[k]; truthCls = k + 1; }
+    }
+  }
+
   std::vector<Pair> P; P.reserve(t->GetEntries());
   for(Long64_t i = 0; i < t->GetEntries(); i++){
     t->GetEntry(i);
+    if(centSel && (centHiBin < centLo || centHiBin >= centHi)) continue;
     P.push_back({mass, pPt, std::fabs(pEta), pairOS != 0, pIsSTA != 0, pHasTrk != 0,
                  pTightProd != 0, pMinDRTrkMu});
   }
-  printf("  %zu tag-probe pairs\n", P.size());
+  printf("  %zu tag-probe pairs, %s\n", P.size(), sample.Data());
 
   TFile *fM = nullptr;
   if(mcFile != ""){
@@ -230,18 +277,40 @@ void muonTagAndProbeEfficiency(TString dataFile = "pp_HighEGJet_tnp.root", TStri
   const double prodErr = prod * std::hypot(std::max(I[kTrk].lo, I[kTrk].hi)/I[kTrk].e,
                                            std::max(I[kId].lo, I[kId].hi)/I[kId].e);
   printf("    trk x id = %.4f +- %.4f   vs   all = %.4f   (should agree)\n", prod, prodErr, I[kAll].e);
-  printf("\n    analysis MC value (PYTHIA, tight | gen): %.4f -- not like-for-like, see header\n",
-         effMC_analysis);
+  if(muonTriggered){
+    // worst case, failing probes never fire: true odds = measured odds / (2 - t)
+    printf("\n    MUON-TRIGGERED SAMPLE: the efficiency above is biased up. Lower bound on the\n"
+           "    true value for per-muon trigger efficiency t (failing probes never firing):\n");
+    printf("    step      t = 0.95    t = 0.90    t = 0.85\n");
+    for(int s = 0; s < nStep; s++){
+      if(!I[s].ok || I[s].e >= 1.) continue;
+      printf("    %-4s   ", stepName[s]);
+      for(double tr : {0.95, 0.90, 0.85}){
+        const double odds = I[s].e / (1. - I[s].e) / (2. - tr);
+        printf("    %.4f  ", odds / (1. + odds));
+      }
+      printf("\n");
+    }
+  }
+  if(refEff > 0)
+    printf("\n    analysis MC value (tight | gen): %.4f -- not like-for-like, see header\n", refEff);
+  if(fM && truthCls == -2){
+    printf("    (no nominal class matches hiBin %d-%d: MC truth skipped)\n", centLo, centHi);
+    fM = nullptr;
+  }
+  const TString sfx = truthCls >= 0 ? TString::Format("_C%d", truthCls) : TString("");
 
   double mcAll = -1, mcAllErr = 0, mcId = -1, mcIdErr = 0, mcAny = -1, mcAnyErr = 0;
   if(fM){
-    printf("\n    MC truth from %s (|eta| < 2.1, scan edges):\n", mcFile.Data());
+    // the PbPb scan's |eta| axis has an edge at 2.0, the pp one only at 2.1
+    const double etaTruth = isPbPb ? 2.0 : 2.1;
+    printf("\n    MC truth from %s (|eta| < %.1f, scan edges):\n", mcFile.Data(), etaTruth);
     for(int z = 0; z < 2; z++){
       const char *pop = z ? "FromZ" : "All";
       double e1, r1, e2, r2, e3, r3;
-      bool a = truth(fM, Form("h_gen%s_tight", pop), Form("h_gen%s_anyMu", pop), e1, r1);
-      bool b = truth(fM, Form("h_gen%s_tight", pop), Form("h_gen%s_hasTrk", pop), e2, r2);
-      bool c = truth(fM, Form("h_gen%s_anyMu", pop), Form("h_gen%s_den", pop), e3, r3);
+      bool a = truth(fM, Form("h_gen%s_tight%s", pop, sfx.Data()), Form("h_gen%s_anyMu%s", pop, sfx.Data()), e1, r1, probePtMin, 1e4, etaTruth);
+      bool b = truth(fM, Form("h_gen%s_tight%s", pop, sfx.Data()), Form("h_gen%s_hasTrk%s", pop, sfx.Data()), e2, r2, probePtMin, 1e4, etaTruth);
+      bool c = truth(fM, Form("h_gen%s_anyMu%s", pop, sfx.Data()), Form("h_gen%s_den%s", pop, sfx.Data()), e3, r3, probePtMin, 1e4, etaTruth);
       if(!a){ printf("      %-5s gen muons: empty\n", z ? "Z" : "all"); continue; }
       printf("      %-5s gen muons: tight|anyMu %.4f +- %.4f  tight|hasTrk %.4f +- %.4f  anyMu|gen %.4f +- %.4f\n",
              z ? "Z" : "all", e1, r1, b ? e2 : -1, b ? r2 : 0, c ? e3 : -1, c ? r3 : 0);
@@ -293,16 +362,22 @@ void muonTagAndProbeEfficiency(TString dataFile = "pp_HighEGJet_tnp.root", TStri
     c->SetLeftMargin(0.14); c->SetRightMargin(0.04); c->SetTopMargin(0.08); c->SetBottomMargin(0.13);
     TH1D *fr = new TH1D(Form("fr_%s", tag), "", 1, edges.front(), edges.back());
     fr->SetStats(0);
-    fr->GetYaxis()->SetRangeUser(0.88, 1.02);
+    // 0.88 suits pp; central PbPb can sit lower, so widen to keep every point
+    double yLo = 0.88;
+    if(refEff > 0) yLo = std::min(yLo, refEff - 0.03);
+    for(int s = 0; s < nStep; s++) for(const Eff &x : E[s])
+      if(x.ok) yLo = std::min(yLo, x.e - std::hypot(x.lo, x.syst) - 0.01);
+    fr->GetYaxis()->SetRangeUser(std::max(yLo, 0.5), 1.02);
     fr->GetXaxis()->SetTitle(xTitle); fr->GetYaxis()->SetTitle("efficiency");
     fr->GetXaxis()->SetTitleOffset(1.15); fr->GetYaxis()->SetTitleOffset(1.25);
     fr->Draw("axis");
     TLine *one = new TLine(edges.front(), 1., edges.back(), 1.);
     one->SetLineStyle(2); one->SetLineColor(kGray + 2); one->Draw();
-    TLine *ref = new TLine(edges.front(), effMC_analysis, edges.back(), effMC_analysis);
-    ref->SetLineStyle(7); ref->SetLineWidth(2); ref->SetLineColor(kGray + 1); ref->Draw();
+    TLine *ref = new TLine(edges.front(), refEff, edges.back(), refEff);
+    ref->SetLineStyle(7); ref->SetLineWidth(2); ref->SetLineColor(kGray + 1);
+    if(refEff > 0) ref->Draw();
     TLegend *leg = makeLegend(0.44, 0.15, 0.95, 0.42, 0.032);
-    leg->SetHeader("Z #rightarrow #mu#mu tag & probe, pp data", "L");
+    leg->SetHeader(Form("Z #rightarrow #mu#mu tag & probe, %s", sample.Data()), "L");
     for(int s = 0; s < nStep; s++){
       TGraphAsymmErrors *g = makeGraph(E[s], edges, (s - 1)*off, true);
       g->SetLineColor(TColor::GetColor(hex[s])); g->SetMarkerColor(TColor::GetColor(hex[s]));
@@ -310,13 +385,15 @@ void muonTagAndProbeEfficiency(TString dataFile = "pp_HighEGJet_tnp.root", TStri
       g->Draw("pz same");
       leg->AddEntry(g, stepLabel[s], "lp");
     }
-    leg->AddEntry(ref, "PYTHIA tight | gen (analysis value)", "l");
+    if(refEff > 0)
+      leg->AddEntry(ref, isPbPb ? "PYTHIA+HYDJET tight | gen (analysis value)"
+                                : "PYTHIA tight | gen (analysis value)", "l");
     leg->Draw();
     TLatex tx; tx.SetNDC(); tx.SetTextFont(42); tx.SetTextSize(0.034);
     tx.DrawLatex(0.14, 0.945, Form("muon efficiency, %s", sel));
     tx.SetTextSize(0.028);
     tx.DrawLatex(0.17, 0.86, "errors: stat (Clopper-Pearson) #oplus background syst");
-    savePdfTight(c, Form("%s/muonTnP_eff_%s.pdf", figDir, tag));
+    savePdfTight(c, Form("%s/muonTnP_eff_%s%s.pdf", figDir, tag, figTag.Data()));
   };
   drawVs(Ept,  ptEdges,  "probe muon p_{T} [GeV]", "vsPt",  "|#eta| < 2.0", 1.2);
   drawVs(Eeta, etaEdges, "probe muon |#eta|",      "vsEta", "p_{T} > 15 GeV", 0.04);
@@ -367,9 +444,10 @@ void muonTagAndProbeEfficiency(TString dataFile = "pp_HighEGJet_tnp.root", TStri
       leg->AddEntry(gOS, "opposite sign", "lp"); leg->AddEntry(gSS, "same sign", "lp");
       leg->Draw();
       TLatex tx; tx.SetNDC(); tx.SetTextFont(42); tx.SetTextSize(0.042);
-      tx.DrawLatex(0.15, 0.93, Form("%s: %s probes", stepLabel[s], k ? "passing" : "failing"));
+      tx.DrawLatex(0.15, 0.93, Form("%s: %s probes%s", stepLabel[s], k ? "passing" : "failing",
+                                    isPbPb ? Form(", %s", sample.Data() + strlen("PbPb data, ")) : ""));
     }
-    savePdfTight(c, Form("%s/muonTnP_mass_%s.pdf", figDir, stepName[s]));
+    savePdfTight(c, Form("%s/muonTnP_mass_%s%s.pdf", figDir, stepName[s], figTag.Data()));
   }
   printf("\n  figures in %s\n", figDir);
 }
