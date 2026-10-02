@@ -7,8 +7,9 @@ mechanics are the same. Set `system` below and run once per system:
     system = 'PbPb'   HIHardProbes, akPu4Calo vs akCs4PF
     system = 'pp'     HighEGJet,    ak4Calo   vs ak4PF
 
-These are the lists PbPb_scan.C and pp_scan.C read for their jet-triggered
-samples, so the events are the analysis's own.
+pp uses the list pp_scan.C reads for HighEGJet. PbPb uses the _fresh
+HardProbes forest, a re-forest of the dataset PbPb_scan.C was scanned on
+(its list still points at the deleted original).
 
 Run from src/scanning/jetCollection/ (the job scripts cd here, and the
 macro's JEC paths are relative to it).
@@ -37,7 +38,9 @@ import os
 system = 'PbPb'               # 'PbPb' or 'pp'
 
 if system == 'PbPb':
-    dblist = '../../../fileNames/fileNames_HIHardProbes_withCaloAndFlowJets.txt'
+    # the _fresh forest (crab 260926_022130); the original
+    # fileNames_HIHardProbes_withCaloAndFlowJets.txt points at files since deleted
+    dblist = '../../../fileNames/fileNames_HIHardProbes_withCaloAndFlowJets_fresh_partial.txt'
     isPP = False
 elif system == 'pp':
     dblist = '../../../fileNames/fileNames_pp_HighEGJet.txt'
