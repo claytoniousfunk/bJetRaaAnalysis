@@ -34,11 +34,11 @@ bool apply_JEU_shift_up = false;
 bool apply_JEU_shift_down = false;
 // select dataset
 bool doSingleMuonSample = false;
-bool doMinBiasSample_Part1 = false;
+bool doMinBiasSample_Part1 = true;
 bool doMinBiasSample_Part2 = false;
 bool doMinBiasSample_Part3 = false;
 bool doMinBiasSample_Part4 = false;
-bool doHardProbesSample = true;
+bool doHardProbesSample = false;
 bool doNoRhoModificationSample = false;
 bool doWithRhoModificationSample = false;
 // reweight functions (for bkg subtraction)
@@ -55,4 +55,4 @@ bool useManualJEC = true;
 // PbPb, by roughly (1.029/1.010)^5 ~ 1.10 in R_AA terms. Flip both pp and PbPb
 // together, or the comparison mixes conventions. Adds _noL2L3Residual to the
 // output name.
-bool skipCaloL2L3Residual = true;
+bool skipCaloL2L3Residual = false;
