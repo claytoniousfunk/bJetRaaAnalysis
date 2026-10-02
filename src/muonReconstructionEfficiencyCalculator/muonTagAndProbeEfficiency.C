@@ -11,20 +11,29 @@
 //   all  any muon object    -> analysis tight ID
 // trk x id should reproduce all; the two are printed side by side.
 //
-// BACKGROUND. Opposite-sign pairs only. Signal = window count minus the scaled
-// sideband count, separately for passing and failing probes, assuming a flat
-// background across window + sidebands:
-//   id, all   window 81-101, sidebands 61-71 and 111-121   (scale 1)
-//   trk       window 71-111, sidebands 51-61 and 121-131   (scale 2)
+// BACKGROUND. Signal = opposite-sign window count minus same-sign window count,
+// separately for passing and failing probes. Windows:
+//   id, all   75-105
+//   trk       71-111
 // trk is wider because a failing STA probe's mass uses its standalone momentum,
 // whose resolution is poor; a narrow window would lose failing probes faster than
 // passing ones and bias the efficiency up.
 //
-// SYSTEMATIC. Two variations, largest shift quoted: no subtraction at all, and a
-// narrow window (86-96, or 81-101 for trk) with the same sidebands. The
-// background is small (the 50-file trial had 4 same-sign pairs against 298
-// opposite-sign in the window), so this should be small too; if it is not, the
-// flat-background assumption needs replacing with a fit.
+// Same-sign is nominal because it assumes nothing about the background's mass
+// shape. The opposite-sign sideband method it replaced assumed a flat background
+// across window and sidebands, which fails below ~25 GeV probe pT: there the
+// continuum falls roughly exponentially and the sideband average overestimates
+// what sits under the peak. Same-sign models the charge-uncorrelated part (fakes,
+// random pairings). It misses charge-correlated opposite-sign background (b bbar
+// -> mu+ mu-), which is what the sideband variation below is there to bound.
+//
+// SYSTEMATIC. Largest shift of two variations:
+//   sideband   opposite-sign sidebands, scaled to the window width, assuming a
+//              flat background:  id/all 61-71 and 111-121,  trk 51-61 and 121-131
+//   none       no subtraction at all
+// The sideband variation also removes the Z's radiative tail and Drell-Yan as
+// "background" although they are real muons, so it overstates the background
+// and the systematic is conservative.
 //
 // STATISTICAL ERRORS. Clopper-Pearson 68% on the raw window counts, placed around
 // the subtracted central value. Efficiencies here sit near 1 with few failures,
@@ -70,6 +79,7 @@
 #include "TBox.h"
 #include "TSystem.h"
 #include "TMath.h"
+#include "TGaxis.h"
 #include <vector>
 #include <cstdio>
 #include <cstring>
@@ -104,12 +114,13 @@ const char *stepLabel[nStep] = {"STA #rightarrow inner track",
                                 "any muon #rightarrow tight ID"};
 
 struct MassWin { double lo, hi, sb1lo, sb1hi, sb2lo, sb2hi; };
-// [variant][step]: 0 nominal, 1 narrow window. Variant 2 (no subtraction)
-// reuses the nominal window with the sidebands ignored.
-const MassWin win[2][nStep] = {
-  {{71, 111, 51, 61, 121, 131}, {81, 101, 61, 71, 111, 121}, {81, 101, 61, 71, 111, 121}},
-  {{81, 101, 51, 61, 121, 131}, {86,  96, 61, 71, 111, 121}, {86,  96, 61, 71, 111, 121}},
+// per step: counting window, and the sidebands used by the sideband variation
+const MassWin win[nStep] = {
+  {71, 111, 51, 61, 121, 131}, {75, 105, 61, 71, 111, 121}, {75, 105, 61, 71, 111, 121},
 };
+
+// background variants: 0 same-sign (nominal), 1 opposite-sign sideband, 2 none
+enum Bkg { kBkgSameSign, kBkgSideband, kBkgNone, nBkg };
 
 struct Pair { float mass, pt, aeta; bool os, sta, trk, tight; float minDR; };
 
@@ -122,32 +133,35 @@ struct Eff {
 bool isProbe(const Pair &p, int s) { return s == kTrk ? p.sta : (s == kId ? p.trk : true); }
 bool isPass (const Pair &p, int s) { return s == kTrk ? p.trk : p.tight; }
 
-// one variant: v = 0 nominal, 1 narrow window, 2 no subtraction
+// signal = OS window - background estimate, for background variant v (Bkg)
 void count(const std::vector<Pair> &P, int s, int v, double ptLo, double ptHi,
            double etaLo, double etaHi, double &sPass, double &sFail,
            double &wPass, double &wFail)
 {
-  const MassWin &w = win[v == 1 ? 1 : 0][s];
+  const MassWin &w = win[s];
   const double scale = (w.hi - w.lo) / ((w.sb1hi - w.sb1lo) + (w.sb2hi - w.sb2lo));
-  double win_[2] = {0, 0}, sb[2] = {0, 0};
+  double osWin[2] = {0, 0}, ssWin[2] = {0, 0}, osSB[2] = {0, 0};
   for(const Pair &p : P){
-    if(!p.os || p.minDR < dupDR || !isProbe(p, s)) continue;
+    if(p.minDR < dupDR || !isProbe(p, s)) continue;
     if(p.pt < ptLo || p.pt >= ptHi || p.aeta < etaLo || p.aeta >= etaHi) continue;
     const int k = isPass(p, s) ? 1 : 0;
-    if(p.mass >= w.lo && p.mass < w.hi) win_[k]++;
-    else if((p.mass >= w.sb1lo && p.mass < w.sb1hi) || (p.mass >= w.sb2lo && p.mass < w.sb2hi)) sb[k]++;
+    const bool inWin = (p.mass >= w.lo && p.mass < w.hi);
+    const bool inSB  = (p.mass >= w.sb1lo && p.mass < w.sb1hi) || (p.mass >= w.sb2lo && p.mass < w.sb2hi);
+    if(p.os){ if(inWin) osWin[k]++; else if(inSB) osSB[k]++; }
+    else if(inWin) ssWin[k]++;
   }
-  const double sc = (v == 2) ? 0. : scale;
-  sPass = win_[1] - sc*sb[1];
-  sFail = win_[0] - sc*sb[0];
-  wPass = win_[1]; wFail = win_[0];
+  for(int k = 0; k < 2; k++){
+    const double bkg = (v == kBkgSameSign) ? ssWin[k] : (v == kBkgSideband ? scale*osSB[k] : 0.);
+    (k ? sPass : sFail) = osWin[k] - bkg;
+  }
+  wPass = osWin[1]; wFail = osWin[0];
 }
 
 Eff measure(const std::vector<Pair> &P, int s, double ptLo, double ptHi, double etaLo, double etaHi)
 {
   Eff r;
   double sp, sf, wp, wf;
-  count(P, s, 0, ptLo, ptHi, etaLo, etaHi, sp, sf, wp, wf);
+  count(P, s, kBkgSameSign, ptLo, ptHi, etaLo, etaHi, sp, sf, wp, wf);
   r.nPassWin = wp; r.nFailWin = wf;
   if(wp + wf <= 0) return r;
   sf = std::max(sf, 0.);
@@ -157,7 +171,7 @@ Eff measure(const std::vector<Pair> &P, int s, double ptLo, double ptHi, double 
   const double eRaw = (double)K / N;
   r.lo = eRaw - TEfficiency::ClopperPearson(N, K, 0.682689, false);
   r.hi = TEfficiency::ClopperPearson(N, K, 0.682689, true) - eRaw;
-  for(int v = 1; v <= 2; v++){
+  for(int v : {kBkgSideband, kBkgNone}){
     double a, b, c, d;
     count(P, s, v, ptLo, ptHi, etaLo, etaHi, a, b, c, d);
     b = std::max(b, 0.);
@@ -236,10 +250,14 @@ void muonTagAndProbeEfficiency(TString dataFile = "pp_HighEGJet_tnp.root", TStri
   // reference value, label and figure tag for this selection
   double refEff = isPbPb ? -1. : effMC_analysis;
   int    truthCls = isPbPb ? 0 : -1;    // -1: pp names (no suffix); PbPb inclusive is C0 (0-90%)
-  TString sample = "pp data", figTag = "";
+  // every figure name carries the input file's name, so running on a second
+  // dataset (HighEGJet vs SingleMuon) cannot overwrite the first one's figures
+  TString dsTag = gSystem->BaseName(dataFile);
+  dsTag.ReplaceAll(".root", "");
+  TString sample = "pp data", figTag = "_" + dsTag;
   if(isPbPb){
     sample = centSel ? Form("PbPb data, %g-%g%%", centLo/2., centHi/2.) : "PbPb data, 0-90%";
-    figTag = centSel ? Form("_PbPb_hiBin%dto%d", centLo, centHi) : "_PbPb";
+    if(centSel) figTag += Form("_hiBin%dto%d", centLo, centHi);
     if(centSel){
       truthCls = -2;                   // no matching truth class unless found below
       for(int k = 0; k < nClsAA; k++)
@@ -267,7 +285,7 @@ void muonTagAndProbeEfficiency(TString dataFile = "pp_HighEGJet_tnp.root", TStri
   Eff I[nStep];
   for(int s = 0; s < nStep; s++) I[s] = measure(P, s, probePtMin, 1e4, 0., etaMaxAna);
 
-  printf("\n  integrated: p_T > %.0f GeV, |eta| < %.1f, opposite-sign, sideband-subtracted\n",
+  printf("\n  integrated: p_T > %.0f GeV, |eta| < %.1f, opposite-sign minus same-sign\n",
          probePtMin, etaMaxAna);
   printf("    step  window pass  fail     efficiency    stat (+/-)       syst\n");
   for(int s = 0; s < nStep; s++)
@@ -277,6 +295,17 @@ void muonTagAndProbeEfficiency(TString dataFile = "pp_HighEGJet_tnp.root", TStri
   const double prodErr = prod * std::hypot(std::max(I[kTrk].lo, I[kTrk].hi)/I[kTrk].e,
                                            std::max(I[kId].lo, I[kId].hi)/I[kId].e);
   printf("    trk x id = %.4f +- %.4f   vs   all = %.4f   (should agree)\n", prod, prodErr, I[kAll].e);
+  printf("    by background method:   same-sign   sideband   none\n");
+  for(int s = 0; s < nStep; s++){
+    printf("      %-4s               ", stepName[s]);
+    for(int v : {kBkgSameSign, kBkgSideband, kBkgNone}){
+      double a, b, c, d;
+      count(P, s, v, probePtMin, 1e4, 0., etaMaxAna, a, b, c, d);
+      b = std::max(b, 0.);
+      printf("  %.4f  ", a > 0 ? a/(a + b) : 0.);
+    }
+    printf("\n");
+  }
   if(muonTriggered){
     // worst case, failing probes never fire: true odds = measured odds / (2 - t)
     printf("\n    MUON-TRIGGERED SAMPLE: the efficiency above is biased up. Lower bound on the\n"
@@ -398,31 +427,43 @@ void muonTagAndProbeEfficiency(TString dataFile = "pp_HighEGJet_tnp.root", TStri
   drawVs(Ept,  ptEdges,  "probe muon p_{T} [GeV]", "vsPt",  "|#eta| < 2.0", 1.2);
   drawVs(Eeta, etaEdges, "probe muon |#eta|",      "vsEta", "p_{T} > 15 GeV", 0.04);
 
-  // mass distributions, 'all' and 'trk' steps, pass and fail, with windows marked
-  for(int s : {kAll, kTrk}){
-    TCanvas *c = new TCanvas(Form("cm_%s", stepName[s]), "", 1200, 550);
+  // mass distributions, pass and fail, with the window and sidebands marked.
+  // Drawn integrated for 'all' and 'trk', and per probe-pT bin for 'all' as
+  // backup: the per-bin efficiencies above are only as good as the background
+  // estimate in each bin, and these show it.
+  auto drawMass = [&](int s, double ptLo, double ptHi, const TString &name, const TString &ptLabel){
+    TCanvas *c = new TCanvas("cm_" + name, "", 1200, 550);
     c->Divide(2, 1);
+    double sp, sf, wp, wf, bp, bf;
+    count(P, s, kBkgSameSign, ptLo, ptHi, 0., etaMaxAna, sp, sf, wp, wf);
+    bp = wp - sp; bf = wf - sf;    // same-sign estimate, pass / fail
+    const Eff E = measure(P, s, ptLo, ptHi, 0., etaMaxAna);
     for(int k = 1; k >= 0; k--){
       c->cd(2 - k);
       gPad->SetLeftMargin(0.15); gPad->SetRightMargin(0.04); gPad->SetBottomMargin(0.13);
-      TH1D *os = new TH1D(Form("os_%s_%d", stepName[s], k), "", 50, 40, 140);
-      TH1D *ss = new TH1D(Form("ss_%s_%d", stepName[s], k), "", 50, 40, 140);
+      TH1D *os = new TH1D("os_" + name + Form("_%d", k), "", 50, 40, 140);
+      TH1D *ss = new TH1D("ss_" + name + Form("_%d", k), "", 50, 40, 140);
+      os->SetDirectory(nullptr); ss->SetDirectory(nullptr);
       for(const Pair &p : P){
         if(p.minDR < dupDR || !isProbe(p, s) || isPass(p, s) != (k == 1)) continue;
-        if(p.pt < probePtMin || p.aeta >= etaMaxAna) continue;
+        if(p.pt < ptLo || p.pt >= ptHi || p.aeta >= etaMaxAna) continue;
         (p.os ? os : ss)->Fill(p.mass);
       }
       styleH(os, okabeHex[0], markFilledCircle, 0.9);
       styleH(ss, okabeHex[5], markOpenSquare, 0.9);
-      os->SetMinimum(0); os->SetMaximum(1.25*std::max(1., os->GetMaximum() + std::sqrt(os->GetMaximum())));
+      // log: the peak and the continuum under it differ by up to 100x at low pT,
+      // and the continuum's shape across the sidebands is the thing to judge
+      gPad->SetLogy();
+      const double ymin = 0.5, ymax = 20.*std::max(2., os->GetMaximum());
+      os->SetMinimum(ymin); os->SetMaximum(ymax);
       os->GetXaxis()->SetTitle("m_{#mu#mu} [GeV]"); os->GetYaxis()->SetTitle("pairs / 2 GeV");
       os->Draw("axis");
-      const MassWin &w = win[0][s];
-      const double ymax = os->GetMaximum();
-      for(double x : {w.lo, w.hi}){ TLine *l = new TLine(x, 0, x, ymax); l->SetLineColor(kGray + 2); l->SetLineStyle(2); l->Draw(); }
+      const MassWin &w = win[s];
+      TLine *lWin = nullptr; TBox *bSB = nullptr;
+      for(double x : {w.lo, w.hi}){ lWin = new TLine(x, ymin, x, ymax); lWin->SetLineColor(kGray + 2); lWin->SetLineStyle(2); lWin->Draw(); }
       for(auto sb : {std::make_pair(w.sb1lo, w.sb1hi), std::make_pair(w.sb2lo, w.sb2hi)}){
-        TBox *b = new TBox(sb.first, 0, sb.second, ymax);
-        b->SetFillColorAlpha(TColor::GetColor(okabeHex[1]), 0.25); b->SetLineWidth(0); b->Draw();
+        bSB = new TBox(sb.first, ymin, sb.second, ymax);
+        bSB->SetFillColorAlpha(TColor::GetColor(okabeHex[1]), 0.25); bSB->SetLineWidth(0); bSB->Draw();
       }
       // as graphs without the empty bins: a marker at zero reads as a measured zero
       auto toG = [](TH1D *h){
@@ -440,14 +481,34 @@ void muonTagAndProbeEfficiency(TString dataFile = "pp_HighEGJet_tnp.root", TStri
         return g; };
       TGraphAsymmErrors *gOS = toG(os), *gSS = toG(ss);
       gOS->Draw("pz same"); gSS->Draw("pz same");
-      TLegend *leg = makeLegend(0.55, 0.72, 0.95, 0.88, 0.040);
+      TLegend *leg = makeLegend(0.66, 0.70, 0.95, 0.88, 0.030);
       leg->AddEntry(gOS, "opposite sign", "lp"); leg->AddEntry(gSS, "same sign", "lp");
+      leg->AddEntry(lWin, Form("window %.0f-%.0f", w.lo, w.hi), "l");
+      leg->AddEntry(bSB, "sidebands (syst.)", "f");
       leg->Draw();
-      TLatex tx; tx.SetNDC(); tx.SetTextFont(42); tx.SetTextSize(0.042);
-      tx.DrawLatex(0.15, 0.93, Form("%s: %s probes%s", stepLabel[s], k ? "passing" : "failing",
-                                    isPbPb ? Form(", %s", sample.Data() + strlen("PbPb data, ")) : ""));
+      TLatex tx; tx.SetNDC(); tx.SetTextFont(42); tx.SetTextSize(0.040);
+      tx.DrawLatex(0.15, 0.93, Form("%s: %s probes, %s", stepLabel[s], k ? "passing" : "failing", ptLabel.Data()));
+      tx.SetTextSize(0.030);
+      tx.DrawLatex(0.19, 0.85, Form("OS window %.0f, SS window %.0f", k ? wp : wf, k ? bp : bf));
+      if(k == 0 && E.ok)
+        tx.DrawLatex(0.19, 0.80, Form("#varepsilon = %.4f ^{+%.4f}_{-%.4f} (stat) #pm %.4f (syst)", E.e, E.hi, E.lo, E.syst));
     }
-    savePdfTight(c, Form("%s/muonTnP_mass_%s%s.pdf", figDir, stepName[s], figTag.Data()));
-  }
-  printf("\n  figures in %s\n", figDir);
+    savePdfTight(c, Form("%s/%s.pdf", figDir, name.Data()));
+    delete c;
+  };
+
+  // full integers on the count axis: the shared x10^n header lands on the title
+  TGaxis::SetMaxDigits(6);
+  const TString cls = isPbPb ? TString(", ") + (sample.Data() + strlen("PbPb data, ")) : TString("");
+  for(int s : {kAll, kTrk})
+    drawMass(s, probePtMin, 1e4, Form("muonTnP_mass_%s%s", stepName[s], figTag.Data()),
+             Form("p_{T} > %.0f GeV%s", probePtMin, cls.Data()));
+
+  const TString ptDir = TString(figDir) + "/massPtBins";
+  gSystem->mkdir(ptDir, kTRUE);
+  for(size_t b = 0; b + 1 < ptEdges.size(); b++)
+    drawMass(kAll, ptEdges[b], ptEdges[b + 1],
+             Form("massPtBins/muonTnP_mass_all_pt%.0fto%.0f%s", ptEdges[b], ptEdges[b + 1], figTag.Data()),
+             Form("%.0f < p_{T} < %.0f GeV%s", ptEdges[b], ptEdges[b + 1], cls.Data()));
+  printf("\n  figures in %s (per-pT-bin mass plots in massPtBins/)\n", figDir);
 }
