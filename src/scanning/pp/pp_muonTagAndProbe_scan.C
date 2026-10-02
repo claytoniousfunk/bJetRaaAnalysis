@@ -88,6 +88,7 @@
 #include "TVector2.h"
 #include "TLorentzVector.h"
 #include "TMath.h"
+#include "TSystem.h"
 #include <vector>
 #include <string>
 #include <fstream>
@@ -146,11 +147,18 @@ void pp_muonTagAndProbe_scan(TString input, TString output, bool isMC = false,
 
   TChain evt("hiEvtAnalyzer/HiTree"), mu("ggHiNtuplizerGED/EventTree"),
          skim("skimanalysis/HltTree");
+  // std::ifstream does not expand "~" -- only the shell does -- so an unexpanded
+  // list path opens nothing and, unchecked, the scan runs on an empty chain.
+  gSystem->ExpandPathName(input);
   if(input.EndsWith(".txt")){
-    std::ifstream in(input.Data()); std::string f;
+    std::ifstream in(input.Data());
+    if(!in){ printf("ERROR: cannot open file list %s\n", input.Data()); return; }
+    std::string f;
     while(in >> f){ evt.Add(f.c_str()); mu.Add(f.c_str()); skim.Add(f.c_str()); }
   }
   else{ evt.Add(input); mu.Add(input); skim.Add(input); }
+  if(evt.GetNtrees() == 0 || evt.GetEntries() == 0){
+    printf("ERROR: no events in %s (%d files)\n", input.Data(), evt.GetNtrees()); return; }
   evt.AddFriend(&mu); evt.AddFriend(&skim);
 
   // ---- branches -------------------------------------------------------------
