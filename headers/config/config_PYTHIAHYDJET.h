@@ -79,7 +79,7 @@ bool useCaloJetsOverride = true;
 bool useManualJEC = true;
 // for response scan
 bool onlyEvenEvents = false;
-bool onlyOddEvents = true;
+bool onlyOddEvents = false;
 // response scan: fill only jets whose jet-branch muon (mupt/mueta, no
 // muon-tree matching) passes muPtCut and |eta| < 2
-bool onlyMuTaggedJets = true;
+bool onlyMuTaggedJets = false;
