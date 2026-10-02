@@ -43,7 +43,7 @@
 namespace cvpfPlot {
 
 const TString dirIn  = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/";
-TString filePbPb = dirIn + "PbPb/PbPb_HardProbes_caloVsPFJetScale.root";
+TString filePbPb = dirIn + "PbPb/PbPb_caloVsPFJetScale.root";
 TString filePP   = dirIn + "pp/pp_HighEGJet_caloVsPFJetScale.root";
 TString dirOut = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/jetCollection/";
 

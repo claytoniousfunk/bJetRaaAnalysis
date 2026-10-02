@@ -15,7 +15,7 @@ Run from src/scanning/jetCollection/ (the job scripts cd here, and the
 macro's JEC paths are relative to it).
 
 Merge afterwards into the names the plot macro reads:
-    hadd -f PbPb_HardProbes_caloVsPFJetScale.root <PbPb outdir>/cvpf_*.root
+    hadd -f PbPb_caloVsPFJetScale.root            <PbPb outdir>/cvpf_*.root
     hadd -f pp_HighEGJet_caloVsPFJetScale.root    <pp outdir>/cvpf_*.root
 copy them to rootFiles/scanningOuput/PbPb/ and .../pp/, and run
 src/plots/jetPt/jetCollection/plotCaloOverPFJetScale_PbPbVsPP.C.
@@ -41,18 +41,21 @@ if system == 'PbPb':
     # the _fresh forest (crab 260926_022130); the original
     # fileNames_HIHardProbes_withCaloAndFlowJets.txt points at files since deleted
     dblist = '../../../fileNames/fileNames_HIHardProbes_withCaloAndFlowJets_fresh_partial.txt'
+    dataset = 'HardProbes'
     isPP = False
 elif system == 'pp':
     dblist = '../../../fileNames/fileNames_pp_HighEGJet.txt'
+    dataset = 'HighEGJet'
     isPP = True
 else:
     raise SystemExit(f"ERROR: system must be 'PbPb' or 'pp', not {system!r}")
 
-jobname = f'{system}_caloVsPFJetScale'
+# <system>_<dataset>_<study>, as in the muonTagAndProbe scripts
+jobname = f'{system}_{dataset}_caloVsPFJetScale'
 
 # Must be a directory the jobs can write: EOS via the FUSE mount works from
 # lxplus condor.
-outdir = f'/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/output_{system}_caloVsPFJetScale'
+outdir = f'/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/output_{jobname}'
 
 nsplit = 50                   # input files per job; time the trial and adjust
 time_flavour = '"workday"'    # 8h
