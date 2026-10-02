@@ -785,10 +785,30 @@ void PYTHIAHYDJET_scan_response(int group = 1){
     
       double w = w_pthat * w_reweight_vz * w_reweight_hiBin;
 
-      double leadingMatchedRecoJetPt = -999.0;
+double leadingMatchedRecoJetPt = -999.0;
 
-      double leadingRecoJetPt = -999.0;
-    
+      // RESPONSE FROM THE RECO SIDE, with the nominal scan's reco selection
+      // (PYTHIAHYDJET_scan.C reco-jet loop), so the measured axis of the matrix
+      // is the same population the unfolded spectrum is.  Per reco jet:
+      //   pThat-correlation cut  reco pT / pThat against the nominal-class fit,
+      //                          PER JET (was: per event, on the leading reco jet)
+      //   jetTrkMax filter       doJetTrkMaxFilter (was: in the file name only)
+      //   eta-phi mask           doEtaPhiMask
+      //   |eta| < etaMax, pT > jetPtCut
+      // A reco jet failing any of these is dropped; if it had a gen match, that
+      // gen jet becomes a miss.  A reco jet passing them with refpt > 0 enters the
+      // matrix at (reco pT, refpt) WHATEVER the gen jet's eta: matched = "has a
+      // forest reference", the nominal scan's definition (its flavor 18 is
+      // refpt < 0).  refpt <= 0 is a fake -> h_unmatchedRecoJetPt.  Gen jets with
+      // |eta| < etaMax and no accepted reco match are the misses.
+      //
+      // The old event-level pThat filter ran after the reco-jet loop, so the fakes
+      // and the reco diagnostics were filled from events it then rejected (the
+      // KNOWN BUG of 2026-09-25).  With the cut per jet there is no event-level
+      // filter left and every histogram sees the same jets.
+      std::vector<int> genMatchedReco(em->ngj, -1);   // accepted reco jet matched to gen jet j
+
+      // RECO JET LOOP -- matrix, fakes, reco diagnostics
       for(int i = 0; i < em->njet; i++){
 	JEC.SetJetPT(em->rawpt[i]);
 	JEC.SetJetEta(em->jeteta[i]);
@@ -800,30 +820,40 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	double recoJetPhi_i = em->jetphi[i];
 	double refJetPt_i = em->refpt[i];
 	int recoJetFlavor_i = recoJetFlavorFor(useCaloJetsOverride, i, em);
-	double minDr_i = 100.0;
-	if(fabs(recoJetEta_i) > 1.6) continue;
-	if(recoJetPt_i > leadingRecoJetPt) leadingRecoJetPt = recoJetPt_i;
 
-	bool hasGenJetMatch_i = false;
+	// ---- nominal reco selection, same order as PYTHIAHYDJET_scan.C
+	if(doPThatCorrelationFilter){
+	  TF1 *fPThatCorr = nullptr;
+	  switch(nominalClass){
+	  case 1: fPThatCorr = useCaloJetsOverride ? fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C1 : fitFxn_PYTHIAHYDJET_pThatCorrelation_C1; break;
+	  case 2: fPThatCorr = useCaloJetsOverride ? fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C2 : fitFxn_PYTHIAHYDJET_pThatCorrelation_C2; break;
+	  case 3: fPThatCorr = useCaloJetsOverride ? fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C3 : fitFxn_PYTHIAHYDJET_pThatCorrelation_C3; break;
+	  default: fPThatCorr = useCaloJetsOverride ? fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C4 : fitFxn_PYTHIAHYDJET_pThatCorrelation_C4; break;
+	  }
+	  if((recoJetPt_i / em->pthat) > fPThatCorr->Eval(em->pthat)) continue;
+	}
+	if(doJetTrkMaxFilter){
+	  if(!passesJetTrkMaxFilter(em->jetTrkMax[i],recoJetPt_i)) continue;
+	}
+	if(doEtaPhiMask){
+	  if(etaPhiMask(recoJetEta_i,recoJetPhi_i)) continue;
+	}
+	if(TMath::Abs(recoJetEta_i) > etaMax || recoJetPt_i < jetPtCut) continue;
+	if(doRemoveHYDJETjet && refJetPt_i > 0){
+	  if(remove_HYDJET_jet(em->pthat, refJetPt_i)) continue;
+	}
 
-	// nearest gen jet to this reco jet, by dR, regardless of any cut
+	// nearest gen jet to this reco jet, by dR, regardless of any cut; and the
+	// gen jet the forest reference points at (refpt == genjetpt)
 	double dRnearest_i   = 999.0;
 	double nearestGenPt_i = -1.0;
-
+	int    refGen_i = -1;
 	for(int j = 0; j < em->ngj ; j++){
-
-	  double genJetPt_j = em->genjetpt[j];
-	  double genJetEta_j = em->genjeteta[j];
-	  double genJetPhi_j = em->genjetphi[j];
-
-	  if(refJetPt_i == genJetPt_j){
-	    hasGenJetMatch_i = true;
-	  }
-
-	  double dR_ij = getDr(recoJetEta_i, recoJetPhi_i, genJetEta_j, genJetPhi_j);
+	  if(refJetPt_i > 0 && refJetPt_i == em->genjetpt[j]) refGen_i = j;
+	  double dR_ij = getDr(recoJetEta_i, recoJetPhi_i, em->genjeteta[j], em->genjetphi[j]);
 	  if(dR_ij < dRnearest_i){
 	    dRnearest_i   = dR_ij;
-	    nearestGenPt_i = genJetPt_j;
+	    nearestGenPt_i = em->genjetpt[j];
 	  }
 	}
 
@@ -851,7 +881,8 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	h_recoPt_nearestGenPt[0]->Fill(recoJetPt_i, nearestGenPt_i, w);
 	h_recoPt_nearestGenPt[CentralityIndex]->Fill(recoJetPt_i, nearestGenPt_i, w);
 
-	if(!hasGenJetMatch_i){
+	// ---- fakes
+	if(refJetPt_i <= 0){
 	  h_unmatchedRecoJetPt[0][0]->Fill(recoJetPt_i,w);
 	  h_unmatchedRecoJetPt[CentralityIndex][0]->Fill(recoJetPt_i,w);
 	  if(fabs(recoJetFlavor_i) == 5){
@@ -879,187 +910,56 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	    h_unmatchedRecoJetPt[CentralityIndex][6]->Fill(recoJetPt_i,w);
 	  }
 	  else{};
+	  continue;
 	}
-      }
-      //  KNOWN BUG, found 2026-09-25, needs a rescan to fix.  This filter sits
-      //  AFTER the reco-jet loop above, because it needs leadingRecoJetPt, which
-      //  that loop computes.  So its "continue" protects the response matrix and
-      //  h_unmatchedGenJetPt (filled further down) but NOT the histograms the
-      //  loop has already filled: h_unmatchedRecoJetPt (the unfolding's fakes),
-      //  h_recoJetPt_matchedDr, h_recoJetPt_unmatchedDr, h_recoPt_dRnearestGen
-      //  and h_recoPt_nearestGenPt.  Comparing the 2026-9-25 full-sample calo
-      //  scans with the filter on and off, C1 h_unmatchedRecoJetPt_allJets is
-      //  identical to five figures in every bin while the matched response loses
-      //  26% at 140-160 GeV -- the fakes keep exactly the high-recoPt/pThat
-      //  events the filter exists to throw away.  That leaves the response
-      //  internally inconsistent, and it is what breaks the C1 split-sample
-      //  unfolding closure (chi2/ndf ~ 9, a coherent +-15% wave in
-      //  unfolded/truth with a step at 200 GeV, where the fakes fall off a
-      //  cliff).  FIX: split the loop above -- a first pass computing only
-      //  leadingRecoJetPt, then this filter, then the filling pass.
-      if(doPThatCorrelationFilter){
-	if(useCaloJetsOverride){
-	  if(nominalClass == 4){
-	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C4->Eval(em->pthat)) continue;
-	  }
-	  else if(nominalClass == 3){
-	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C3->Eval(em->pthat)) continue;
-	  }
-	  else if(nominalClass == 2){
-	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C2->Eval(em->pthat)) continue;
-	  }
-	  else if(nominalClass == 1){
-	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C1->Eval(em->pthat)) continue;
-	  }
-	  else{
-	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_caloJets_C4->Eval(em->pthat)) continue; // default to C4 if we have more centrality bins
-	  };
-	}
-	else{
-	  if(nominalClass == 4){
-	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C4->Eval(em->pthat)) continue;
-	  }
-	  else if(nominalClass == 3){
-	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C3->Eval(em->pthat)) continue;
-	  }
-	  else if(nominalClass == 2){
-	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C2->Eval(em->pthat)) continue;
-	  }
-	  else if(nominalClass == 1){
-	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C1->Eval(em->pthat)) continue;
-	  }
-	  else{
-	    if((leadingRecoJetPt / em->pthat) > fitFxn_PYTHIAHYDJET_pThatCorrelation_C4->Eval(em->pthat)) continue; // default to C4 if we have more centrality bins
-	  };
-	}
-      }
 
-    
-      
-
-      // GEN JET LOOP
-      for(int i = 0; i < em->ngj ; i++){
-
+	// ---- matched: response entry at (reco pT, refpt)
 	double w_jet = w;
-      
-	// JET VARIABLES
-	double x = em->genjetpt[i];
-	double y = em->genjeteta[i];
-	double z = em->genjetphi[i];
+	double x = refJetPt_i;
+	const bool hasGenEta = (refGen_i >= 0);   // gen eta known only via refpt == genjetpt
+	double y = hasGenEta ? em->genjeteta[refGen_i] : -999.;
+	if(refGen_i >= 0) genMatchedReco[refGen_i] = i;
 
-	double matchedRecoJetPt = 0.0;
-	double matchedRawJetPt = 0.0;
-	double recoMuonPt = 0.0;
-	double recoMuonEta = 0.0;
-			
-	if(TMath::Abs(y) > etaMax) continue;
+	const bool hasRecoJetMuon = (em->mupt[i] > muPtCut && fabs(em->mueta[i]) < 2.);
+	const bool hasRecoMuon = hasRecoJetMuon;
+	int jetFlavorInt = recoJetFlavor_i;
 
-	// if(doRemoveHYDJETjet){
-	// 	if(remove_HYDJET_jet(em->pthat, x)) continue;
-	// }
-	
-	// GET FLAVOR FROM RECO MATCH
-	bool hasRecoJetMatch = false;
-	bool hasRecoJetMuon = false;
-	bool hasRecoMuon = false;
-	double minDr = 100.0;
-	int recoJetFlavorFlag = 0;
-	int jetFlavorInt = 19;
+	double matchedRecoJetPt = recoJetPt_i;
+	if(matchedRecoJetPt > leadingMatchedRecoJetPt) leadingMatchedRecoJetPt = matchedRecoJetPt;
 
-	
-	for(int k = 0; k < em->njet; k++){
+	JEU.SetJetPT(matchedRecoJetPt);
+	JEU.SetJetEta(em->jeteta[i]);
+	JEU.SetJetPhi(em->jetphi[i]);
 
-	  double recoJetPt_k = em->jetpt[k];
-	  double refJetPt_k = em->refpt[k];
-	  double recoJetEta_k = em->jeteta[k];
-	  double recoJetPhi_k = em->jetphi[k];
+	if(apply_JEU_shift_up){
+	  matchedRecoJetPt = matchedRecoJetPt * (1 + JEU.GetUncertainty().second);
+	}
+	else if(apply_JEU_shift_down){
+	  matchedRecoJetPt = matchedRecoJetPt * (1 - JEU.GetUncertainty().first);
+	}
 
-	  if(x == refJetPt_k){ 
+	if(apply_JER_smear){
+	  double sigma = 0.663*JER_fxn[nominalClass]->Eval(matchedRecoJetPt); // apply a 20% smear
+	  matchedRecoJetPt = matchedRecoJetPt * randomGenerator->Gaus(1.0,sigma);
+	}
 
-	    hasRecoJetMatch = true;
-	    recoJetFlavorFlag = k;
+	if(doJERCorrection){
+	  double k_JERCorrection = TMath::Sqrt(fitFxn_PYTHIA_JERCorrection->Eval(x)*fitFxn_PYTHIA_JERCorrection->Eval(x) - 1.);
+	  double sigma_JERCorrection = k_JERCorrection*JER_fxn[nominalClass]->Eval(matchedRecoJetPt);
+	  matchedRecoJetPt = matchedRecoJetPt * randomGenerator->Gaus(1.0,sigma_JERCorrection);
+	}
 
-	    if(em->mupt[k] > muPtCut && fabs(em->mueta[k]) < 2.) hasRecoJetMuon = true;
-
-	    JEC.SetJetPT(em->rawpt[k]);
-	    JEC.SetJetEta(em->jeteta[k]);
-	    JEC.SetJetPhi(em->jetphi[k]);
-
-	    matchedRecoJetPt = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[k];
-	    if(matchedRecoJetPt > leadingMatchedRecoJetPt) leadingMatchedRecoJetPt = matchedRecoJetPt;
-	    //matchedRecoJetPt = em->jetpt[k];
-	    matchedRawJetPt = em->rawpt[k];
-	    recoMuonPt = em->mupt[k];
-	    recoMuonEta = em->mueta[k];
-
-	    if(recoMuonPt > muPtCut && fabs(recoMuonEta) < 2.) hasRecoMuon = true;
-
-	    if(doRemoveHYDJETjet){
-	      if(remove_HYDJET_jet(em->pthat, matchedRecoJetPt)) continue;
-	    }
-
-	    JEU.SetJetPT(matchedRecoJetPt);
-	    JEU.SetJetEta(em->jeteta[k]);
-	    JEU.SetJetPhi(em->jetphi[k]);
-
-	    // initialize
-	    double correctedPt_down = 1.0;
-	    double correctedPt_up = 1.0;
-
-	    if(apply_JEU_shift_up){
-	      correctedPt_up = matchedRecoJetPt * (1 + JEU.GetUncertainty().second);
-	      matchedRecoJetPt = correctedPt_up;
-	    }
-	    else if(apply_JEU_shift_down){
-	      correctedPt_down = matchedRecoJetPt * (1 - JEU.GetUncertainty().first);
-	      matchedRecoJetPt = correctedPt_down;
-	    }
-
-	    double mu = 1.0;
-	    double sigma = 0.2;
-	    double smear = 0.0;
-
-	    if(apply_JER_smear){
-	      sigma = 0.663*JER_fxn[nominalClass]->Eval(matchedRecoJetPt); // apply a 20% smear
-	      smear = randomGenerator->Gaus(mu,sigma);
-	      matchedRecoJetPt = matchedRecoJetPt * smear;
-	    }
-
-	    double mu_JERCorrection = 1.0;
-	    double sigma_JERCorrection = 0.2;
-	    double smear_JERCorrection = 0.0; // smeared pT
-	    double k_JERCorrection = 0.0; // smearing parameter
-	    if(doJERCorrection){
-	      k_JERCorrection = TMath::Sqrt(fitFxn_PYTHIA_JERCorrection->Eval(x)*fitFxn_PYTHIA_JERCorrection->Eval(x) - 1.);
-	      sigma_JERCorrection = k_JERCorrection*JER_fxn[nominalClass]->Eval(matchedRecoJetPt);
-	      smear_JERCorrection = randomGenerator->Gaus(mu_JERCorrection,sigma_JERCorrection);
-	      matchedRecoJetPt = matchedRecoJetPt * smear_JERCorrection;
-	    }
-
-	    double skipDoBJetNeutrinoEnergyShift_diceRoll = 0.0;
-	    double smear_doBJetNeutrinoEnergyShift = 0.0;
-	    if(doBJetNeutrinoEnergyShift){
-	      //if(doBJetNeutrinoEnergyShift && hasRecoJetMuon){
-	      skipDoBJetNeutrinoEnergyShift_diceRoll = randomGenerator->Rndm();
-	      if(skipDoBJetNeutrinoEnergyShift_diceRoll > neutrino_tag_fraction->GetBinContent(neutrino_tag_fraction->FindBin(matchedRecoJetPt))) continue;
-	      neutrino_energy_map_proj = (TH1D*) neutrino_energy_map->ProjectionX("neutrino_energy_map_proj", neutrino_energy_map->GetYaxis()->FindBin(matchedRecoJetPt),neutrino_energy_map->GetYaxis()->FindBin(matchedRecoJetPt)+1);
-	      smear_doBJetNeutrinoEnergyShift = neutrino_energy_map_proj->GetRandom();
-	      matchedRecoJetPt += smear_doBJetNeutrinoEnergyShift;
-	    }
-		
+	// neutrino energy shift for a fraction of jets; a failed dice roll leaves the
+	// jet unshifted but still in the response (as before the restructure)
+	if(doBJetNeutrinoEnergyShift){
+	  double diceRoll = randomGenerator->Rndm();
+	  if(diceRoll <= neutrino_tag_fraction->GetBinContent(neutrino_tag_fraction->FindBin(matchedRecoJetPt))){
+	    neutrino_energy_map_proj = (TH1D*) neutrino_energy_map->ProjectionX("neutrino_energy_map_proj", neutrino_energy_map->GetYaxis()->FindBin(matchedRecoJetPt),neutrino_energy_map->GetYaxis()->FindBin(matchedRecoJetPt)+1);
+	    matchedRecoJetPt += neutrino_energy_map_proj->GetRandom();
 	  }
+	}
 
-	} // end recoJet loop
-
-	jetFlavorInt = recoJetFlavorFor(useCaloJetsOverride, recoJetFlavorFlag, em);
-			
-			
-	// fill response matrix
-	//if(hasRecoJetMatch && hasRecoJetMuon) {
-	//if(hasRecoJetMatch && hasRecoJetMuon && triggerIsOn(triggerDecision,triggerDecision_Prescl)) {
-	if(hasRecoJetMatch && (!onlyMuTaggedJets || hasRecoJetMuon)) {
-	  //if(hasRecoJetMatch && matchedRecoJetPt >= 60.0) {
-
+	if(!onlyMuTaggedJets || hasRecoJetMuon) {
 	  if(doBJetSpectraReweightToData){
 	    if(nominalClass == 4) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C4->Eval(matchedRecoJetPt);
 	    else if(nominalClass == 3) w_jet = w_jet * fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C3->Eval(matchedRecoJetPt);
@@ -1103,7 +1003,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	  h_matchedRecoJetPtOverGenJetPt_genJetPt[0][0]->Fill(matchedRecoJetPt/x,x,w_jet);
 	  h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][0]->Fill(matchedRecoJetPt/x,x,w_jet);
 	
-	  if(x>100){
+	  if(x>100 && hasGenEta){
 	    h_matchedRecoJetPtOverGenJetPt_genJetEta[0][0]->Fill(matchedRecoJetPt/x,y,w_jet);
 	    h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][0]->Fill(matchedRecoJetPt/x,y,w_jet);
 	  }
@@ -1136,7 +1036,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	    h_matchedRecoJetPtOverGenJetPt_genJetPt[0][1]->Fill(matchedRecoJetPt/x,x,w_jet);
 	    h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][1]->Fill(matchedRecoJetPt/x,x,w_jet);
 				
-	    if(x>100){
+	    if(x>100 && hasGenEta){
 	      h_matchedRecoJetPtOverGenJetPt_genJetEta[0][1]->Fill(matchedRecoJetPt/x,y,w_jet);
 	      h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][1]->Fill(matchedRecoJetPt/x,y,w_jet);
 	    }
@@ -1149,7 +1049,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	    h_matchedRecoJetPtOverGenJetPt_genJetPt[0][2]->Fill(matchedRecoJetPt/x,x,w_jet);
 	    h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][2]->Fill(matchedRecoJetPt/x,x,w_jet);
 
-	    if(x>100){
+	    if(x>100 && hasGenEta){
 	      h_matchedRecoJetPtOverGenJetPt_genJetEta[0][2]->Fill(matchedRecoJetPt/x,y,w_jet);
 	      h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][2]->Fill(matchedRecoJetPt/x,y,w_jet);
 	    }
@@ -1163,7 +1063,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	    h_matchedRecoJetPtOverGenJetPt_genJetPt[0][3]->Fill(matchedRecoJetPt/x,x,w_jet);
 	    h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][3]->Fill(matchedRecoJetPt/x,x,w_jet);
 
-	    if(x>100){
+	    if(x>100 && hasGenEta){
 	      h_matchedRecoJetPtOverGenJetPt_genJetEta[0][3]->Fill(matchedRecoJetPt/x,y,w_jet);
 	      h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][3]->Fill(matchedRecoJetPt/x,y,w_jet);
 	    }
@@ -1176,7 +1076,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	    h_matchedRecoJetPtOverGenJetPt_genJetPt[0][4]->Fill(matchedRecoJetPt/x,x,w_jet);
 	    h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][4]->Fill(matchedRecoJetPt/x,x,w_jet);
 
-	    if(x>100){
+	    if(x>100 && hasGenEta){
 	      h_matchedRecoJetPtOverGenJetPt_genJetEta[0][4]->Fill(matchedRecoJetPt/x,y,w_jet);
 	      h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][4]->Fill(matchedRecoJetPt/x,y,w_jet);
 	    }
@@ -1190,7 +1090,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	    h_matchedRecoJetPtOverGenJetPt_genJetPt[0][5]->Fill(matchedRecoJetPt/x,x,w_jet);
 	    h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][5]->Fill(matchedRecoJetPt/x,x,w_jet);
 
-	    if(x>100){
+	    if(x>100 && hasGenEta){
 	      h_matchedRecoJetPtOverGenJetPt_genJetEta[0][5]->Fill(matchedRecoJetPt/x,y,w_jet);
 	      h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][5]->Fill(matchedRecoJetPt/x,y,w_jet);
 	    }
@@ -1204,7 +1104,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	    h_matchedRecoJetPtOverGenJetPt_genJetPt[0][6]->Fill(matchedRecoJetPt/x,x,w_jet);
 	    h_matchedRecoJetPtOverGenJetPt_genJetPt[CentralityIndex][6]->Fill(matchedRecoJetPt/x,x,w_jet);
 
-	    if(x>100){
+	    if(x>100 && hasGenEta){
 	      h_matchedRecoJetPtOverGenJetPt_genJetEta[0][6]->Fill(matchedRecoJetPt/x,y,w_jet);
 	      h_matchedRecoJetPtOverGenJetPt_genJetEta[CentralityIndex][6]->Fill(matchedRecoJetPt/x,y,w_jet);
 	    }
@@ -1216,22 +1116,32 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	    h_inclGenJetPt_inclRecoMuonTag_flavor[CentralityIndex]->Fill(x,jetFlavorInt,w_jet);
 	  }
 	}
-	if(!hasRecoJetMatch){
+      }
+      // END RECO JET LOOP
+
+      // GEN JET LOOP -- misses and gen-level spectra, gen acceptance
+      for(int i = 0; i < em->ngj ; i++){
+
+	double w_jet = w;
+	double x = em->genjetpt[i];
+	double y = em->genjeteta[i];
+	double z = em->genjetphi[i];
+
+	if(TMath::Abs(y) > etaMax) continue;
+
+	// flavor from the accepted reco jet matched to it; 19 = no accepted match
+	const int k = genMatchedReco[i];
+	int jetFlavorInt = (k >= 0) ? recoJetFlavorFor(useCaloJetsOverride, k, em) : 19;
+
+	if(k < 0){
 	  h_unmatchedGenJetPt[0]->Fill(x,w_jet);
 	  h_unmatchedGenJetPt[CentralityIndex]->Fill(x,w_jet);
 	  for(int t = 0; t < kNDistTilt; t++){
 	    h_unmatchedGenJetPt_distTilt[0][t]->Fill(x,w_jet*distTiltWeight(x,kDistTiltExpo[t]));
 	    h_unmatchedGenJetPt_distTilt[CentralityIndex][t]->Fill(x,w_jet*distTiltWeight(x,kDistTiltExpo[t]));
 	  }
-
-	  // response_C0.Miss(x,w_jet);
-	  // if(CentralityIndex == 4) response_C4.Miss(x,w_jet);
-	  // else if(CentralityIndex == 3) response_C3.Miss(x,w_jet);
-	  // else if(CentralityIndex == 2) response_C2.Miss(x,w_jet);
-	  // else if(CentralityIndex == 1) response_C1.Miss(x,w_jet);
-	  // else{};
 	}
-			
+
 	h_inclGenJetPt_flavor[0]->Fill(x,jetFlavorInt,w_jet);
 	h_inclGenJetPt_flavor[CentralityIndex]->Fill(x,jetFlavorInt,w_jet);
 	// begin gen-muon loop
@@ -1259,8 +1169,6 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 	  }
 
 	} // end gen-muon loop
-
-	// begin reco-muon loop
 
       }
       // END GEN JET LOOP
