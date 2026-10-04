@@ -103,6 +103,12 @@ TString configureOutputDatasetName(TString generator,
   if(doBJetNeutrinoEnergyShift) result.Append("_BJetNeutrinoEnergyShift");
   
   
+  // Every scan from 2026-10-04 on carries the gen-jet muon-flag fix (separate
+  // matchFlagGen / matchFlagRGen in PYTHIA_scan.C). Before it the gen-jet
+  // muon-tag histograms were broken; the tag keeps the two generations apart --
+  // including a same-day rescan, which would otherwise reuse the 2026-10-4 name.
+  result.Append("_genMuTagFix");
+
   TDatime dt;
   result.Append(Form("_%i-%i-%i",dt.GetYear(),dt.GetMonth(),dt.GetDay()));
   
