@@ -319,7 +319,10 @@ void PbPb_scan(int group = 1){
 
 
   std::string inputFileList = "";
-  if(doSingleMuonSample) inputFileList = "../../../fileNames/fileNames_HISingleMuon_HIRun2018A-04Apr2019-v1.txt";
+  // Calo and flow jets (akPu4CaloJetAnalyzer, akFlowPuCs4PFJetAnalyzer) are in
+  // the withCaloAndFlowJets production; the 04Apr2019 forest is kept for PF jets.
+  if(doSingleMuonSample && (useCaloJetsOverride || useFlowJetsOverride)) inputFileList = "../../../fileNames/fileNames_HISingleMuon_withCaloAndFlowJets_withPFAndTowers_fresh.txt";
+  else if(doSingleMuonSample) inputFileList = "../../../fileNames/fileNames_HISingleMuon_HIRun2018A-04Apr2019-v1.txt";
   else if(doMinBiasSample_Part1) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withCaloAndFlowJets_fresh_partial.txt";
   else if(doMinBiasSample_Part2) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part2.txt";
   else if(doMinBiasSample_Part3) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part3.txt";
