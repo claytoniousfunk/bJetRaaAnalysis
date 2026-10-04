@@ -169,6 +169,12 @@ Known open problems, all documented in
    its fake-jet part overlaps T3.
 4. **50-80% b-purity moves the wrong way** under subtraction (purity rises).
 5. The b-purity **fit range moves the unsubtracted baseline** (0-10%, 80-90 GeV:
-   0.767 / 0.821 / 0.843 at 0-3 / 0-4 / 0-5 GeV) but, since the reclustered T2
-   went in, barely moves the subtracted result (0.621 / 0.632 / 0.618). Current
-   range is 0-4.
+   0.767 / 0.821 / 0.843 at 0-3 / 0-4 / 0-5 GeV). Current range is 0-4.
+
+The subtraction's effect on purity is **small**: T2+T3 together are ~5% of D
+in 0-10% at 80-90 GeV, and purity drops 3-8% in 0-10%, 2-4% in 10-30%, <1% in
+30-50%. An earlier "~20-35% drop" (and subtracted purities of ~0.62) came from a
+bin-offset bug in `plotBPurity_fakeMuonSubtractionEffect.C`, fixed 2026-10-04:
+the 2026-2-12 data file books jet pT on [20,500] and the template files on
+[0,500], so reusing the data's bin indices read the templates 20 GeV low.
+**Always project a template's jet-pT window from its own axis.**

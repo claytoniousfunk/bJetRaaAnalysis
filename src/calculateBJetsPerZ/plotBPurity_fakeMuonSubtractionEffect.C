@@ -255,7 +255,14 @@ static void fitBPurity(int classIdx, double lowPt, double highPt, bool doFakeSub
         printf("ERROR: %s missing/empty for C%d\n", base[t], centBin);
         purity = purityErr = -1.; return;
       }
-      h_bkg[t] = H->ProjectionX(Form("h_bkg%d_%d", t, tag), b1, b2);
+      // Jet-pT window from the TEMPLATE's own axis, not b1/b2. The 2026-2-12
+      // data file books jet pT as 96 bins on [20,500], the fake file as 100 on
+      // [0,500], so the data's bin indices land 20 GeV low here -- 80-90 read
+      // the templates at 60-70, where the fakes are several times larger. That
+      // offset alone produced the ~20-35% purity drop in 0-10% (2026-10-04).
+      h_bkg[t] = H->ProjectionX(Form("h_bkg%d_%d", t, tag),
+                                H->GetYaxis()->FindBin(lowPt + smallShift),
+                                H->GetYaxis()->FindBin(highPt - smallShift));
       h_bkg[t]->SetDirectory(nullptr);
       h_bkg[t]->Scale(1./Nbkg[t]);
       // The data histogram counts pairs from triggered events only but is

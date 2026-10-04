@@ -1,4 +1,5 @@
 #include "../../headers/functions/divideByBinwidth.h"
+#include "../../headers/plotting/coarseCent.h"
 // Roofit
 #include "RooRealVar.h"
 #include "RooDataHist.h"
@@ -16,6 +17,7 @@ TFile *file_PbPb_HardProbes_jet100, *file_PbPb_HardProbes_jet80, *file_PbPb_Hard
 TFile *file_pp_HighEGJet_jet100, *file_pp_HighEGJet_jet80, *file_pp_HighEGJet_jet60;
 
 TFile *file_PYTHIA, *file_PH_DiJet, *file_PH_MuJet, *file_PH_BJet;
+TFile *file_PbPb_fakePtRel;
 
 TH2D *H_PYTHIA, *H_PH_DiJet, *H_PH_MuJet, *H_PH_BJet;
 TH2D *H_pp, *H_PbPb;
@@ -29,20 +31,39 @@ TH1D *h_b_draw, *h_c_draw, *h_l_draw, *h_x_draw, *h_draw, *h_roo;
 const int M = 51;
 double muRelPtAxis[M] = {0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3.0,3.1,3.2,3.3,3.4,3.5,3.6,3.7,3.8,3.9,4.0,4.1,4.2,4.3,4.4,4.5,4.6,4.7,4.8,4.9,5.0}; // M = 51
 
-// Subtract the combinatorial (fake muon + fake jet) ptRel template from the
-// measured ptRel distribution before the b-purity template fit. The template is
-// h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC_C*, i.e. T3 in the decomposition
-// S = D - T2 - T3: a mixed-event muon paired with a mixed-event FastJet, with
-// the random-cone background subtracted.
+// Subtract the uncorrelated-muon ptRel templates from the measured ptRel
+// distribution before the b-purity template fit, S = D - T2 - T3, as in
+// src/plots/muonPtRel/plotPtRelTemplateDecomposition.C:
+//   T2  h_injMuonPtRel_donorJetPt_inject           mixed muon clustered into the
+//                                                   next event's PF candidates
+//                                                   and reclustered (real jets)
+//   T3  h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC  mixed muon + mixed-event
+//                                                   fastJet (combinatorial jets)
+// Both come from file_PbPb_fakePtRel (2026-9-8, 100 resamples), ultra-fine
+// slices summed to the coarse class on the fly.
 //
-// This was previously unconditional. It is a flag so its effect can be
-// separated from the unfolding's -- the two act at different places in the
-// chain (this one changes the b PURITY, the unfolding changes the SPECTRUM) and
-// both move the low-pT central points, so a single combined number hides which
-// is responsible.
+// NORMALISATION. D and T3 are trigger-gated, so they are per TRIGGERED event
+// (h_vz_triggerOn); T2 is ungated and is per event (h_vz). Before 2026-10-04
+// everything went over h_vz, which under-subtracted T3 by the ratio of the two
+// files' trigger fractions (0.115 / 0.143 in 0-10%).
+//
+// History: until 2026-10-04 only T3 came off, read from the 2026-8-27
+// coarseBins_partial file, whose T3 predates the raw->JEC jet-pT axis change
+// and is about half the 9-8 one. That version moved purities < 2%; this one
+// moves 0-10% by ~5-15%, 10-30% by ~4-7%, 30-50% and 50-80% by ~1%.
+//
+// Known oversubtraction: T2's jets are all reco jets, genuine + fake, so its
+// fake-jet part overlaps T3 (CLAUDE.md, open problem 3).
+//
+// It is a flag so its effect can be separated from the unfolding's -- the two
+// act at different places in the chain (this one changes the b PURITY, the
+// unfolding changes the SPECTRUM) and both move the low-pT central points.
 //
 // PbPb only: the pp side has no fake-jet estimate in this chain, so the ratio
-// feels this correction through its numerator alone.
+// feels this correction through its numerator alone. The inclusive denominator
+// in plotBOverInclusiveJetsPerZ.C (calculateRAA.C output of 2026-09-25) has NO
+// fake-jet subtraction, so with this on the two sides of that double ratio are
+// not treated identically.
 bool doFakePtRelSubtraction = true;
 
 
@@ -66,6 +87,8 @@ void openTemplateFitterFiles(){
   file_PYTHIA = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIA/latest/PYTHIA_DiJet_pThat-30_mu12_pTmu-15_tight_mu12TriggerEfficiencyCorrection_vzReweight_jetTrkMaxFilter_removeHYDJETjet0p35CutOnGen_2026-2-11.root");
   file_PH_DiJet = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIAHYDJET/latest/PYTHIAHYDJET_DiJet_pThat-30_mu12_pTmu-15_tight_mu12TriggerEfficiencyCorrection_vzReweight_hiBinReweight_hiBinShift-10_leadingXjetDumpFilter_jetTrkMaxFilter_removeHYDJETjet0p35CutOnGen_WDecayFilter_weightCut_2026-2-12.root");
   file_PH_MuJet = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIAHYDJET/latest/PYTHIAHYDJET_MuJet_pThat-30_mu12_pTmu-15_tight_mu12TriggerEfficiencyCorrection_vzReweight_hiBinReweight_hiBinShift-10_leadingXjetDumpFilter_jetTrkMaxFilter_removeHYDJETjet0p35CutOnGen_WDecayFilter_weightCut_2026-2-12.root");
+  file_PbPb_fakePtRel = TFile::Open("/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_SingleMuon_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPFClustering_fastJetResamples-100_2026-9-8_ultraFineCentBins.root");
+
   file_PH_BJet = TFile::Open("/home/clayton/Analysis/code/bJetMuonTaggingAnalysis/rootFiles/scanningOutput/PYTHIAHYDJET/latest/PYTHIAHYDJET_BJet_pThat-30_mu12_pTmu-15_tight_mu12TriggerEfficiencyCorrection_vzReweight_hiBinReweight_hiBinShift-10_leadingXjetDumpFilter_jetTrkMaxFilter_removeHYDJETjet0p35CutOnGen_WDecayFilter_weightCut_2026-2-12.root");
 
   return;
@@ -232,8 +255,8 @@ double templateFitter(bool isData = 1,
 		    int returnValueIndex = 1){
 
 
-  TFile *f_data, *f_mc, *f_mc_bJet, *f_mc_muJet, *f_fake;
-  TH2D *H_data, *H_mc, *H_mc_bJet, *H_mc_muJet, *H_fake;
+  TFile *f_data, *f_mc, *f_mc_bJet, *f_mc_muJet;
+  TH2D *H_data, *H_mc, *H_mc_bJet, *H_mc_muJet;
 
   TH2D *H_mc_b, *H_mc_bGS, *H_mc_c, *H_mc_d, *H_mc_u, *H_mc_s, *H_mc_g, *H_mc_x;
   TH2D *X_mc_b, *X_mc_bGS, *X_mc_c, *X_mc_d, *X_mc_u, *X_mc_s, *X_mc_g, *X_mc_x;
@@ -242,8 +265,7 @@ double templateFitter(bool isData = 1,
   
   TH1D *x_b, *x_bGS, *x_c, *x_d, *x_u, *x_s, *x_g, *x_x, *x_l;
   TH1D *h_bJet_b, *h_bJet_bGS, *h_muJet_b, *h_muJet_bGS, *h_muJet_c;
-  TH1D *h_fake;
-  TH1D *h_vz_data, *h_vz_fake;
+  TH1D *h_vz_data_trig;
 
   int centBin = 0;
 
@@ -282,8 +304,6 @@ double templateFitter(bool isData = 1,
     f_mc_bJet = file_PH_BJet;
     f_mc_muJet = file_PH_MuJet;
 
-    f_fake = TFile::Open("/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PbPb/PbPb_SingleMuon_mu12_pTmu-15to999_tight_jetTrkMaxFilter_WDecayFilter_mixedEventPFClustering_pseudoJetCandPtMin-0.0_2026-8-27_coarseBins_partial.root");
-
     if(!isData){
       f_data = f_mc;
       f_data->GetObject(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_allJets_C%iT0",centBin),H_data);
@@ -293,8 +313,7 @@ double templateFitter(bool isData = 1,
       f_data->GetObject(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_C%i",centBin),H_data);
     }
 
-    f_data->GetObject(Form("h_vz_C%i",centBin),h_vz_data);
-    f_fake->GetObject(Form("h_vz_C%i",centBin),h_vz_fake);
+    f_data->GetObject(Form("h_vz_triggerOn_C%i",centBin),h_vz_data_trig);
     
     f_mc->GetObject(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_bJets_C%iT0",centBin),H_mc_b);
     f_mc->GetObject(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_bGSJets_C%iT0",centBin),H_mc_bGS);
@@ -310,8 +329,6 @@ double templateFitter(bool isData = 1,
     f_mc_muJet->GetObject(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_bJets_C%iT0",centBin),H_mc_muJet_b);
     f_mc_muJet->GetObject(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_bGSJets_C%iT0",centBin),H_mc_muJet_bGS);
     f_mc_muJet->GetObject(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_cJets_C%iT0",centBin),H_mc_muJet_c);
-
-    f_fake->GetObject(Form("h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC_C%i",centBin),H_fake);
 
   }
 
@@ -337,11 +354,29 @@ double templateFitter(bool isData = 1,
   // fake muon tags at all, so there is nothing there to subtract. Nominal data
   // results are unaffected: they want the subtraction and still get it.
   if(isData && !ispp && doFakePtRelSubtraction){
-    h_fake = (TH1D*) H_fake->ProjectionX("h_fake",binFinder->FindBin(low_jetPt + smallShift),binFinder->FindBin(high_jetPt - smallShift));
-    h_data->Scale(1./h_vz_data->Integral());
-    h_fake->Scale(1./h_vz_fake->Integral());
-    h_data->Add(h_fake,-1);
-    h_data->Scale(h_vz_data->Integral());
+    // coarse class index for coarseCent.h: C1 (0-10%) -> 0 ... C4 (50-80%) -> 3
+    int ci = centBin - 1;
+    double nTrig_data = h_vz_data_trig->Integral();
+    double nAll_fake  = coarseEvents(file_PbPb_fakePtRel, ci, "h_vz");
+    double nTrig_fake = coarseEvents(file_PbPb_fakePtRel, ci, "h_vz_triggerOn");
+    TH2D *H_T2 = coarseSum2(file_PbPb_fakePtRel, "h_injMuonPtRel_donorJetPt_inject", ci, "T2");
+    TH2D *H_T3 = coarseSum2(file_PbPb_fakePtRel, "h_fastJetMuonPtRel_fastJetPt_PF_bkgSub_RC", ci, "T3");
+    if(!H_T2 || !H_T3 || nAll_fake <= 0. || nTrig_fake <= 0. || nTrig_data <= 0.){
+      cout << "ERROR: fake-ptRel templates or event counts missing for C" << centBin << endl;
+      exit(1);
+    }
+    // jet-pT window from each template's OWN axis: the data and template files
+    // need not share a binning (the 2026-2-12 data starts at 20 GeV, the
+    // templates at 0), and reusing binFinder's indices would shift the window
+    TH1D *h_T2 = (TH1D*) H_T2->ProjectionX("h_T2",H_T2->GetYaxis()->FindBin(low_jetPt + smallShift),H_T2->GetYaxis()->FindBin(high_jetPt - smallShift));
+    TH1D *h_T3 = (TH1D*) H_T3->ProjectionX("h_T3",H_T3->GetYaxis()->FindBin(low_jetPt + smallShift),H_T3->GetYaxis()->FindBin(high_jetPt - smallShift));
+    h_data->Scale(1./nTrig_data);
+    h_T2->Scale(1./nAll_fake);    // ungated
+    h_T3->Scale(1./nTrig_fake);   // gated
+    h_data->Add(h_T2,-1);
+    h_data->Add(h_T3,-1);
+    h_data->Scale(nTrig_data);
+    delete h_T2; delete h_T3; delete H_T2; delete H_T3;
   }
 
   
