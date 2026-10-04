@@ -1211,7 +1211,15 @@ void PYTHIAHYDJET_scan(int group = 1){
 	if(w > weightCut) continue;
       }
    
-      int matchFlag[10] = {0,0,0,0,0,0,0,0,0,0};
+      // One flag per gen particle (indexed by the running gen-muon count, which is
+      // never larger): matchFlag for the reco-jet loop, matchFlagGen for the
+      // gen-jet loop. Until 2026-10-04 both loops shared one 10-slot array that was
+      // never reset between them, so a gen muon that had already tagged a reco jet
+      // could not tag its gen jet: the gen-jet gen-muon tag fraction of b jets came
+      // out ~0.05-1% instead of ~5-10%. Events with more than 10 gen muons also
+      // wrote past the end of the array.
+      const size_t nGenPart = (!skipGenParticles && em->gpptp) ? em->gpptp->size() : 0;
+      std::vector<int> matchFlag(nGenPart, 0), matchFlagGen(nGenPart, 0);
 
       int matchFlagR[10] = {0,0,0,0,0,0,0,0,0,0};
 	
@@ -2211,6 +2219,10 @@ void PYTHIAHYDJET_scan(int group = 1){
 
     
 
+      // Reco-muon flags for the gen-jet loop, separate from the reco-jet loop's
+      // matchFlagR for the same reason as matchFlagGen above (until 2026-10-04 the
+      // gen-jet reco-muon tag reused matchFlagR as the reco-jet loop left it).
+      std::vector<int> matchFlagRGen(em->nMu > 0 ? em->nMu : 1, 0);
       // start genJet LOOP
       for(int i = 0; i < em->ngj ; i++){
 
@@ -2303,7 +2315,7 @@ void PYTHIAHYDJET_scan(int group = 1){
 
 	    genMuIndex++;
 
-	    if(matchFlag[genMuIndex] == 1) continue; // skip if muon has been matched to a jet already
+	    if(matchFlagGen[genMuIndex] == 1) continue; // skip if muon has been matched to a jet already
 
 	    if(doWDecayFilter){
 	      if(isWDecayMuon(em->gpptp->at(j),genJetPt_i)) continue; // skip if "WDecay" muon (has majority of jet pt)
@@ -2368,7 +2380,7 @@ void PYTHIAHYDJET_scan(int group = 1){
 
 	    if(getDr(genMuonEta_j,genMuonPhi_j,genJetEta_i,genJetPhi_i) < deltaRCut){
 				
-	      matchFlag[genMuIndex] = 1;
+	      matchFlagGen[genMuIndex] = 1;
 	      hasInclGenMuonTag = true;
 	      if(isMatchedGenMuon) hasMatchedGenMuonTag = true;
 	
@@ -2382,7 +2394,7 @@ void PYTHIAHYDJET_scan(int group = 1){
 		
 	for(int m = 0; m < em->nMu; m++){
 
-	  if(!passesRecoMuonCuts(em, m, matchFlagR, false)) continue;
+	  if(!passesRecoMuonCuts(em, m, matchFlagRGen.data(), false)) continue;
 
 	  if(doWDecayFilter && isWDecayMuon(em->muPt->at(m),genJetPt_i)) continue;
 
@@ -2391,7 +2403,7 @@ void PYTHIAHYDJET_scan(int group = 1){
 	  // match to genJets
 	  if(getDr(em->muEta->at(m),em->muPhi->at(m),genJetEta_i,genJetPhi_i) < epsilon_mm){
 
-	    matchFlagR[m] = 1;
+	    matchFlagRGen[m] = 1;
 				
 	    hasInclRecoMuonTag = true;
 
