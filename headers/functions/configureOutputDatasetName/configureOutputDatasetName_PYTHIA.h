@@ -42,7 +42,9 @@ TString configureOutputDatasetName(TString generator,
 				   bool fillMu7,
 				   bool fillMu12,
 				   bool useCaloJetsOverride,
-				   bool useManualJEC)
+				   bool useManualJEC,
+				   bool caloFlavorFromPFMatch,
+				   bool caloBHadronNumberFromPFMatch)
 {
 
   TString result = "output";
@@ -53,6 +55,12 @@ TString configureOutputDatasetName(TString generator,
   result.Append(datasetIndicator);
 
   if(useCaloJetsOverride) result.Append("_caloJets");
+  // Calo-jet flavor / bHadronNumber taken from the matched PF jet
+  // (scan_calo_pf_match.h). Tagged because they change which calo jets are b and
+  // bGS -- without it the scan collides on one filename with the
+  // refparton_flavor generation. _PFflavor matches PYTHIA_scan_response.C.
+  if(useCaloJetsOverride && caloFlavorFromPFMatch) result.Append("_PFflavor");
+  if(useCaloJetsOverride && caloBHadronNumberFromPFMatch) result.Append("_PFbHadNum");
   // jet pT from the JEC text files rather than the forest jtpt
   if(useManualJEC) result.Append("_manualJEC");
   if(doPThatWeight) result.Append(Form("_pThat-%2.0f",pThat));

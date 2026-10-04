@@ -378,7 +378,9 @@ void PYTHIA_scan(int group = 1){
 						 fillMu7,
 						 fillMu12,
 						 useCaloJetsOverride,
-						 useManualJEC);
+						 useManualJEC,
+						 caloFlavorFromPFMatch,
+						 caloBHadronNumberFromPFMatch);
 
   TString outputFile = Form("%s%s/PYTHIA_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
 
