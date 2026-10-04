@@ -12,9 +12,15 @@
 //        efficiency is a separate correction). Rebinned from the native 5 GeV
 //        bins to ptEdges. Reco bins below recoFloor are zeroed and the truth is
 //        taken from the untruncated matrix, so jets reconstructed below the
-//        floor become misses -- the data have no jets below 70 GeV, and this is
-//        the treatment unfoldClosureTest.C applied when measuring the optimal
-//        iteration count. Matched jets only: the truth is the gen projection of
+//        floor become misses. FLOOR = 70 GeV: the SingleMuon calo forest has no
+//        jets below 70. The 70-80 GeV bin is a turn-on and arrives here already
+//        corrected for it (constructBJetSpectrum_caloJets_pp.C). It must be:
+//        muon-tagged calo b jets reconstruct at ~0.7 of gen pT, so reco 70-80
+//        feeds gen 80-120 directly, and the uncorrected half-empty bin gave an
+//        unfolding factor at gen 80-100 of 1.32 against a PYTHIA truth of 2.25.
+//        Raising the floor to 80 instead removes that information: only 12% of
+//        gen 80-100 tagged b jets reconstruct above 80, and N = 2 then misses the
+//        tilted closure by 10% (min MSE moves to N = 9). Matched jets only: the truth is the gen projection of
 //        the matched matrix (no b-jet miss histogram exists), so the unfolded
 //        spectrum is per matched muon-tagged b jet; reconstruction and tagging
 //        efficiencies are separate corrections.
@@ -26,7 +32,8 @@
 //          "h_matchedRecoJetPt_genJetPt_bJets_muTagged",true,70.,
 //          "50,60,70,80,100,120,150,200,300,500")
 //        (2026-10-04: MSE 0.0110 at N = 2; flat to within ~15% over N = 2-15,
-//        N = 1 under-converged, max|r - 1| 10.7%). The iteration systematic is
+//        N = 1 under-converged, max|r - 1| 10.7%). Measured with the floor at
+//        70, the floor used here. The iteration systematic is
 //        max(|U(N-1) - U(N)|, |U(N+1) - U(N)|) / U(N).
 //
 // UNCERTAINTIES on the unfolded spectrum
@@ -40,7 +47,20 @@
 //                  unfolds the shifted spectra), so applied directly, not
 //                  re-unfolded.
 //   iterations     as above.
-//   total          quadrature sum of the three.
+//   response stat  the response matrix's finite MC statistics, by toys: every
+//                  bin of the (untruncated, rebinned) response is fluctuated
+//                  within its MC error -- Poisson in its effective entries
+//                  (c/sigma)^2, scaled back by sigma^2/c, so weighted bins stay
+//                  positive and thin bins fluctuate correctly -- and the truth
+//                  (prior), reco-floor truncation, measured projection and
+//                  RooUnfoldResponse are rebuilt from it, so prior and
+//                  migrations move together. The data are unfolded with each of
+//                  nToys toys at nIterOpt; the RMS over toys / nominal is the
+//                  systematic. The toys' mean shift is stored as a check.
+//                  Treated as a systematic: it comes from the MC sample size,
+//                  is independent of the data statistics and does not shrink
+//                  with more data.
+//   total          quadrature sum of the four.
 //
 // Underflow bins (50-60, 60-70, 70-80 GeV) are unfolded with the rest but not
 // reported; figures show 80-500 GeV only (the matrix figure shows everything).
@@ -52,6 +72,12 @@
 //           h_bJetPt_unfolded_sysAbs     unfolded, error = total systematic
 //           h_unf_statRel, h_unf_sysRel  relative stat / total systematic
 //           h_unf_sysRel_bPurity, h_unf_sysRel_spectrumJEU, h_unf_sysRel_iterations
+//           h_unf_sysRel_responseStat    response-matrix MC statistics (toy RMS)
+//           h_unf_respToys_meanShift     toys' mean / nominal - 1 (check)
+//           h_respToys_values            every toy's unfolded dN/dpT (X = toy, Y = jet pT), for
+//                                        src/plots/responseMatrix/plotResponseStatToys_caloJets_pp.C
+//           h_response_neff, h_response_relErr  per-cell effective entries (c/sigma)^2 and
+//                                        sigma/c of the rebinned, untruncated response
 //           h_unf_sysRel_<purity source> each purity source after unfolding
 //           h_response                   the rebinned, floor-truncated response
 //         figures/bJetSpectra/unfold_caloJets_pp_response.pdf
@@ -78,6 +104,7 @@
 #include "TSystem.h"
 #include "TColor.h"
 #include "TStyle.h"
+#include "TRandom3.h"
 #include "../../headers/plotting/plotStyle.h"
 #include "../../headers/plotting/ratioPanel.h"
 #include "../../headers/functions/divideByBinwidth.h"
@@ -89,8 +116,10 @@ const char *respE    = "PYTHIA_DiJet_response_caloJets_PFflavor_manualJEC_evenEv
 const char *respO    = "PYTHIA_DiJet_response_caloJets_PFflavor_manualJEC_oddEvents_pThat-15_mu12_pTmu-15_tight_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-10-1.root";
 const char *respName = "h_matchedRecoJetPt_genJetPt_bJets_muTagged";
 
-const double recoFloor = 70.;
+const double recoFloor = 70.;   // data have no jets below 70; 70-80 turn-on corrected upstream
 const int    nIterOpt  = 2;
+const int    nToys     = 1000;   // response-matrix MC-statistics toys
+const int    toySeed   = 20261004;
 
 const char *outRoot   = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/CorrectedBJetSpectra/Data/unfoldedBJetSpectrum_caloJets_pp.root";
 const char *figDir    = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/bJetSpectra";
@@ -136,11 +165,12 @@ void unfoldBJetSpectrum_caloJets_pp()
   // ---- inputs -----------------------------------------------------------------
   TFile *fS = TFile::Open(specPath);
   if(!fS || fS->IsZombie()){ printf("ERROR: cannot open %s -- run constructBJetSpectrum_caloJets_pp.C\n", specPath); return; }
-  TH1D *hMeasD = nullptr, *hRelJEU = nullptr, *hRelSrc[NSrc];
+  TH1D *hMeasD = nullptr, *hRelJEU = nullptr, *hRelTurn = nullptr, *hRelSrc[NSrc];
   fS->GetObject("h_bJetPt", hMeasD);
   fS->GetObject("h_bJetPt_sysRel_spectrumJEU", hRelJEU);
+  fS->GetObject("h_bJetPt_sysRel_turnOn", hRelTurn);
   for(int s = 0; s < NSrc; s++) fS->GetObject(Form("h_bJetPt_sysRel_%s", srcKey[s]), hRelSrc[s]);
-  if(!hMeasD || !hRelJEU){ printf("ERROR: missing input histograms in %s\n", specPath); return; }
+  if(!hMeasD || !hRelJEU || !hRelTurn){ printf("ERROR: missing input histograms in %s\n", specPath); return; }
   for(int s = 0; s < NSrc; s++) if(!hRelSrc[s]){ printf("ERROR: missing h_bJetPt_sysRel_%s\n", srcKey[s]); return; }
   if(hMeasD->GetNbinsX() != NPt){ printf("ERROR: spectrum has %d bins, expected %d\n", hMeasD->GetNbinsX(), NPt); return; }
 
@@ -188,6 +218,64 @@ void unfoldBJetSpectrum_caloJets_pp()
       if(n > 0.) uSrc[s]->SetBinContent(i, TMath::Max(fabs(uUp->GetBinContent(i)/n - 1.), fabs(uDn->GetBinContent(i)/n - 1.)));
     }
   }
+  // ---- turn-on correction (70-80 GeV measured bin), propagated the same way ---
+  TH1D *uTurn = bookRel("h_unf_sysRel_turnOn", "unfolded, 70-80 GeV turn-on correction (propagated)");
+  {
+    TH1D *mUp = (TH1D*) hMeasC->Clone("mUpT"), *mDn = (TH1D*) hMeasC->Clone("mDnT");
+    for(int i = 1; i <= NPt; i++){
+      double r = hRelTurn->GetBinContent(i);
+      mUp->SetBinContent(i, hMeasC->GetBinContent(i)*(1. + r));
+      mDn->SetBinContent(i, hMeasC->GetBinContent(i)*(1. - r));
+    }
+    TH1D *uUp = unfoldN(mUp, nIterOpt, "uUpT"), *uDn = unfoldN(mDn, nIterOpt, "uDnT");
+    for(int i = 1; i <= NPt; i++){
+      double n = hU->GetBinContent(i);
+      if(n > 0.) uTurn->SetBinContent(i, TMath::Max(fabs(uUp->GetBinContent(i)/n - 1.), fabs(uDn->GetBinContent(i)/n - 1.)));
+    }
+  }
+  // ---- response-matrix MC statistics: toys -------------------------------------
+  TH1D *uResp  = bookRel("h_unf_sysRel_responseStat",  Form("unfolded, response-matrix MC stat. (RMS of %d toys)", nToys));
+  TH1D *uRespM = bookRel("h_unf_respToys_meanShift",   "unfolded, response toys: mean / nominal - 1 (check)");
+  TH2D *hToyVals = new TH2D("h_respToys_values", "unfolded dN/dpT per response toy;toy;#it{p}_{T}^{jet} [GeV]",
+                            nToys, 0, nToys, NPt, ptEdges);
+  hToyVals->SetDirectory(nullptr);
+  TH2D *hNeff = (TH2D*) resp2D->Clone("h_response_neff"), *hRelE = (TH2D*) resp2D->Clone("h_response_relErr");
+  hNeff->SetDirectory(nullptr); hRelE->SetDirectory(nullptr); hNeff->Reset(); hRelE->Reset();
+  hNeff->SetTitle("response effective entries (c/#sigma)^{2};reco #it{p}_{T}^{jet} [GeV];gen #it{p}_{T}^{jet} [GeV]");
+  hRelE->SetTitle("response relative MC error #sigma/c;reco #it{p}_{T}^{jet} [GeV];gen #it{p}_{T}^{jet} [GeV]");
+  for(int ix = 1; ix <= NPt; ix++) for(int iy = 1; iy <= NPt; iy++){
+    double c = resp2D->GetBinContent(ix, iy), e = resp2D->GetBinError(ix, iy);
+    if(c > 0. && e > 0.){ hNeff->SetBinContent(ix, iy, (c/e)*(c/e)); hRelE->SetBinContent(ix, iy, e/c); }
+  }
+  {
+    TRandom3 rnd(toySeed);
+    std::vector<double> s1(NPt+1, 0.), s2(NPt+1, 0.);
+    for(int t = 0; t < nToys; t++){
+      TH2D *r2 = (TH2D*) resp2D->Clone(Form("toyResp%d", t)); r2->SetDirectory(nullptr);
+      for(int ix = 1; ix <= NPt; ix++) for(int iy = 1; iy <= NPt; iy++){
+        double c = resp2D->GetBinContent(ix, iy), e = resp2D->GetBinError(ix, iy);
+        if(c <= 0. || e <= 0.) continue;
+        double neff = (c/e)*(c/e);
+        r2->SetBinContent(ix, iy, rnd.Poisson(neff)*e*e/c);
+      }
+      TH1D *tTruth = r2->ProjectionY(Form("toyTruth%d", t), 1, NPt); tTruth->SetDirectory(nullptr);   // prior, before the floor
+      for(int ix = 1; ix <= NPt; ix++)
+        if(r2->GetXaxis()->GetBinUpEdge(ix) <= recoFloor + 1e-6)
+          for(int iy = 0; iy <= NPt+1; iy++){ r2->SetBinContent(ix, iy, 0.); r2->SetBinError(ix, iy, 0.); }
+      TH1D *tMeas = r2->ProjectionX(Form("toyMeas%d", t), 1, NPt); tMeas->SetDirectory(nullptr);
+      RooUnfoldResponse rt(tMeas, tTruth, r2, Form("toyRooResp%d", t), "");
+      RooUnfoldBayes u(&rt, hMeasC, nIterOpt); u.SetVerbose(0);
+      TH1D *h = (TH1D*) u.Hunfold(); h->SetDirectory(nullptr);
+      for(int i = 1; i <= NPt; i++){ double v = h->GetBinContent(i)/h->GetBinWidth(i); s1[i] += v; s2[i] += v*v; hToyVals->SetBinContent(t+1, i, v); }
+      delete h; delete tMeas; delete tTruth; delete r2;
+    }
+    for(int i = 1; i <= NPt; i++){
+      double n = hU->GetBinContent(i); if(n <= 0.) continue;
+      double mean = s1[i]/nToys, rms = sqrt(TMath::Max(0., s2[i]/nToys - mean*mean));
+      uResp->SetBinContent(i, rms/n); uRespM->SetBinContent(i, mean/n - 1.);
+    }
+  }
+
   TH1D *uPur  = bookRel("h_unf_sysRel_bPurity",      "unfolded, b purity (all sources, propagated)");
   TH1D *uJEU  = bookRel("h_unf_sysRel_spectrumJEU",  "unfolded, spectrum JEU (gen level)");
   TH1D *uIter = bookRel("h_unf_sysRel_iterations",   Form("unfolded, iterations N = %d +/- 1", nIterOpt));
@@ -196,36 +284,39 @@ void unfoldBJetSpectrum_caloJets_pp()
   TH1D *hUsys = (TH1D*) hU->Clone("h_bJetPt_unfolded_sysAbs"); hUsys->SetDirectory(nullptr);
   hUsys->SetTitle("unfolded b jets, error = total systematic;#it{p}_{T}^{jet} [GeV];d#it{N}/d#it{p}_{T} [GeV^{-1}]");
 
-  printf("\n%-9s %10s %10s %8s | %8s %8s %8s %8s %8s %8s | %8s %8s %8s %8s\n", "jet pT", "measured", "unfolded", "U/M",
-         "bGS", "cMult", "fitLow", "fitHigh", "JEU(p)", "JER", "purity", "specJEU", "iter", "TOTAL");
+  printf("\n%-9s %10s %10s %8s | %8s %8s %8s %8s %8s %8s | %8s %8s %8s %8s %8s %8s\n", "jet pT", "measured", "unfolded", "U/M",
+         "bGS", "cMult", "fitLow", "fitHigh", "JEU(p)", "JER", "purity", "specJEU", "iter", "respMC", "turnOn", "TOTAL");
   for(int i = 1; i <= NPt; i++){
     double n = hU->GetBinContent(i);
     double q = 0.; for(int s = 0; s < NSrc; s++) q += pow(uSrc[s]->GetBinContent(i), 2);
     double rp = sqrt(q), rj = hRelJEU->GetBinContent(i);
     double ri = n > 0. ? TMath::Max(fabs(hUm->GetBinContent(i)/n - 1.), fabs(hUp->GetBinContent(i)/n - 1.)) : 0.;
-    double rt = sqrt(rp*rp + rj*rj + ri*ri);
+    double rr = uResp->GetBinContent(i);
+    double ro = uTurn->GetBinContent(i);
+    double rt = sqrt(rp*rp + rj*rj + ri*ri + rr*rr + ro*ro);
     uPur->SetBinContent(i, rp); uJEU->SetBinContent(i, rj); uIter->SetBinContent(i, ri); uTot->SetBinContent(i, rt);
     uStat->SetBinContent(i, n > 0. ? hU->GetBinError(i)/n : 0.);
     hUsys->SetBinError(i, rt*n);
     double m = hMeasD->GetBinContent(i);
     printf("%3.0f-%-5.0f %10.4g %10.4g %8.3f |", ptEdges[i-1], ptEdges[i], m, n, m > 0. ? n/m : 0.);
     for(int s = 0; s < NSrc; s++) printf(" %7.2f%%", 100*uSrc[s]->GetBinContent(i));
-    printf(" | %7.2f%% %7.2f%% %7.2f%% %7.2f%%  stat %.2f%%%s\n", 100*rp, 100*rj, 100*ri, 100*rt, 100*uStat->GetBinContent(i),
-           reported(i) ? "" : "  (underflow)");
+    printf(" | %7.2f%% %7.2f%% %7.2f%% %7.2f%% %7.2f%% %7.2f%%  stat %.2f%%  (toy mean shift %+.2f%%)%s\n", 100*rp, 100*rj, 100*ri, 100*rr, 100*ro, 100*rt,
+           100*uStat->GetBinContent(i), 100*uRespM->GetBinContent(i), reported(i) ? "" : "  (underflow)");
   }
 
   // ---- write ------------------------------------------------------------------
   TFile *fo = TFile::Open(outRoot, "recreate");
   TH1D *hMeasOut = (TH1D*) hMeasD->Clone("h_bJetPt_measured"); hMeasOut->Write();
   hU->Write(); hUm->Write(); hUp->Write(); hUsys->Write();
-  uStat->Write(); uTot->Write(); uPur->Write(); uJEU->Write(); uIter->Write();
+  uStat->Write(); uTot->Write(); uPur->Write(); uJEU->Write(); uIter->Write(); uTurn->Write(); uResp->Write(); uRespM->Write(); hToyVals->Write(); hNeff->Write(); hRelE->Write();
   for(int s = 0; s < NSrc; s++) uSrc[s]->Write();
   respT->Write();
   TNamed info("info", Form("pp calo jets: b-jet spectrum (muon-tagged x purity) unfolded with %s (PYTHIA calo, PF flavour, "
                             "even+odd 2026-10-01), Bayes N = %d (unfoldClosureTest min MSE), reco floor %.0f GeV, matched jets "
                             "only. Syst: purity sources propagated through the unfolding (+/- shift), spectrum JEU at gen level, "
-                            "iterations N+/-1; quadrature. Stat propagated by RooUnfold. Underflow 50-80 GeV not reported.",
-                            respName, nIterOpt, recoFloor));
+                            "iterations N+/-1, 70-80 GeV turn-on correction (propagated), response-matrix MC stat (RMS of %d Poisson toys of the response); quadrature. Stat "
+                            "propagated by RooUnfold. Underflow 50-80 GeV not reported.",
+                            respName, nIterOpt, recoFloor, nToys));
   info.Write();
   fo->Close();
   printf("\nwritten %s\n", outRoot);
@@ -377,7 +468,8 @@ void unfoldBJetSpectrum_caloJets_pp()
     TCanvas *c = new TCanvas("cUS", "", 800, 700);
     c->SetLeftMargin(0.13); c->SetBottomMargin(0.13); c->SetRightMargin(0.04); c->SetTopMargin(0.06);
     TH1D *lT = (TH1D*) uTot->Clone("lT4"), *lP = (TH1D*) uPur->Clone("lP4"), *lJ = (TH1D*) uJEU->Clone("lJ4"), *lI = (TH1D*) uIter->Clone("lI4");
-    for(TH1D *h : {lT, lP, lJ, lI}){ h->Scale(100.); for(int i = 0; i <= NPt+1; i++) h->SetBinError(i, 0.); h->GetXaxis()->SetRangeUser(ptReportMin, ptEdges[NPt]); }
+    TH1D *lR = (TH1D*) uResp->Clone("lR4");
+    for(TH1D *h : {lT, lP, lJ, lI, lR}){ h->Scale(100.); for(int i = 0; i <= NPt+1; i++) h->SetBinError(i, 0.); h->GetXaxis()->SetRangeUser(ptReportMin, ptEdges[NPt]); }
     double ymax = 0.; for(int i = 1; i <= NPt; i++) if(reported(i)) ymax = TMath::Max(ymax, lT->GetBinContent(i));
     TH1F *fr = c->DrawFrame(ptReportMin, 0., ptEdges[NPt], 1.8*ymax);   // headroom for header + legend
     fr->GetXaxis()->SetTitle("#it{p}_{T}^{jet} [GeV]");
@@ -388,11 +480,13 @@ void unfoldBJetSpectrum_caloJets_pp()
     styleLine(lJ, "#0072B2", 3); lJ->SetLineStyle(3);
     styleLine(lI, "#E69F00", 3); lI->SetLineStyle(7);
     styleLine(lT, "#000000", 4);
-    lP->Draw("HIST same"); lJ->Draw("HIST same"); lI->Draw("HIST same"); lT->Draw("HIST same");
-    TLegend *leg = makeLegend(0.40, 0.62, 0.95, 0.85, 0.032);
+    styleLine(lR, "#CC79A7", 3); lR->SetLineStyle(9);
+    lP->Draw("HIST same"); lJ->Draw("HIST same"); lI->Draw("HIST same"); lR->Draw("HIST same"); lT->Draw("HIST same");
+    TLegend *leg = makeLegend(0.40, 0.58, 0.95, 0.86, 0.032);
     leg->AddEntry(lP, "b purity (propagated through unfolding)", "l");
     leg->AddEntry(lJ, "spectrum JEU (gen level)", "l");
     leg->AddEntry(lI, Form("iterations (#it{N} = %d #pm 1)", nIterOpt), "l");
+    leg->AddEntry(lR, "response-matrix MC stat.", "l");
     leg->AddEntry(lT, "total (quadrature)", "l");
     leg->Draw();
     TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.038);

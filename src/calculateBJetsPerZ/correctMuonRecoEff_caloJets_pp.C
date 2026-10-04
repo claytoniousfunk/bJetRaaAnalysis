@@ -31,7 +31,7 @@
 //           h_bJetPt_corrected          unfolded / eps_avg, stat error
 //           h_bJetPt_corrected_sysAbs   same, error = total systematic
 //           h_corr_statRel, h_corr_sysRel
-//           h_corr_sysRel_bPurity, _spectrumJEU, _iterations, _muonRecoEff
+//           h_corr_sysRel_bPurity, _spectrumJEU, _iterations, _responseStat, _turnOn, _muonRecoEff
 //           h_muonRecoEff_vsProbePt     the tag-and-probe table, for reference
 //         figures/bJetSpectra/bJetSpectrum_muRecoCorr_caloJets_pp.pdf
 //         figures/systematics/bJetSpectrum_muRecoCorr_sysBreakdown_caloJets_pp.pdf
@@ -96,13 +96,15 @@ void correctMuonRecoEff_caloJets_pp()
   // ---- inputs -----------------------------------------------------------------
   TFile *fI = TFile::Open(inPath);
   if(!fI || fI->IsZombie()){ printf("ERROR: cannot open %s -- run unfoldBJetSpectrum_caloJets_pp.C\n", inPath); return; }
-  TH1D *hU = nullptr, *rPur = nullptr, *rJEU = nullptr, *rIter = nullptr, *rStat = nullptr;
+  TH1D *hU = nullptr, *rPur = nullptr, *rJEU = nullptr, *rIter = nullptr, *rResp = nullptr, *rTurn = nullptr, *rStat = nullptr;
   fI->GetObject("h_bJetPt_unfolded", hU);
   fI->GetObject("h_unf_sysRel_bPurity", rPur);
   fI->GetObject("h_unf_sysRel_spectrumJEU", rJEU);
   fI->GetObject("h_unf_sysRel_iterations", rIter);
+  fI->GetObject("h_unf_sysRel_responseStat", rResp);
+  fI->GetObject("h_unf_sysRel_turnOn", rTurn);
   fI->GetObject("h_unf_statRel", rStat);
-  if(!hU || !rPur || !rJEU || !rIter || !rStat){ printf("ERROR: missing histograms in %s\n", inPath); return; }
+  if(!hU || !rPur || !rJEU || !rIter || !rResp || !rTurn || !rStat){ printf("ERROR: missing histograms in %s\n", inPath); return; }
 
   // ---- correct ----------------------------------------------------------------
   TH1D *hC = (TH1D*) hU->Clone("h_bJetPt_corrected"); hC->SetDirectory(nullptr);
@@ -114,21 +116,24 @@ void correctMuonRecoEff_caloJets_pp()
   TH1D *cPur  = (TH1D*) rPur->Clone("h_corr_sysRel_bPurity");      cPur->SetDirectory(nullptr);
   TH1D *cJEU  = (TH1D*) rJEU->Clone("h_corr_sysRel_spectrumJEU");  cJEU->SetDirectory(nullptr);
   TH1D *cIter = (TH1D*) rIter->Clone("h_corr_sysRel_iterations");  cIter->SetDirectory(nullptr);
+  TH1D *cResp = (TH1D*) rResp->Clone("h_corr_sysRel_responseStat"); cResp->SetDirectory(nullptr);
+  TH1D *cTurn = (TH1D*) rTurn->Clone("h_corr_sysRel_turnOn");      cTurn->SetDirectory(nullptr);
   TH1D *cStat = (TH1D*) rStat->Clone("h_corr_statRel");            cStat->SetDirectory(nullptr);
   TH1D *cEff  = bookRel("h_corr_sysRel_muonRecoEff", "muon reco efficiency (tag-and-probe average)");
   TH1D *cTot  = bookRel("h_corr_sysRel", "total systematic");
 
-  printf("\n%-9s %11s %11s | %8s %8s %8s %8s | %8s %8s\n", "jet pT", "unfolded", "corrected",
-         "purity", "specJEU", "iter", "muEff", "TOTAL", "stat");
+  printf("\n%-9s %11s %11s | %8s %8s %8s %8s %8s | %8s %8s\n", "jet pT", "unfolded", "corrected",
+         "purity", "specJEU", "iter", "respMC", "muEff", "TOTAL", "stat");
   for(int i = 1; i <= NPt; i++){
-    double t = sqrt(pow(rPur->GetBinContent(i), 2) + pow(rJEU->GetBinContent(i), 2) + pow(rIter->GetBinContent(i), 2) + relEff*relEff);
+    double t = sqrt(pow(rPur->GetBinContent(i), 2) + pow(rJEU->GetBinContent(i), 2) + pow(rIter->GetBinContent(i), 2)
+                    + pow(rResp->GetBinContent(i), 2) + pow(rTurn->GetBinContent(i), 2) + relEff*relEff);
     if(hU->GetBinContent(i) <= 0.) t = 0.;
     cEff->SetBinContent(i, hU->GetBinContent(i) > 0. ? relEff : 0.);
     cTot->SetBinContent(i, t);
     hCsys->SetBinError(i, t*hC->GetBinContent(i));
-    printf("%3.0f-%-5.0f %11.4g %11.4g | %7.2f%% %7.2f%% %7.2f%% %7.2f%% | %7.2f%% %7.2f%%%s\n", ptEdges[i-1], ptEdges[i],
+    printf("%3.0f-%-5.0f %11.4g %11.4g | %7.2f%% %7.2f%% %7.2f%% %7.2f%% %7.2f%% | %7.2f%% %7.2f%%%s\n", ptEdges[i-1], ptEdges[i],
            hU->GetBinContent(i), hC->GetBinContent(i), 100*rPur->GetBinContent(i), 100*rJEU->GetBinContent(i),
-           100*rIter->GetBinContent(i), 100*cEff->GetBinContent(i), 100*t, 100*rStat->GetBinContent(i),
+           100*rIter->GetBinContent(i), 100*rResp->GetBinContent(i), 100*cEff->GetBinContent(i), 100*t, 100*rStat->GetBinContent(i),
            reported(i) ? "" : "  (underflow)");
   }
 
@@ -137,10 +142,10 @@ void correctMuonRecoEff_caloJets_pp()
   for(int b = 0; b < NTnP; b++){ hT->SetBinContent(b+1, tnpEff[b]); hT->SetBinError(b+1, 0.5*(tnpErrUp[b] + tnpErrDn[b])); }
 
   TFile *fo = TFile::Open(outRoot, "recreate");
-  hC->Write(); hCsys->Write(); cStat->Write(); cTot->Write(); cPur->Write(); cJEU->Write(); cIter->Write(); cEff->Write(); hT->Write();
+  hC->Write(); hCsys->Write(); cStat->Write(); cTot->Write(); cPur->Write(); cJEU->Write(); cIter->Write(); cResp->Write(); cTurn->Write(); cEff->Write(); hT->Write();
   TNamed info("info", Form("pp calo b jets: unfolded spectrum / muon reco+ID efficiency %.4f (average of %d tag-and-probe probe-pT "
                             "bins, pp_HighEGJet_tnp.root, step all, |eta|<2). Efficiency uncertainty %.2f%% (pT dependence %.2f%%, "
-                            "stat %.2f%%, method %.2f%%), added in quadrature to purity, spectrum JEU and iteration systematics.",
+                            "stat %.2f%%, method %.2f%%), added in quadrature to purity, spectrum JEU, iteration, response-MC-stat and turn-on systematics.",
                             effAvg, NTnP, 100*relEff, 100*relSpread, 100*relStat, 100*relMethod));
   info.Write();
   fo->Close();
@@ -205,10 +210,10 @@ void correctMuonRecoEff_caloJets_pp()
     TCanvas *c = new TCanvas("cS", "", 800, 700);
     c->SetLeftMargin(0.13); c->SetBottomMargin(0.13); c->SetRightMargin(0.04); c->SetTopMargin(0.06);
     TH1D *lT = (TH1D*) cTot->Clone("lT"), *lP = (TH1D*) cPur->Clone("lP"), *lJ = (TH1D*) cJEU->Clone("lJ");
-    TH1D *lI = (TH1D*) cIter->Clone("lI"), *lE = (TH1D*) cEff->Clone("lE");
-    for(TH1D *h : {lT, lP, lJ, lI, lE}){ h->Scale(100.); for(int i = 0; i <= NPt+1; i++) h->SetBinError(i, 0.); h->GetXaxis()->SetRangeUser(ptReportMin, ptEdges[NPt]); }
+    TH1D *lI = (TH1D*) cIter->Clone("lI"), *lE = (TH1D*) cEff->Clone("lE"), *lR = (TH1D*) cResp->Clone("lR");
+    for(TH1D *h : {lT, lP, lJ, lI, lE, lR}){ h->Scale(100.); for(int i = 0; i <= NPt+1; i++) h->SetBinError(i, 0.); h->GetXaxis()->SetRangeUser(ptReportMin, ptEdges[NPt]); }
     double ymax = 0.; for(int i = 1; i <= NPt; i++) if(reported(i)) ymax = TMath::Max(ymax, lT->GetBinContent(i));
-    TH1F *fr = c->DrawFrame(ptReportMin, 0., ptEdges[NPt], 1.9*ymax);   // headroom for header + legend
+    TH1F *fr = c->DrawFrame(ptReportMin, 0., ptEdges[NPt], 2.0*ymax);   // headroom for header + legend
     fr->GetXaxis()->SetTitle("#it{p}_{T}^{jet} [GeV]");
     fr->GetYaxis()->SetTitle("relative systematic uncertainty [%]");
     fr->GetXaxis()->SetTitleSize(0.048); fr->GetYaxis()->SetTitleSize(0.048);
@@ -217,12 +222,14 @@ void correctMuonRecoEff_caloJets_pp()
     styleLine(lJ, "#0072B2", 3); lJ->SetLineStyle(3);
     styleLine(lI, "#E69F00", 3); lI->SetLineStyle(7);
     styleLine(lE, "#CC79A7", 3); lE->SetLineStyle(9);
+    styleLine(lR, "#56B4E9", 3); lR->SetLineStyle(10);
     styleLine(lT, "#000000", 4);
-    lP->Draw("HIST same"); lJ->Draw("HIST same"); lI->Draw("HIST same"); lE->Draw("HIST same"); lT->Draw("HIST same");
-    TLegend *leg = makeLegend(0.40, 0.60, 0.95, 0.86, 0.032);
+    lP->Draw("HIST same"); lJ->Draw("HIST same"); lI->Draw("HIST same"); lR->Draw("HIST same"); lE->Draw("HIST same"); lT->Draw("HIST same");
+    TLegend *leg = makeLegend(0.40, 0.56, 0.95, 0.86, 0.031);
     leg->AddEntry(lP, "b purity (propagated through unfolding)", "l");
     leg->AddEntry(lJ, "spectrum JEU (gen level)", "l");
     leg->AddEntry(lI, "iterations", "l");
+    leg->AddEntry(lR, "response-matrix MC stat.", "l");
     leg->AddEntry(lE, "muon reco efficiency", "l");
     leg->AddEntry(lT, "total (quadrature)", "l");
     leg->Draw();

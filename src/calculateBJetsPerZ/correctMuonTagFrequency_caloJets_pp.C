@@ -7,21 +7,23 @@
 // a muon tag, on the GEN jet pT axis (the spectrum is unfolded to gen level).
 // Two sources, chosen by fSource:
 //
-//   "scanGenTag"   (intended) gen-muon-tagged / all gen b jets from the calo
+//   "scanGenTag"   (current default) gen-muon-tagged / all gen b jets from the calo
 //                  PYTHIA scan: h_inclGenJetPt_inclGenMuonTag_flavor /
 //                  h_inclGenJetPt_flavor. Gen-muon tag (PYTHIA_scan.C): gen muon
 //                  pT > 15 GeV in the tracker eta acceptance, deltaR < 0.4, not a
 //                  W-decay muon, each muon used once.
-//                  *** NOT USABLE YET: every existing scan (PF and calo, PYTHIA
-//                  and PYTHIA+HYDJET) has a bug that suppresses the gen-jet muon
-//                  tag -- the gen-jet loop reused the reco-jet loop's per-event
-//                  matchFlag / matchFlagR without resetting them, so a muon that
-//                  had tagged a reco jet could not tag its gen jet (b-jet f came
-//                  out 0.05-1% instead of ~5-15%). Fixed in PYTHIA_scan.C and
-//                  PYTHIAHYDJET_scan.C on 2026-10-04 (matchFlagGen, matchFlagRGen);
-//                  needs a rescan.
+//                  Needs a scan tagged _genMuTagFix: earlier scans reused the
+//                  reco-jet loop's per-event matchFlag / matchFlagR in the gen-jet
+//                  loop without resetting them, so a muon that had tagged a reco
+//                  jet could not tag its gen jet (b-jet f 0.05-1% instead of
+//                  ~5-15%). Fixed 2026-10-04; mcPath is the fixed calo scan. It
+//                  agrees with responseRecoTag to 1-4%. Gen-jet axis, gen pT, to
+//                  match the unfolded spectrum: the reco-axis fraction
+//                  (calculateBJetsPerZ.cc corrFactor_1) is ~3x smaller for calo
+//                  jets because muon-tagged calo b jets reconstruct at ~0.7 of gen
+//                  pT, a shift the unfolding already corrects.
 //
-//   "responseRecoTag"  (PROVISIONAL, current default) from the calo response
+//   "responseRecoTag"  (cross-check; was the stopgap before the rescan) from the calo response
 //                  scans (PF flavour, even + odd, 2026-10-01): the gen projection
 //                  of h_matchedRecoJetPt_genJetPt_bJets_muTagged over that of
 //                  h_matchedRecoJetPt_genJetPt_bJets, i.e. the fraction of
@@ -80,17 +82,18 @@ const char *outFigS = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/syste
 const double gsShift = 0.175;   // the purity fit's tagged-bGS shift, for the comparison only
 
 // see the header: "responseRecoTag" (provisional) until the scans are rerun
-const TString fSource = "responseRecoTag";
+const TString fSource = "scanGenTag";
 const double  effMuMC = 0.9708;   // MC muon efficiency, tight | gen (responseRecoTag only)
 const char *respDirF  = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PYTHIA/";
 const char *respEvenF = "PYTHIA_DiJet_response_caloJets_PFflavor_manualJEC_evenEvents_pThat-15_mu12_pTmu-15_tight_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-10-1.root";
 const char *respOddF  = "PYTHIA_DiJet_response_caloJets_PFflavor_manualJEC_oddEvents_pThat-15_mu12_pTmu-15_tight_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-10-1.root";
 
-const int NIn = 4;
-const char *inKey[NIn]   = {"bPurity", "spectrumJEU", "iterations", "muonRecoEff"};
-const char *inLabel[NIn] = {"b purity (propagated through unfolding)", "spectrum JEU (gen level)", "iterations", "muon reco efficiency"};
-const char *inHex[NIn]   = {"#009E73", "#0072B2", "#E69F00", "#CC79A7"};
-const int   inStyle[NIn] = {2, 3, 7, 9};
+const int NIn = 6;
+const char *inKey[NIn]   = {"bPurity", "spectrumJEU", "iterations", "responseStat", "turnOn", "muonRecoEff"};
+const char *inLabel[NIn] = {"b purity (propagated through unfolding)", "spectrum JEU (gen level)", "iterations",
+                            "response-matrix MC stat.", "70-80 GeV turn-on correction", "muon reco efficiency"};
+const char *inHex[NIn]   = {"#009E73", "#0072B2", "#E69F00", "#999999", "#56B4E9", "#CC79A7"};
+const int   inStyle[NIn] = {2, 3, 7, 5, 6, 9};
 
 bool reported(int i){ return ptEdges[i-1] >= ptReportMin - 1e-6; }
 
@@ -335,12 +338,12 @@ void correctMuonTagFrequency_caloJets_pp()
     std::vector<TH1D*> all = {lT, lF}; for(int k = 0; k < NIn; k++) all.push_back(lS[k]);
     for(TH1D *h : all){ h->Scale(100.); for(int i = 0; i <= NPt+1; i++) h->SetBinError(i, 0.); h->GetXaxis()->SetRangeUser(ptReportMin, ptEdges[NPt]); }
     double ymax = 0.; for(int i = 1; i <= NPt; i++) if(reported(i)) ymax = TMath::Max(ymax, lT->GetBinContent(i));
-    TH1F *fr = c->DrawFrame(ptReportMin, 0., ptEdges[NPt], 2.0*ymax);   // headroom for header + legend
+    TH1F *fr = c->DrawFrame(ptReportMin, 0., ptEdges[NPt], 2.1*ymax);   // headroom for header + legend
     fr->GetXaxis()->SetTitle("#it{p}_{T}^{jet} [GeV]");
     fr->GetYaxis()->SetTitle("relative systematic uncertainty [%]");
     fr->GetXaxis()->SetTitleSize(0.048); fr->GetYaxis()->SetTitleSize(0.048);
     fr->GetXaxis()->SetLabelSize(0.040); fr->GetYaxis()->SetLabelSize(0.040);
-    TLegend *leg = makeLegend(0.40, 0.58, 0.95, 0.86, 0.031);
+    TLegend *leg = makeLegend(0.40, 0.55, 0.95, 0.86, 0.030);
     for(int k = 0; k < NIn; k++){ styleLine(lS[k], inHex[k], 3); lS[k]->SetLineStyle(inStyle[k]); lS[k]->Draw("HIST same"); leg->AddEntry(lS[k], inLabel[k], "l"); }
     styleLine(lF, "#56B4E9", 3); lF->SetLineStyle(10); lF->Draw("HIST same"); leg->AddEntry(lF, "muon-tag frequency (MC stat.)", "l");
     styleLine(lT, "#000000", 4); lT->Draw("HIST same"); leg->AddEntry(lT, "total (quadrature)", "l");

@@ -24,7 +24,7 @@
 //   AK4PF uncertainty file (no pp AK4Calo one exists); and the same JEU also
 //   enters the b-purity JEU source, so treating the two as independent ignores
 //   their correlation.
-// No efficiency / correction factors, no unfolding, no per-Z normalisation:
+// No efficiency / correction factors other than the turn-on below, no unfolding, no per-Z normalisation:
 // this is the purity step only.
 //
 // The purity is fitted on 0 < ptRel < 5 GeV and applied to the full spectrum
@@ -32,8 +32,20 @@
 //
 // Underflow bins (50-60, 60-70, 70-80 GeV) are kept for the unfolding and not
 // reported. 50-60 and 60-70 are empty: the pp SingleMuon calo data has no jets
-// there (see headers/functions/caloJetBPurityFit_pp.h), so those bins of the b
-// spectrum are zero and need a separate decision before unfolding.
+// below 70 GeV (the calo forest's jet threshold), so the unfolding floor is 70.
+//
+// TURN-ON CORRECTION, 70-80 GeV. That threshold is not sharp: 70-80 is a turn-on.
+// Per 5 GeV bin the efficiency is the data / PYTHIA ratio of the muon-tagged,
+// trigger-on spectrum shape, normalised on the plateau 80-90 GeV:
+//   eff_k = [N_data(k) / N_data(80-90)] / [N_MC(k) / N_MC(80-90)]
+// (data h_inclRecoJetPt_inclRecoMuonTag_triggerOn; MC the same histogram, all
+// flavours, _flavor projected). About 0.14 at 70-75 and 0.88 at 75-80 GeV. The
+// 5 GeV counts are divided by it BEFORE rebinning. The b purity is a ratio and
+// is not affected. Without this the half-empty bin was unfolded as if fully
+// efficient, and since muon-tagged calo b jets reconstruct at ~0.7 of gen pT it
+// pulled gen 80-120 GeV low. Systematic (h_bJetPt_sysRel_turnOn, nonzero only in
+// 70-80): max |change| of the corrected bin with the plateau window 80-100 or
+// 80-120 GeV, in quadrature with the efficiency's statistical error.
 //
 // Inputs:  pp SingleMuon calo data (dataPath in caloJetBPurityFit_pp.h)
 //          rootFiles/systematics/bPuritySys_total_caloJets_pp.root
@@ -59,6 +71,8 @@
 
 #include "TFile.h"
 #include "TH1D.h"
+#include "TH2D.h"
+#include <vector>
 #include "TCanvas.h"
 #include "TPad.h"
 #include "TBox.h"
@@ -79,6 +93,9 @@ const char *outFig       = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/
 const char *outFigSys    = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/systematics/bJetSpectrum_sysBreakdown_caloJets_pp.pdf";
 
 const char *specName = "h_inclRecoJetPt_inclRecoMuonTag_triggerOn";
+const char *specNameMC = "h_inclRecoJetPt_inclRecoMuonTag_triggerOn_flavor";   // in mcPath, all flavours
+const double turnOnLo = 70., turnOnHi = 80.;            // 5 GeV bins corrected
+const double plateauHi[3] = {90., 100., 120.};          // nominal, variations; plateau starts at turnOnHi
 const int NSrc = 6;
 const char *srcKey[NSrc] = {"bGS", "cMult", "fitRangeLow", "fitRangeHigh", "JEU", "JER"};
 
@@ -128,8 +145,51 @@ void constructBJetSpectrum_caloJets_pp()
     if(fabs(edge - ptEdges[i]) > 1e-6){ printf("ERROR: purity bin edge %d is %.1f, expected %.1f\n", i, edge, ptEdges[i]); return; }
   }
 
+  // ---- turn-on correction, 70-80 GeV (5 GeV bins) -----------------------------
+  TFile *fMC = TFile::Open(mcPath);
+  TH2D *hMC2 = nullptr; if(fMC && !fMC->IsZombie()) fMC->GetObject(specNameMC, hMC2);
+  if(!hMC2){ printf("ERROR: %s missing in %s\n", specNameMC, mcPath); return; }
+  TH1D *hMCt = hMC2->ProjectionX("hMCtagged", 0, hMC2->GetNbinsY()+1); hMCt->SetDirectory(nullptr);
+  const int kLo = hSpecIn->FindBin(turnOnLo + 1e-6), kHi = hSpecIn->FindBin(turnOnHi - 1e-6);
+  const int nK = kHi - kLo + 1;
+  TH1D *hEff = new TH1D("h_turnOnEff", "calo-jet turn-on efficiency (data / PYTHIA muon-tagged shape, plateau 80-90 GeV);#it{p}_{T}^{jet} [GeV];efficiency",
+                        nK, hSpecIn->GetBinLowEdge(kLo), hSpecIn->GetBinLowEdge(kHi+1));
+  hEff->SetDirectory(nullptr);
+  std::vector<std::vector<double>> effV(3, std::vector<double>(nK, 1.));
+  for(int v = 0; v < 3; v++){
+    int r1 = hSpecIn->FindBin(turnOnHi + 1e-6), r2 = hSpecIn->FindBin(plateauHi[v] - 1e-6);
+    double nd = hSpecIn->Integral(r1, r2), nm = hMCt->Integral(hMCt->FindBin(turnOnHi + 1e-6), hMCt->FindBin(plateauHi[v] - 1e-6));
+    for(int k = 0; k < nK; k++){
+      int b = kLo + k, bm = hMCt->FindBin(hSpecIn->GetBinCenter(b));
+      double d = hSpecIn->GetBinContent(b), m = hMCt->GetBinContent(bm);
+      double e = (d/nd)/(m/nm);
+      effV[v][k] = e;
+      if(v == 0){
+        double re = sqrt(pow(hSpecIn->GetBinError(b)/d, 2) + pow(hMCt->GetBinError(bm)/m, 2));
+        hEff->SetBinContent(k+1, e); hEff->SetBinError(k+1, re*e);
+      }
+    }
+  }
+  // corrected 5 GeV counts: nominal and the two plateau variations
+  TH1D *hSpecCorr = (TH1D*) hSpecIn->Clone("hSpecCorr"); hSpecCorr->SetDirectory(nullptr);
+  TH1D *hSpecVar[2];
+  for(int v = 0; v < 2; v++){ hSpecVar[v] = (TH1D*) hSpecIn->Clone(Form("hSpecVar%d", v)); hSpecVar[v]->SetDirectory(nullptr); }
+  for(int k = 0; k < nK; k++){
+    int b = kLo + k;
+    hSpecCorr->SetBinContent(b, hSpecIn->GetBinContent(b)/effV[0][k]); hSpecCorr->SetBinError(b, hSpecIn->GetBinError(b)/effV[0][k]);
+    for(int v = 0; v < 2; v++) hSpecVar[v]->SetBinContent(b, hSpecIn->GetBinContent(b)/effV[v+1][k]);
+    printf("turn-on %3.0f-%-3.0f GeV: eff %.4f +/- %.4f (plateau 80-90), %.4f (80-100), %.4f (80-120)\n",
+           hSpecIn->GetBinLowEdge(b), hSpecIn->GetBinLowEdge(b+1), effV[0][k], hEff->GetBinError(k+1), effV[1][k], effV[2][k]);
+  }
+  TH1D *hCountsRaw = rebinTo(hSpecIn, NPt, ptEdges, "h_muTagJetPt_counts_noTurnOnCorr");
+  hCountsRaw->SetTitle("muon-tagged jets, no turn-on correction (counts);#it{p}_{T}^{jet} [GeV];jets per bin");
+  TH1D *hCV0 = rebinTo(hSpecVar[0], NPt, ptEdges, "hCV0"), *hCV1 = rebinTo(hSpecVar[1], NPt, ptEdges, "hCV1");
+  // the relative stat error of the efficiency, summed into each analysis bin
+  TH1D *hEffStatAbs = (TH1D*) hSpecIn->Clone("hEffStatAbs"); hEffStatAbs->SetDirectory(nullptr); hEffStatAbs->Reset();
+  for(int k = 0; k < nK; k++) hEffStatAbs->SetBinContent(kLo + k, hSpecCorr->GetBinContent(kLo + k)*hEff->GetBinError(k+1)/effV[0][k]);
+
   // ---- muon-tagged spectrum in the purity bins ------------------------------
-  TH1D *hCounts = rebinTo(hSpecIn, NPt, ptEdges, "h_muTagJetPt_counts");
+  TH1D *hCounts = rebinTo(hSpecCorr, NPt, ptEdges, "h_muTagJetPt_counts");
   hCounts->SetTitle("muon-tagged jets (counts);#it{p}_{T}^{jet} [GeV];jets per bin");
   TH1D *hSpec = (TH1D*) hCounts->Clone("h_muTagJetPt"); hSpec->SetDirectory(nullptr);
   divideByBinwidth(hSpec);
@@ -151,15 +211,16 @@ void constructBJetSpectrum_caloJets_pp()
   TH1D *hRelJ   = bookRel("h_bJetPt_sysRel_spectrumJEU",      "relative systematic from the spectrum JEU, max(|up-1|,|down-1|)");
   TH1D *hRelJu  = bookRel("h_bJetPt_sysRel_spectrumJEU_up",   "spectrum JEU up: shifted/nominal - 1 (gen level)");
   TH1D *hRelJd  = bookRel("h_bJetPt_sysRel_spectrumJEU_down", "spectrum JEU down: shifted/nominal - 1 (gen level)");
-  TH1D *hRelS   = bookRel("h_bJetPt_sysRel",                  "relative total systematic (b purity (+) spectrum JEU)");
+  TH1D *hRelS   = bookRel("h_bJetPt_sysRel",                  "relative total systematic (b purity (+) spectrum JEU (+) turn-on)");
+  TH1D *hRelT   = bookRel("h_bJetPt_sysRel_turnOn",           "relative systematic from the 70-80 GeV turn-on correction");
   TH1D *hRelSrc[NSrc];
   for(int s = 0; s < NSrc; s++){
     hRelSrc[s] = (TH1D*) hSysSrc[s]->Clone(Form("h_bJetPt_sysRel_%s", srcKey[s])); hRelSrc[s]->SetDirectory(nullptr);
     hRelSrc[s]->SetTitle(Form("relative systematic on the b-jet spectrum from the b purity, %s;#it{p}_{T}^{jet} [GeV];relative uncertainty", srcKey[s]));
   }
 
-  printf("\n%-9s %10s %8s %12s %8s %8s %8s %8s %8s %8s\n", "jet pT", "muTag N", "purity", "b dN/dpT",
-         "stat", "sys pur", "JEU up", "JEU dn", "sys JEU", "sys tot");
+  printf("\n%-9s %10s %8s %12s %8s %8s %8s %8s %8s %8s %8s\n", "jet pT", "muTag N", "purity", "b dN/dpT",
+         "stat", "sys pur", "JEU up", "JEU dn", "sys JEU", "turnOn", "sys tot");
   for(int i = 1; i <= NPt; i++){
     double n = hCounts->GetBinContent(i), p = hP->GetBinContent(i), b = hB->GetBinContent(i);
     double rc = n > 0. ? hCounts->GetBinError(i)/n : 0., rp = p > 0. ? hP->GetBinError(i)/p : 0.;
@@ -167,25 +228,34 @@ void constructBJetSpectrum_caloJets_pp()
     double gn = windowSum(gNom, i-1);
     double ju = gn > 0. ? windowSum(gUp, i-1)/gn - 1. : 0., jd = gn > 0. ? windowSum(gDown, i-1)/gn - 1. : 0.;
     double rj = TMath::Max(fabs(ju), fabs(jd));
-    double rs = sqrt(rpur*rpur + rj*rj);
+    double rt = 0.;
+    if(n > 0.){
+      double ev = TMath::Max(fabs(hCV0->GetBinContent(i)/n - 1.), fabs(hCV1->GetBinContent(i)/n - 1.));
+      double es = windowSum(hEffStatAbs, i-1)/n;   // efficiency stat, conservatively added linearly over the 5 GeV bins
+      rt = sqrt(ev*ev + es*es);
+    }
+    hRelT->SetBinContent(i, rt);
+    double rs = sqrt(rpur*rpur + rj*rj + rt*rt);
     hRelC->SetBinContent(i, rc); hRelP->SetBinContent(i, rp);
     hRelPur->SetBinContent(i, rpur); hRelJ->SetBinContent(i, rj); hRelJu->SetBinContent(i, ju); hRelJd->SetBinContent(i, jd);
     hRelS->SetBinContent(i, rs);
     hBsys->SetBinError(i, rs*b);
-    printf("%3.0f-%-5.0f %10.0f %8.3f %12.4g %7.2f%% %7.2f%% %+7.2f%% %+7.2f%% %7.2f%% %7.2f%%%s\n", ptEdges[i-1], ptEdges[i], n, p, b,
-           b > 0. ? 100*hB->GetBinError(i)/b : 0., 100*rpur, 100*ju, 100*jd, 100*rj, 100*rs,
+    printf("%3.0f-%-5.0f %10.0f %8.3f %12.4g %7.2f%% %7.2f%% %+7.2f%% %+7.2f%% %7.2f%% %7.2f%% %7.2f%%%s\n", ptEdges[i-1], ptEdges[i], n, p, b,
+           b > 0. ? 100*hB->GetBinError(i)/b : 0., 100*rpur, 100*ju, 100*jd, 100*rj, 100*rt, 100*rs,
            ptEdges[i] <= ptReportMin + 1e-6 ? "   (underflow)" : "");
   }
 
   TFile *fo = TFile::Open(outRoot, "recreate");
   hCounts->Write(); hSpec->Write(); hP->Write(); hB->Write(); hBsys->Write();
+  hCountsRaw->Write(); hEff->Write(); hRelT->Write();
   hRelC->Write(); hRelP->Write(); hRelS->Write(); hRelPur->Write(); hRelJ->Write(); hRelJu->Write(); hRelJd->Write();
   for(int s = 0; s < NSrc; s++) hRelSrc[s]->Write();
   TNamed info("info", Form("pp calo jets: b-jet dN/dpT = muon-tagged dN/dpT (%s) x b purity. Stat via TH1::Multiply "
                             "(counts + purity fit). Syst = b purity (quadrature of %d sources, same relative size) (+) "
                             "spectrum JEU (gen-level shifted/nominal, N=%d, from %s; inclusive PYTHIA calo jets, AK4PF "
                             "uncertainty; correlated with the purity JEU source, treated as independent). No efficiency, "
-                            "unfolding or per-Z normalisation. Bins 50-80 GeV are underflow; 50-70 empty in data. data: %s",
+                            "unfolding or per-Z normalisation. 70-80 GeV corrected for the calo-jet turn-on (data/PYTHIA muon-tagged shape, "
+                            "plateau 80-90 GeV; syst from plateau 80-100/80-120 and eff. stat). Bins 50-80 GeV are underflow; 50-70 empty in data. data: %s",
                             specName, NSrc, jeuIter, gSystem->BaseName(jeuSpecPath), gSystem->BaseName(dataPath)));
   info.Write();
   fo->Close();

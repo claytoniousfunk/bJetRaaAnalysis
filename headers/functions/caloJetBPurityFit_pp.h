@@ -26,7 +26,7 @@ const char *dataPath =
 const char *mcPath =
   "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PYTHIA/"
   "PYTHIA_DiJet_caloJets_PFflavor_PFbHadNum_manualJEC_pThat-15_mu12_pTmu-15to999_"
-  "tight_vzReweight_jetTrkMaxFilter_removeHYDJETjet0p35CutOnGen_WDecayFilter_2026-10-4.root";
+  "tight_vzReweight_jetTrkMaxFilter_removeHYDJETjet0p35CutOnGen_WDecayFilter_genMuTagFix_2026-10-4.root";
 const char *hName = "h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn";
 
 // Jet-pT windows, matched to the unfolding binning. 50-60, 60-70 and 70-80 are
