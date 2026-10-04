@@ -97,6 +97,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <random>
+#include <array>
 #include <map>
 #include <memory>
 #include "TSystem.h"
@@ -397,6 +398,43 @@ TH2D *h_injMuonPtRel_donorJetPt_injectConstit[NCentralityIndices];
 // the closest jet at any distance -- so it cannot be reused for this.
 TH2D *h_mixedMuonPtRel_recoJetPt[NCentralityIndices];
 TH2D *h_realMuonPtRel_mixedFastJetPt[NCentralityIndices];
+
+// --- the same decomposition for akPu-style calo jets (towerPUSub) ---
+// The three templates above cannot all be built from towers: the two
+// fake-muon terms need a muon among the mixed-event inputs, and towers carry
+// no species, so in this scan h_fastJetMuonPtRel_..._bkgSub_RC and (until
+// these were added) h_mixedMuonPtRel_recoJetPt stayed empty. And the one that
+// is filled, h_realMuonPtRel_mixedFastJetPt, uses the RC-subtracted
+// random-draw jets, not the forest-style akPu emulation.
+//
+// So, for doTowerPUSub && doEventMixing, the PF muons of every pool event
+// (pfcandAnalyzer, pfId == 3) are kept alongside its towers, and each enters a
+// mixed event with probability 1/N_pool -- one event's worth of muons,
+// independent of which cells the event donated, so a pool muon never arrives
+// with its own jet's towers (those are also vetoed, see caloTowers.h).
+//   (real mu, fake jet)  h_realMuonPtRel_towerPUSubFakeJetPt
+//                        reco muon of THIS event (findRecoMuonTag, exactly the
+//                        data selection) x mixed towerPUSub jet
+//   (fake mu, fake jet)  h_mixedMuonPtRel_towerPUSubFakeJetPt
+//                        mixed PF muon x mixed towerPUSub jet
+//   (fake mu, real jet)  h_mixedMuonPtRel_recoJetPt (the existing name, now
+//                        filled here) -- mixed PF muon x forest jet
+// Tagging is jet-centric and mirrors findRecoMuonTag: jets in order, each
+// takes the first not-yet-used muon within dR < epsilon_mm. Jets: JEC_Calo pT
+// > jetPtCut, |eta| < etaMax, etaPhiMask; the forest jets also get
+// doJetTrkMaxFilter, as in the data loop (tower jets have no track content).
+// Mixed muons: muPtCut < pT < muPtMaxCut, |eta| < 2, and the W-decay filter
+// when on -- the kinematic part of the data selection. Tight ID cannot be
+// applied to a PF candidate, so they remain a looser population.
+//
+// The gated histograms carry evtTriggerDecision, like the data. The fake-muon
+// terms involve nothing from THIS event's muons, so they also have an
+// ungated _allEvents twin with ~1/(trigger fraction) the statistics; to use it
+// in place of the gated one, scale by h_vz_triggerOn / h_vz per slice.
+TH2D *h_realMuonPtRel_towerPUSubFakeJetPt[NCentralityIndices];
+TH2D *h_mixedMuonPtRel_towerPUSubFakeJetPt[NCentralityIndices];
+TH2D *h_mixedMuonPtRel_towerPUSubFakeJetPt_allEvents[NCentralityIndices];
+TH2D *h_mixedMuonPtRel_recoJetPt_allEvents[NCentralityIndices];
 
 
 // RC eta/phi maps loaded from external file at run time
@@ -830,6 +868,10 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	h_fastJetPt_towerPUSub[i] = new TH1D(Form("h_fastJetPt_towerPUSub_C%i",i),Form("tower anti-kT pT, forest-style tower PU sub, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_towerPUSub_JEC[i] = new TH1D(Form("h_fastJetPt_towerPUSub_JEC_C%i",i),Form("tower anti-kT pT (JEC), forest-style tower PU sub, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_towerPUSub_pu_fastJetPt[i] = new TH2D(Form("h_towerPUSub_pu_fastJetPt_C%i",i),Form("subtracted pileup vs raw tower-jet pT, forest-style tower PU sub, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,100,0,200);
+	h_realMuonPtRel_towerPUSubFakeJetPt[i] = new TH2D(Form("h_realMuonPtRel_towerPUSubFakeJetPt_C%i",i),Form("real #mu #it{p}_{T}^{rel} vs mixed-event towerPUSub jet #it{p}_{T} (JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_mixedMuonPtRel_towerPUSubFakeJetPt[i] = new TH2D(Form("h_mixedMuonPtRel_towerPUSubFakeJetPt_C%i",i),Form("mixed #mu #it{p}_{T}^{rel} vs mixed-event towerPUSub jet #it{p}_{T} (JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_mixedMuonPtRel_towerPUSubFakeJetPt_allEvents[i] = new TH2D(Form("h_mixedMuonPtRel_towerPUSubFakeJetPt_allEvents_C%i",i),Form("mixed #mu #it{p}_{T}^{rel} vs mixed-event towerPUSub jet #it{p}_{T} (JEC), no trigger, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_mixedMuonPtRel_recoJetPt_allEvents[i] = new TH2D(Form("h_mixedMuonPtRel_recoJetPt_allEvents_C%i",i),Form("mixed-event muon #it{p}_{T}^{rel} vs reco jet #it{p}_{T}, no trigger, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_fastJetPt_PFCs[i] = new TH1D(Form("h_fastJetPt_PFCs_C%i",i),Form("FastJet (PFCs) anti-kT pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PFCs_JEC[i] = new TH1D(Form("h_fastJetPt_PFCs_JEC_C%i",i),Form("FastJet anti-kT pT (PFCs, JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_bkgSub_RC[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, random-cone), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
@@ -935,6 +977,10 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	h_fastJetPt_towerPUSub[i] = new TH1D(Form("h_fastJetPt_towerPUSub_C%i",i),Form("tower anti-kT pT, forest-style tower PU sub, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_towerPUSub_JEC[i] = new TH1D(Form("h_fastJetPt_towerPUSub_JEC_C%i",i),Form("tower anti-kT pT (JEC), forest-style tower PU sub, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_towerPUSub_pu_fastJetPt[i] = new TH2D(Form("h_towerPUSub_pu_fastJetPt_C%i",i),Form("subtracted pileup vs raw tower-jet pT, forest-style tower PU sub, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,100,0,200);
+	h_realMuonPtRel_towerPUSubFakeJetPt[i] = new TH2D(Form("h_realMuonPtRel_towerPUSubFakeJetPt_C%i",i),Form("real #mu #it{p}_{T}^{rel} vs mixed-event towerPUSub jet #it{p}_{T} (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_mixedMuonPtRel_towerPUSubFakeJetPt[i] = new TH2D(Form("h_mixedMuonPtRel_towerPUSubFakeJetPt_C%i",i),Form("mixed #mu #it{p}_{T}^{rel} vs mixed-event towerPUSub jet #it{p}_{T} (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_mixedMuonPtRel_towerPUSubFakeJetPt_allEvents[i] = new TH2D(Form("h_mixedMuonPtRel_towerPUSubFakeJetPt_allEvents_C%i",i),Form("mixed #mu #it{p}_{T}^{rel} vs mixed-event towerPUSub jet #it{p}_{T} (JEC), no trigger, hiBin %i - %i",centEdges[i-1],centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_mixedMuonPtRel_recoJetPt_allEvents[i] = new TH2D(Form("h_mixedMuonPtRel_recoJetPt_allEvents_C%i",i),Form("mixed-event muon #it{p}_{T}^{rel} vs reco jet #it{p}_{T}, no trigger, hiBin %i - %i",centEdges[i-1],centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
 	h_fastJetPt_PFCs[i] = new TH1D(Form("h_fastJetPt_PFCs_C%i",i),Form("FastJet (PFCs) anti-kT pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PFCs_JEC[i] = new TH1D(Form("h_fastJetPt_PFCs_JEC_C%i",i),Form("FastJet (PFCs) anti-kT pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 
@@ -1023,6 +1069,10 @@ void PbPb_caloTowerAnalyzer(int group = 1,
       h_fastJetPt_towerPUSub[i]->Sumw2();
       h_fastJetPt_towerPUSub_JEC[i]->Sumw2();
       h_towerPUSub_pu_fastJetPt[i]->Sumw2();
+      h_realMuonPtRel_towerPUSubFakeJetPt[i]->Sumw2();
+      h_mixedMuonPtRel_towerPUSubFakeJetPt[i]->Sumw2();
+      h_mixedMuonPtRel_towerPUSubFakeJetPt_allEvents[i]->Sumw2();
+      h_mixedMuonPtRel_recoJetPt_allEvents[i]->Sumw2();
       h_fastJetPt_PFCs[i]->Sumw2();
       h_fastJetPt_PFCs_JEC[i]->Sumw2();
 
@@ -1353,6 +1403,7 @@ void PbPb_caloTowerAnalyzer(int group = 1,
       // against the forest's own akPu4Calo rawpt in
       // src/plots/towers/validateTowerPUSub.C.
       auto fillTowerPUSub = [&](const std::vector<TowerPUInput> &puIn, double wFill){
+        // returned so the mixed-event muon templates can tag the same jets
         std::vector<TowerPUJet> puJets = clusterTowersWithPUSub(puIn, 0.4, towerPUSub_nSigma,
                                                                 towerPUSub_ptMin, towerPUSub_radius,
                                                                 towerPUSub_jetPtMin);
@@ -1369,6 +1420,7 @@ void PbPb_caloTowerAnalyzer(int group = 1,
           h_towerPUSub_pu_fastJetPt[0]->Fill(pj.pt, pj.pu, wFill);
           h_towerPUSub_pu_fastJetPt[CentralityIndex]->Fill(pj.pt, pj.pu, wFill);
         }
+        return puJets;
       };
       // Same-event: here, before the mixed-event pool loop, because that loop
       // overwrites the em->tow* arrays with other events.
@@ -1538,6 +1590,9 @@ void PbPb_caloTowerAnalyzer(int group = 1,
       // a flat list cut to the clustering acceptance, this one keeps every
       // tower above towerEtMin at any eta with its cell, as the forest takes.
       std::vector<TowerPUPoolEvent> puPool;
+      // PF muons of each puPool event, for the towerPUSub muon templates.
+      // {pT, eta, phi}; mixed-muon kinematic selection applied here, once.
+      std::vector<std::vector<std::array<double,3>>> puPoolMuons;
 #endif
 
       if(doEventMixing){
@@ -1562,6 +1617,17 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	        it = puVetoCache.emplace(mixedEventIndex,
 	               tagJetCells(puPool.back().towers, towerPUSub_vetoPtMin[CentralityIndex], towerPUSub_vetoDR)).first;
 	      puPool.back().veto = it->second;
+	    }
+	    puPoolMuons.emplace_back();
+	    // pfTree is a friend of the event tree, so getEvent above loaded it;
+	    // absent pfcandAnalyzer -> no muons, and the fake-muon terms stay empty
+	    if(em->pfTree && em->pfId){
+	      for(size_t l = 0; l < em->pfId->size(); l++){
+	        if(em->pfId->at(l) != 3) continue;
+	        const double pt = em->pfPt->at(l);
+	        if(pt < muPtCut || pt > muPtMaxCut || fabs(em->pfEta->at(l)) > 2.) continue;
+	        puPoolMuons.back().push_back({pt, em->pfEta->at(l), em->pfPhi->at(l)});
+	      }
 	    }
 	  }
 #endif
@@ -1606,8 +1672,106 @@ void PbPb_caloTowerAnalyzer(int group = 1,
       // doEventMixing, so this never runs in a same-event scan.
       if(doTowerPUSub && doEventMixing && !puPool.empty() && towerPUSub_nMixedResamples > 0){
         const double wMix = w / towerPUSub_nMixedResamples;
-        for(int r = 0; r < towerPUSub_nMixedResamples; r++)
-          fillTowerPUSub(mixCellByCell(puPool, rng), wMix);
+
+        // forest jets passing the data selection (fake mu, real jet), once per
+        // event: {JEC pT, eta, phi}
+        std::vector<std::array<double,3>> realJets;
+        for(int j = 0; j < em->njet; j++){
+          JEC_Calo.SetJetPT(em->rawpt[j]);
+          JEC_Calo.SetJetEta(em->jeteta[j]);
+          JEC_Calo.SetJetPhi(em->jetphi[j]);
+          const double pt = JEC_Calo.GetCorrectedPT();
+          if(pt < jetPtCut || fabs(em->jeteta[j]) > etaMax) continue;
+          if(doJetTrkMaxFilter && !passesJetTrkMaxFilter(em->jetTrkMax[j], pt)) continue;
+          if(doEtaPhiMask && etaPhiMask(em->jeteta[j], em->jetphi[j])) continue;
+          realJets.push_back({pt, (double)em->jeteta[j], (double)em->jetphi[j]});
+        }
+        bool anyPoolMuon = false;
+        for(const auto &v : puPoolMuons) if(!v.empty()){ anyPoolMuon = true; break; }
+        std::uniform_real_distribution<double> uni(0., 1.);
+        const double pMuon = 1. / puPool.size();
+
+        // jet-centric tag, as findRecoMuonTag: first unused muon within
+        // epsilon_mm; W-decay filter against this jet's pT
+        auto tagMixedMuon = [&](const std::vector<std::array<double,3>> &mus, std::vector<char> &used,
+                                double jPt, double jEta, double jPhi, double &ptRel) -> bool {
+          for(size_t m = 0; m < mus.size(); m++){
+            if(used[m]) continue;
+            if(doWDecayFilter && isWDecayMuon(mus[m][0], jPt)) continue;
+            if(getDr(mus[m][1], mus[m][2], jEta, jPhi) >= epsilon_mm) continue;
+            used[m] = 1;
+            ptRel = getPtRel(mus[m][0], mus[m][1], mus[m][2], jPt, jEta, jPhi);
+            return true;
+          }
+          return false;
+        };
+
+        for(int r = 0; r < towerPUSub_nMixedResamples; r++){
+          std::vector<TowerPUJet> puJets = fillTowerPUSub(mixCellByCell(puPool, rng), wMix);
+
+          // one event's worth of pool muons
+          std::vector<std::array<double,3>> mixMu;
+          if(anyPoolMuon)
+            for(const auto &v : puPoolMuons) for(const auto &mu : v) if(uni(rng) < pMuon) mixMu.push_back(mu);
+
+          // mixed jets passing the data selection: {JEC pT, eta, phi}
+          std::vector<std::array<double,3>> fakeJets;
+          for(const auto &pj : puJets){
+            if(fabs(pj.eta) > etaMax) continue;
+            JEC_Calo.SetJetPT(pj.pt);
+            JEC_Calo.SetJetEta(pj.eta);
+            JEC_Calo.SetJetPhi(pj.phi);
+            const double pt = JEC_Calo.GetCorrectedPT();
+            if(pt < jetPtCut) continue;
+            if(doEtaPhiMask && etaPhiMask(pj.eta, pj.phi)) continue;
+            fakeJets.push_back({pt, pj.eta, pj.phi});
+          }
+
+          // (real mu, fake jet)
+          if(evtTriggerDecision && em->nMu > 0){
+            std::vector<int> flag(em->nMu, 0);
+            for(const auto &fj : fakeJets){
+              double muPtRel_f = -999., muPt_f, muEta_f, muPhi_f, muJetDr_f;
+              if(findRecoMuonTag(em, fj[0], fj[1], fj[2], flag.data(),
+                                 muPtRel_f, muPt_f, muEta_f, muPhi_f, muJetDr_f)){
+                h_realMuonPtRel_towerPUSubFakeJetPt[0]->Fill(muPtRel_f, fj[0], wMix);
+                h_realMuonPtRel_towerPUSubFakeJetPt[CentralityIndex]->Fill(muPtRel_f, fj[0], wMix);
+              }
+            }
+          }
+          if(mixMu.empty()) continue;
+
+          // (fake mu, fake jet)
+          {
+            std::vector<char> used(mixMu.size(), 0);
+            for(const auto &fj : fakeJets){
+              double pr;
+              if(!tagMixedMuon(mixMu, used, fj[0], fj[1], fj[2], pr)) continue;
+              h_mixedMuonPtRel_towerPUSubFakeJetPt_allEvents[0]->Fill(pr, fj[0], wMix);
+              h_mixedMuonPtRel_towerPUSubFakeJetPt_allEvents[CentralityIndex]->Fill(pr, fj[0], wMix);
+              if(evtTriggerDecision){
+                h_mixedMuonPtRel_towerPUSubFakeJetPt[0]->Fill(pr, fj[0], wMix);
+                h_mixedMuonPtRel_towerPUSubFakeJetPt[CentralityIndex]->Fill(pr, fj[0], wMix);
+              }
+            }
+          }
+          // (fake mu, real jet). Its own muon bookkeeping: these are separate
+          // templates, and a muon used by a mixed jet above says nothing about
+          // whether it would tag a real one.
+          {
+            std::vector<char> used(mixMu.size(), 0);
+            for(const auto &rj : realJets){
+              double pr;
+              if(!tagMixedMuon(mixMu, used, rj[0], rj[1], rj[2], pr)) continue;
+              h_mixedMuonPtRel_recoJetPt_allEvents[0]->Fill(pr, rj[0], wMix);
+              h_mixedMuonPtRel_recoJetPt_allEvents[CentralityIndex]->Fill(pr, rj[0], wMix);
+              if(evtTriggerDecision){
+                h_mixedMuonPtRel_recoJetPt[0]->Fill(pr, rj[0], wMix);
+                h_mixedMuonPtRel_recoJetPt[CentralityIndex]->Fill(pr, rj[0], wMix);
+              }
+            }
+          }
+        }
       }
 #endif
 
@@ -2923,6 +3087,10 @@ void PbPb_caloTowerAnalyzer(int group = 1,
       h_fastJetPt_towerPUSub[i]->Write();
       h_fastJetPt_towerPUSub_JEC[i]->Write();
       h_towerPUSub_pu_fastJetPt[i]->Write();
+      h_realMuonPtRel_towerPUSubFakeJetPt[i]->Write();
+      h_mixedMuonPtRel_towerPUSubFakeJetPt[i]->Write();
+      h_mixedMuonPtRel_towerPUSubFakeJetPt_allEvents[i]->Write();
+      h_mixedMuonPtRel_recoJetPt_allEvents[i]->Write();
       h_fastJetPt_PFCs[i]->Write();
       h_fastJetPt_PFCs_JEC[i]->Write();
       h_fastJetPt_PF_bkgSub_RC[i]->Write();
