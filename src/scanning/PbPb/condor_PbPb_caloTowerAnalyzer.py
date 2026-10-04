@@ -25,6 +25,7 @@ they go into the output filename, so two settings cannot be merged by accident.
 """
 
 import math
+import sys
 import os
 
 # ---------------------------------------------------------------------------
@@ -38,11 +39,27 @@ jobname = 'PbPb_caloTowerAnalyzer'
 # `ifile` inside the analyzer. A mismatch here silently scans different files
 # than the indices claim.
 #
-# This is the only forest production that carries rechitanalyzerpp towers:
-# forest_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh, CRAB
-# 260926, 1992 files. It requires doMinBiasSample_Part1 = true in config_PbPb.h
-# with every other sample flag false; the analyzer refuses to run otherwise.
-dblist = '../../../fileNames/fileNames_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh.txt'
+# Chosen from the same config_PbPb.h flags the analyzer reads, so the two
+# cannot disagree. Only these two productions carry rechitanalyzerpp towers
+# (CRAB 260926; MinBias Part 1 1992 files, SingleMuon 1971 files); the older
+# SingleMuon lists have none.
+def _configFlag(name):
+    import re
+    cfg = open('../../../headers/config/config_PbPb.h').read()
+    m = re.search(r'^\s*bool\s+' + name + r'\s*=\s*(true|false)\s*;', cfg, re.M)
+    if not m:
+        sys.exit(f'ERROR: {name} not found in config_PbPb.h')
+    return m.group(1) == 'true'
+
+_towerLists = {
+    'doSingleMuonSample':    '../../../fileNames/fileNames_HISingleMuon_withCaloAndFlowJets_withPFAndTowers_fresh.txt',
+    'doMinBiasSample_Part1': '../../../fileNames/fileNames_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh.txt',
+}
+_on = [f for f in _towerLists if _configFlag(f)]
+if len(_on) != 1:
+    sys.exit(f'ERROR: exactly one of {list(_towerLists)} must be true in config_PbPb.h (got {_on})')
+dblist = _towerLists[_on[0]]
+print(f'input list ({_on[0]}): {dblist}')
 
 # How the analyzer is run.
 #

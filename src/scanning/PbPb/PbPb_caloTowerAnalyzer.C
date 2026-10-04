@@ -482,27 +482,32 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 
   // THE ONE FOREST THAT CARRIES TOWERS.
   //
-  // forest_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh
-  // (CRAB 260926, 1992 files) is the production made for this scan: calo jets,
-  // flow jets, PF candidates and rechitanalyzerpp towers together. It is a
-  // MinBias Part 1 production, so that is the only sample flag this scan can
-  // serve today.
-  //
-  // The other lists are deliberately NOT wired up. Towers are written into
-  // every standard AOD HiForest, so the SingleMuon and HardProbes forests very
-  // likely carry them too -- but that has not been checked against EOS, and a
-  // list that silently lacks rechitanalyzerpp/tower would produce a job that
-  // exits with an error rather than data. Add a list here once it is verified;
-  // the run-time check on the tower tree will confirm it on the first job.
+  // The two productions made for this scan, each with calo jets, flow jets,
+  // PF candidates and rechitanalyzerpp towers together:
+  //   forest_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh
+  //     (CRAB 260926, 1992 files)              <- doMinBiasSample_Part1
+  //   forest_HISingleMuon_withCaloAndFlowJets_withPFAndTowers_fresh
+  //     (CRAB 260926, 1971 files)              <- doSingleMuonSample
+  // The older SingleMuon lists in fileNames/ have no towers and are NOT used
+  // here. Exactly one of the two flags may be set; condor_PbPb_caloTowerAnalyzer.py
+  // reads the same flags to pick the same list, since jobs pass a line index.
   std::string inputFileList = "";
-  if(doMinBiasSample_Part1){
+  if(doSingleMuonSample + doMinBiasSample_Part1 + doMinBiasSample_Part2 + doMinBiasSample_Part3
+     + doMinBiasSample_Part4 + doHardProbesSample + doNoRhoModificationSample + doWithRhoModificationSample != 1){
+    std::cout << "ERROR:  set exactly one sample flag in config_PbPb.h (doSingleMuonSample or\n"
+              << "        doMinBiasSample_Part1 -- the only productions with towers).  Exiting...\n";
+    return;
+  }
+  if(doSingleMuonSample){
+    inputFileList = "../../../fileNames/fileNames_HISingleMuon_withCaloAndFlowJets_withPFAndTowers_fresh.txt";
+  }
+  else if(doMinBiasSample_Part1){
     inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh.txt";
   }
   else{
-    std::cout << "ERROR:  the only forest list with towers is MinBias Part 1\n"
-              << "        (fileNames_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh.txt).\n"
-              << "        Set doMinBiasSample_Part1 = true in config_PbPb.h, and clear the other\n"
-              << "        sample flags.  Exiting...\n";
+    std::cout << "ERROR:  the only forest lists with towers are SingleMuon and MinBias Part 1\n"
+              << "        (fileNames_*_withCaloAndFlowJets_withPFAndTowers_fresh.txt).\n"
+              << "        Set doSingleMuonSample or doMinBiasSample_Part1 in config_PbPb.h.  Exiting...\n";
     return;
   }
 
