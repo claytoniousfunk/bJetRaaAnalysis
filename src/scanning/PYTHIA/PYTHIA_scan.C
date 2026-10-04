@@ -155,6 +155,7 @@ TF1 *fitFxn_PYTHIA_HLT;
 #include "../../../headers/functions/calculateDimuonMass.h"
 #include "../scan_mc_jet_variants.h"
 #include "../scan_mc_muon_tag.h"
+#include "../scan_calo_pf_match.h"
 
 //~~~~~~~~~~~  initialize histograms ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // >>>>>>>>>> Reco jets
@@ -263,6 +264,37 @@ TH1D *h_inclMuPt;
 inline int caloJetPartonFlavor(int refpartonFlavor)
 {
   return refpartonFlavor < -900 ? 0 : refpartonFlavor;
+}
+
+// Flavor and bHadronNumber for calo jets from the nearest ak4PF jet
+// (scan_calo_pf_match.h), as PYTHIA_scan_response.C does for the flavor.
+//
+// Flavor: refparton_flavor keeps only ~35-45% of the jets PF calls b; most of
+// the rest it calls g or x (plotCaloPFFlavorMatch_PYTHIA.C). The calo->PF match
+// itself is clean (median dR ~ 0.02, ~100% of pairs on one gen jet above
+// 50 GeV, plotCaloPFMatching_PYTHIA.C), so the PF jet's jtPartonFlavor is the
+// better label and puts calo jets on the same definition as the PF scan. A calo
+// jet with no PF jet within caloPFMatchDR keeps refparton_flavor.
+//
+// bHadronNumber: without it no calo jet can be bGS (17). A jet is bGS only if
+// its flavor is also |5|, so it needs the PF flavor alongside: with
+// refparton_flavor only 7 of the 289 PF bGS jets above 50 GeV were calo b. A
+// calo jet with no PF match keeps 0.
+bool   caloFlavorFromPFMatch        = true;
+bool   caloBHadronNumberFromPFMatch = true;
+double caloPFMatchDR                = 0.2;   // as PYTHIA_scan_response.C; see plotCaloPFMatching_PYTHIA.C
+
+inline int caloJetFlavor(int idx, eventMap *em)
+{
+  const int fallback = caloJetPartonFlavor(em->refparton_flavor[idx]);
+  if(!caloFlavorFromPFMatch) return fallback;
+  return caloFlavorByPFMatch(em->jeteta[idx], em->jetphi[idx], caloPFMatchDR, fallback);
+}
+
+inline int caloJetBHadronNumber(int idx, eventMap *em)
+{
+  if(!caloBHadronNumberFromPFMatch) return 0;
+  return caloBHadronNumberByPFMatch(em->jeteta[idx], em->jetphi[idx], caloPFMatchDR);
 }
 
 ///////////////////////  start the program
@@ -680,6 +712,13 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
   cout << "Loading jet..." << endl;
   if(useCaloJetsOverride) em->loadJet("ak4CaloJetAnalyzer/t");
   else em->loadJet("ak4PFJetAnalyzer/t");
+  // second, un-friended read of the PF jet tree for calo bHadronNumber
+  if(useCaloJetsOverride){
+    attachCaloPFMatchTree(f, "ak4PFJetAnalyzer/t", caloFlavorFromPFMatch, caloBHadronNumberFromPFMatch);
+    if(g_pfHasFlav) cout << "calo flavor from the PF jet within dR < " << caloPFMatchDR << endl;
+    if(g_pfHasBHad) cout << "calo bHadronNumber from the PF jet within dR < " << caloPFMatchDR << endl;
+  }
+  else g_pfTree = nullptr;
   cout << "Loading muon..." << endl;
   em->loadMuon("ggHiNtuplizerGED/EventTree");
   cout << "Loading muon triggers..." << endl;
@@ -774,6 +813,7 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
     if(evi==0) cout << "Processing events..." << endl;
     
     em->getEvent(evi);
+    if(g_pfTree) g_pfTree->GetEntry(evi);
 
     if((100*evi / NEvents) % 5 == 0 && 100*evi / NEvents > evi_frac) cout << "evt frac: " << evi_frac << "%" << endl;
     evi_frac = 100 * evi/NEvents;
@@ -1163,13 +1203,11 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 
       if(recoJetPt_i > leadingRecoJetPt) leadingRecoJetPt = recoJetPt_i;
 
-      // Calo jets have no flavour branches of their own; see caloJetPartonFlavor.
-      // refparton_flavor carries no gluon-splitting information, so for calo
-      // jets bHadronNumber is held at 0: no jet is labelled 17 and the bGS
-      // template stays empty.
-      int partonFlavor  = useCaloJetsOverride ? caloJetPartonFlavor(em->refparton_flavor[i]) : (int) em->partonFlavor[i];
+      // Calo jets have no flavour branches of their own; both come from the
+      // matched PF jet (caloJetFlavor, caloJetBHadronNumber).
+      int partonFlavor  = useCaloJetsOverride ? caloJetFlavor(i, em) : (int) em->partonFlavor[i];
       int jetFlavorInt  = partonFlavor;
-      int bHadronNumber = useCaloJetsOverride ? 0 : em->bHadronNumber[i];
+      int bHadronNumber = useCaloJetsOverride ? caloJetBHadronNumber(i, em) : em->bHadronNumber[i];
 
       if(fabs(jetFlavorInt) == 5 && bHadronNumber == 2) jetFlavorInt = 17; // 17 = bJet from gluon-splitting
   
@@ -1770,9 +1808,9 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 
      
       if(hasRecoJetMatch) {
-	jetFlavorInt = useCaloJetsOverride ? caloJetPartonFlavor(em->refparton_flavor[recoJetFlavorFlag])
+	jetFlavorInt = useCaloJetsOverride ? caloJetFlavor(recoJetFlavorFlag, em)
 	                                   : (int) em->partonFlavor[recoJetFlavorFlag];
-	bHadronNumber = useCaloJetsOverride ? 0 : em->bHadronNumber[recoJetFlavorFlag];
+	bHadronNumber = useCaloJetsOverride ? caloJetBHadronNumber(recoJetFlavorFlag, em) : em->bHadronNumber[recoJetFlavorFlag];
 	if(fabs(jetFlavorInt) == 5 && bHadronNumber == 2) jetFlavorInt = 17;
 	//cout << "jetFlavorInt = " << jetFlavorInt << endl;
       }
@@ -1967,6 +2005,7 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 	
 
   } // END EVENT LOOP
+  if(useCaloJetsOverride) printCaloPFMatchSummary();
   delete f;
   // WRITE
   auto wf = TFile::Open(output,"recreate");
