@@ -33,8 +33,8 @@ bool apply_JER_smear = false;
 bool apply_JEU_shift_up = false;
 bool apply_JEU_shift_down = false;
 // select dataset
-bool doSingleMuonSample = true;
-bool doMinBiasSample_Part1 = false;
+bool doSingleMuonSample = false;
+bool doMinBiasSample_Part1 = true;
 bool doMinBiasSample_Part2 = false;
 bool doMinBiasSample_Part3 = false;
 bool doMinBiasSample_Part4 = false;
@@ -43,7 +43,7 @@ bool doNoRhoModificationSample = false;
 bool doWithRhoModificationSample = false;
 // reweight functions (for bkg subtraction)
 bool doHiBinReweightToHardProbesJet80 = false;
-bool useCaloJetsOverride = true;
+bool useCaloJetsOverride = false;
 bool useFlowJetsOverride = false;
 bool useManualJEC = true;
 // Drop the data-only L2L3Residual from the calo-jet JEC (useCaloJetsOverride &&
