@@ -51,7 +51,8 @@ TString configureOutputDatasetName(TString generator,
 				   bool useManualJEC,
 				   bool onlyEvenEvents,
 				   bool onlyOddEvents,
-				   bool onlyMuTaggedJets)
+				   bool onlyMuTaggedJets,
+				   bool useAnalysisMuonTag)
 {
 
   TString result = "output";
@@ -70,6 +71,9 @@ TString configureOutputDatasetName(TString generator,
   if(useManualJEC) result.Append("_manualJEC");
   // response filled from muon-tagged jets only
   if(onlyMuTaggedJets) result.Append("_muTaggedJets");
+  // muon tag = the analysis reco-muon tag (muon tree, tight, W veto, one jet per
+  // muon), not the jet branch's own muon
+  if(useAnalysisMuonTag) result.Append("_anaMuTag");
 
   if(onlyEvenEvents) result.Append("_evenEvents");
   if(onlyOddEvents) result.Append("_oddEvents");

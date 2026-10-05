@@ -1,6 +1,8 @@
 // general ROOT/C includes
 #include <iostream>
 #include "TFile.h"
+#include "TSystem.h"
+#include "TRandom2.h"
 #include "TRandom.h"
 #include "TTree.h"
 #include "TH1F.h"
@@ -135,17 +137,17 @@ TF1 *fitFxn_PYTHIAHYDJET_HLT_C4, *fitFxn_PYTHIAHYDJET_HLT_C3, *fitFxn_PYTHIAHYDJ
 // ---- calo-jet flavor --------------------------------------------------------
 // akPu4CaloJetAnalyzer/t has no matchedPartonFlavor, matchedHadronFlavor or
 // bHadronNumber the way akCs4PF does, so calo jets are labelled from
-// refparton_flavorForB, as PYTHIAHYDJET_scan_response.C does, or optionally from
-// the nearest PF jet's jtPartonFlavor (caloFlavorFromPFMatch; default off, to
-// match the response scan). refparton_flavorForB marks a jet with no matched
-// parton as -999 where matchedPartonFlavor uses 0; map it to 0 so those jets
-// land in the x-jet class.
+// refparton_flavorForB, or from the nearest PF jet's
+// parton flavor (caloFlavorFromPFMatch, ON, as in the pp PYTHIA scan and
+// PYTHIAHYDJET_scan_response.C).
+// refparton_flavorForB marks a jet with no matched parton as -999 where
+// matchedPartonFlavor uses 0; map it to 0 so those jets land in the x-jet class.
 //
-// caloFlavorFromPFMatch is INERT on the current forests: akCs4PF there has no
-// jtPartonFlavor (its PF flavor is matchedPartonFlavor), so attachCaloPFMatchTree
-// warns and the calo jet keeps refparton_flavorForB. That is fine as it stands --
-// plotCaloPFFlavorMatch_PYTHIAHYDJET.C shows refparton_flavorForB already agrees
-// with PF on b (84-98% efficiency, ~100% purity by class).
+// The PbPb akCs4PF trees have no jtPartonFlavor; scan_calo_pf_match.h reads
+// their matchedPartonFlavor instead (the label the PF-jet analysis uses), so the
+// flag is no longer inert. plotCaloPFFlavorMatch_PYTHIAHYDJET.C shows the two
+// labels agree on b at 84-98% efficiency and ~100% purity by class; calo jets
+// with no PF jet within caloPFMatchDR keep refparton_flavorForB.
 //
 // The gluon-splitting b class (17) needs bHadronNumber, which only the PF tree
 // has. caloBHadronNumberFromPFMatch takes it from the nearest PF jet within
@@ -153,7 +155,7 @@ TF1 *fitFxn_PYTHIAHYDJET_HLT_C4, *fitFxn_PYTHIAHYDJET_HLT_C3, *fitFxn_PYTHIAHYDJ
 // A jet is bGS only if its OWN flavor is also |5|, so this splits the calo b
 // class into b and bGS and moves nothing in from g or x. Off, the bGS template
 // stays empty for calo jets, as before.
-bool   caloFlavorFromPFMatch        = false;
+bool   caloFlavorFromPFMatch        = true;
 bool   caloBHadronNumberFromPFMatch = true;
 double caloPFMatchDR                = 0.3;   // looser than pp: calo is Pu-, PF is Cs-subtracted
 
@@ -468,7 +470,9 @@ void PYTHIAHYDJET_scan(int group = 1){
 						   doPThatCorrelationFilter,
 						   useManualJEC,
 						   useCaloJetsOverride,
-						   doRemoveUnmatchedJets);
+						   doRemoveUnmatchedJets,
+						   caloFlavorFromPFMatch,
+						   caloBHadronNumberFromPFMatch);
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
 

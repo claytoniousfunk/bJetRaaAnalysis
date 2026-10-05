@@ -143,55 +143,39 @@ const double recoGenMatchDr = 0.2;
 
 
 // ---- calo-jet flavor from the matched PF jet --------------------------------
-// PbPb twin of the block in PYTHIA_scan_response.C: match each calo jet to the
-// nearest PF jet in dR and take that jet's flavor, instead of labelling the
-// calo jet from its own parton match.
+// Each calo jet takes the parton flavor of the nearest PF jet within
+// caloPFMatchDR (scan_calo_pf_match.h, shared with the analysis scans), instead
+// of its own refparton_flavorForB. ON, so the response's b class is the same
+// label the PYTHIAHYDJET_scan.C ptRel templates and tag frequency use (_PFflavor
+// there and here). The PbPb akCs4PF trees carry the flavor as
+// matchedPartonFlavor, not jtPartonFlavor; the shared header reads either. Calo
+// jets with no PF jet that close keep refparton_flavorForB.
 //
-// TWO DIFFERENCES FROM THE pp VERSION, both worth knowing.
-//
-// 1. The PF collection here is akCs4PFJetAnalyzer (constituent subtracted)
-//    while the calo one is akPu4CaloJetAnalyzer (pileup subtracted). The two
-//    use DIFFERENT background subtraction, so the same underlying jet can sit
-//    further apart between collections than it does in pp, where both are plain
-//    ak4. caloPFMatchDR is correspondingly looser, and the match rate printed
-//    at the end should be checked before the output is trusted.
-//
-// 2. This scan labels jets with refparton_flavorForB everywhere, calo and PF
-//    alike, where the pp scan uses jtPartonFlavor for PF. The matched flavor
-//    below is read from jtPartonFlavor, the same definition the pp version
-//    uses and the one the calo-vs-PF flavor study was done with; it is NOT
-//    refparton_flavorForB. Mixing the two definitions across systems would
-//    defeat the point of the exercise.
-bool   caloFlavorFromPFMatch = false;
+// The PF collection is akCs4PF (constituent subtracted), the calo one akPu4Calo
+// (pileup subtracted), so the same jet can sit further apart than in pp;
+// caloPFMatchDR is looser, and the match rate printed at the end of the job
+// should be checked.
+#include "../scan_calo_pf_match.h"
+bool   caloFlavorFromPFMatch = true;
 double caloPFMatchDR         = 0.3;   // looser than pp: different subtraction
 
-static TTree  *g_pfFlavTree = nullptr;
-static Int_t   g_pfN        = 0;
-static const int g_pfMax = eventMap::jetMax;   // class member, not a global
-static Float_t g_pfPt [g_pfMax], g_pfEta[g_pfMax], g_pfPhi[g_pfMax], g_pfFlav[g_pfMax];
-static long    g_nPFMatched = 0, g_nPFUnmatched = 0;
-
-inline int caloFlavorByPFMatch(double caloEta, double caloPhi, int fallback)
-{
-  if(!g_pfFlavTree) return fallback;
-  double best = caloPFMatchDR; int bestIdx = -1;
-  for(int j = 0; j < g_pfN; j++){
-    double dEta = caloEta - g_pfEta[j];
-    double dPhi = TVector2::Phi_mpi_pi(caloPhi - g_pfPhi[j]);
-    double dr   = sqrt(dEta*dEta + dPhi*dPhi);
-    if(dr < best){ best = dr; bestIdx = j; }
-  }
-  if(bestIdx < 0){ g_nPFUnmatched++; return fallback; }
-  g_nPFMatched++;
-  return (int) g_pfFlav[bestIdx];
-}
+// ---- muon tag ---------------------------------------------------------------
+// true: a jet is muon-tagged with the ANALYSIS reco-muon tag of
+// PYTHIAHYDJET_scan.C -- a muon-tree muon passing passesRecoMuonCuts (tight ID,
+// muPtCut < pT < muPtMaxCut, |eta| < 2), not a W-decay muon (doWDecayFilter),
+// within epsilon_mm of the reco jet axis, each muon used by one jet only.
+// false: the jet branch's own muon (mupt/mueta > muPtCut, |eta| < 2), with no
+// ID, no W veto and no one-muon-per-jet rule -- what every response scan before
+// 2026-10-04 used. Tagged _anaMuTag in the output name.
+bool   useAnalysisMuonTag    = true;
+#include "../scan_mc_muon_tag.h"
 
 // one place that decides a jet's flavor, so the two fill sites cannot drift
 inline int recoJetFlavorFor(bool useCalo, int idx, eventMap *em)
 {
   const int fallback = em->refparton_flavorForB[idx];
   if(useCalo && caloFlavorFromPFMatch)
-    return caloFlavorByPFMatch(em->jeteta[idx], em->jetphi[idx], fallback);
+    return caloFlavorByPFMatch(em->jeteta[idx], em->jetphi[idx], caloPFMatchDR, fallback);
   return fallback;
 }
 
@@ -312,7 +296,8 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 						   useManualJEC,
 						   onlyEvenEvents,
 						   onlyOddEvents,
-						   onlyMuTaggedJets);
+						   onlyMuTaggedJets,
+						   useAnalysisMuonTag);
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;   // "_ultraFineCentBins" etc., "" for nominal
@@ -616,25 +601,14 @@ void PYTHIAHYDJET_scan_response(int group = 1){
     // second, un-friended read of the PF jet tree, for calo flavor by dR match.
     // It cannot go through eventMap: loadJet() attaches the jet tree as a FRIEND
     // of evtTree, so a second one would collide on jtpt, jteta and the rest.
-    g_pfFlavTree = nullptr;
     if(useCaloJetsOverride && caloFlavorFromPFMatch){
-      g_pfFlavTree = (TTree*) f->Get("akCs4PFJetAnalyzer/t");
-      if(!g_pfFlavTree)
-        cout << "	WARNING: caloFlavorFromPFMatch set but akCs4PFJetAnalyzer/t is "
-                "absent; falling back to refparton_flavorForB\n";
-      else if(!g_pfFlavTree->GetBranch("jtPartonFlavor")){
-        cout << "	WARNING: akCs4PFJetAnalyzer/t has no jtPartonFlavor; falling "
-                "back to refparton_flavorForB\n";
-        g_pfFlavTree = nullptr;
-      }
-      else{
-        g_pfFlavTree->SetBranchAddress("nref",           &g_pfN);
-        g_pfFlavTree->SetBranchAddress("jtpt",            g_pfPt);
-        g_pfFlavTree->SetBranchAddress("jteta",           g_pfEta);
-        g_pfFlavTree->SetBranchAddress("jtphi",           g_pfPhi);
-        g_pfFlavTree->SetBranchAddress("jtPartonFlavor",  g_pfFlav);
-        cout << "	calo flavor from the PF jet within dR < " << caloPFMatchDR << "\n";
-      }
+      attachCaloPFMatchTree(f, "akCs4PFJetAnalyzer/t", true, false);
+      if(g_pfHasFlav) cout << "	calo flavor from the PF jet within dR < " << caloPFMatchDR << "\n";
+    }
+    else g_pfTree = nullptr;
+    if(useAnalysisMuonTag){
+      cout << "	Loading muon..." << endl;
+      em->loadMuon("ggHiNtuplizerGED/EventTree");
     }
     cout << "Loading muon triggers..." << endl;
     em->loadHLT("hltanalysis/HltTree");
@@ -734,7 +708,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
       em->getEvent(evi);
 
       // step the un-friended PF tree to the same event
-      if(g_pfFlavTree) g_pfFlavTree->GetEntry(evi);
+      if(g_pfTree) g_pfTree->GetEntry(evi);
 
       if((100*evi / NEvents) % 5 == 0 && 100*evi / NEvents > evi_frac) cout << "evt frac: " << evi_frac << "%" << endl;
       evi_frac = 100 * evi/NEvents;
@@ -807,6 +781,8 @@ double leadingMatchedRecoJetPt = -999.0;
       // KNOWN BUG of 2026-09-25).  With the cut per jet there is no event-level
       // filter left and every histogram sees the same jets.
       std::vector<int> genMatchedReco(em->ngj, -1);   // accepted reco jet matched to gen jet j
+      // analysis muon tag: each muon tags one jet (PYTHIAHYDJET_scan.C's matchFlagR)
+      std::vector<int> matchFlagR(useAnalysisMuonTag && em->nMu > 0 ? em->nMu : 1, 0);
 
       // RECO JET LOOP -- matrix, fakes, reco diagnostics
       for(int i = 0; i < em->njet; i++){
@@ -841,6 +817,20 @@ double leadingMatchedRecoJetPt = -999.0;
 	if(TMath::Abs(recoJetEta_i) > etaMax || recoJetPt_i < jetPtCut) continue;
 	if(doRemoveHYDJETjet && refJetPt_i > 0){
 	  if(remove_HYDJET_jet(em->pthat, refJetPt_i)) continue;
+	}
+
+	// analysis reco-muon tag, on every accepted reco jet in forest order as in
+	// PYTHIAHYDJET_scan.C, so muons are consumed by the same jets there and here
+	bool anaMuTag_i = false;
+	if(useAnalysisMuonTag){
+	  for(int m = 0; m < em->nMu; m++){
+	    if(!passesRecoMuonCuts(em, m, matchFlagR.data())) continue;
+	    if(doWDecayFilter && isWDecayMuon(em->muPt->at(m), recoJetPt_i)) continue;
+	    if(getDr(em->muEta->at(m), em->muPhi->at(m), recoJetEta_i, recoJetPhi_i) < epsilon_mm){
+	      matchFlagR[m] = 1;
+	      anaMuTag_i = true;
+	    }
+	  }
 	}
 
 	// nearest gen jet to this reco jet, by dR, regardless of any cut; and the
@@ -920,7 +910,8 @@ double leadingMatchedRecoJetPt = -999.0;
 	double y = hasGenEta ? em->genjeteta[refGen_i] : -999.;
 	if(refGen_i >= 0) genMatchedReco[refGen_i] = i;
 
-	const bool hasRecoJetMuon = (em->mupt[i] > muPtCut && fabs(em->mueta[i]) < 2.);
+	const bool hasRecoJetMuon = useAnalysisMuonTag ? anaMuTag_i
+	                                               : (em->mupt[i] > muPtCut && fabs(em->mueta[i]) < 2.);
 	const bool hasRecoMuon = hasRecoJetMuon;
 	int jetFlavorInt = recoJetFlavor_i;
 
@@ -1265,6 +1256,7 @@ double leadingMatchedRecoJetPt = -999.0;
 
 
 
+    printCaloPFMatchSummary();
     wf->Close();
     return;
     // END WRITE

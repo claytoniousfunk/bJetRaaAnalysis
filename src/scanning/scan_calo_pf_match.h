@@ -28,12 +28,13 @@
 #include "TVector2.h"
 
 static TTree  *g_pfTree    = nullptr;
-static bool    g_pfHasFlav = false;   // jtPartonFlavor attached
+static bool    g_pfHasFlav = false;   // a PF flavor branch attached
+static bool    g_pfFlavInt = false;   // ... and it is the Int_t matchedPartonFlavor (PbPb), not Float_t jtPartonFlavor (pp)
 static bool    g_pfHasBHad = false;   // bHadronNumber attached
 static Int_t   g_pfN       = 0;
 static const int g_pfMax = eventMap::jetMax;   // class member, not a global
 static Float_t g_pfPt [g_pfMax], g_pfEta[g_pfMax], g_pfPhi[g_pfMax], g_pfFlav[g_pfMax];
-static Int_t   g_pfBHad[g_pfMax];
+static Int_t   g_pfBHad[g_pfMax], g_pfFlavI[g_pfMax];
 static long    g_nPFMatched   = 0, g_nPFUnmatched   = 0;   // flavor lookups
 static long    g_nBHadMatched = 0, g_nBHadUnmatched = 0;   // bHadronNumber lookups
 
@@ -42,7 +43,7 @@ static long    g_nBHadMatched = 0, g_nBHadUnmatched = 0;   // bHadronNumber look
 // forest without it still scans with the calo jet's own values.
 inline void attachCaloPFMatchTree(TFile *f, const char *pfTreeName, bool wantFlavor, bool wantBHad)
 {
-  g_pfTree = nullptr; g_pfHasFlav = false; g_pfHasBHad = false;
+  g_pfTree = nullptr; g_pfHasFlav = false; g_pfFlavInt = false; g_pfHasBHad = false;
   if(!wantFlavor && !wantBHad) return;
 
   TTree *t = (TTree*) f->Get(pfTreeName);
@@ -50,10 +51,14 @@ inline void attachCaloPFMatchTree(TFile *f, const char *pfTreeName, bool wantFla
     cout << "\tWARNING: " << pfTreeName << " is absent; calo jets keep their own flavor and bHadronNumber = 0\n";
     return;
   }
+  // pp forests' ak4PF carries jtPartonFlavor (Float_t); the PbPb akCs4PF trees
+  // do not, and carry the same parton-flavor label as matchedPartonFlavor
+  // (Int_t), which is what the PF-jet analysis itself reads there.
   g_pfHasFlav = wantFlavor && t->GetBranch("jtPartonFlavor");
+  if(wantFlavor && !g_pfHasFlav && t->GetBranch("matchedPartonFlavor")){ g_pfHasFlav = true; g_pfFlavInt = true; }
   g_pfHasBHad = wantBHad   && t->GetBranch("bHadronNumber");
   if(wantFlavor && !g_pfHasFlav)
-    cout << "\tWARNING: " << pfTreeName << " has no jtPartonFlavor; calo jets keep their own flavor\n";
+    cout << "\tWARNING: " << pfTreeName << " has neither jtPartonFlavor nor matchedPartonFlavor; calo jets keep their own flavor\n";
   if(wantBHad && !g_pfHasBHad)
     cout << "\tWARNING: " << pfTreeName << " has no bHadronNumber; calo jets keep bHadronNumber = 0\n";
   if(!g_pfHasFlav && !g_pfHasBHad) return;
@@ -65,7 +70,8 @@ inline void attachCaloPFMatchTree(TFile *f, const char *pfTreeName, bool wantFla
   t->SetBranchAddress("jtpt",   g_pfPt);
   t->SetBranchAddress("jteta",  g_pfEta);
   t->SetBranchAddress("jtphi",  g_pfPhi);
-  if(g_pfHasFlav){ t->SetBranchStatus("jtPartonFlavor", 1); t->SetBranchAddress("jtPartonFlavor", g_pfFlav); }
+  if(g_pfHasFlav && !g_pfFlavInt){ t->SetBranchStatus("jtPartonFlavor", 1); t->SetBranchAddress("jtPartonFlavor", g_pfFlav); }
+  if(g_pfHasFlav &&  g_pfFlavInt){ t->SetBranchStatus("matchedPartonFlavor", 1); t->SetBranchAddress("matchedPartonFlavor", g_pfFlavI); }
   if(g_pfHasBHad){ t->SetBranchStatus("bHadronNumber",  1); t->SetBranchAddress("bHadronNumber",  g_pfBHad); }
   g_pfTree = t;
 }
@@ -84,14 +90,15 @@ inline int nearestPFJet(double eta, double phi, double maxDR)
   return bestIdx;
 }
 
-// matched PF jet's jtPartonFlavor, or fallback (the calo jet's own label)
+// matched PF jet's parton flavor (jtPartonFlavor, or matchedPartonFlavor in
+// PbPb forests), or fallback (the calo jet's own label)
 inline int caloFlavorByPFMatch(double eta, double phi, double maxDR, int fallback)
 {
   if(!g_pfHasFlav) return fallback;
   int j = nearestPFJet(eta, phi, maxDR);
   if(j < 0){ g_nPFUnmatched++; return fallback; }
   g_nPFMatched++;
-  return (int) g_pfFlav[j];
+  return g_pfFlavInt ? g_pfFlavI[j] : (int) g_pfFlav[j];
 }
 
 // matched PF jet's bHadronNumber, or 0 (never bGS) when there is no match
@@ -107,7 +114,7 @@ inline int caloBHadronNumberByPFMatch(double eta, double phi, double maxDR)
 inline void printCaloPFMatchSummary()
 {
   if(g_pfHasFlav)
-    cout << "\tcalo->PF flavor lookups: " << g_nPFMatched << " matched, "
+    cout << "\tcalo->PF flavor lookups (" << (g_pfFlavInt ? "matchedPartonFlavor" : "jtPartonFlavor") << "): " << g_nPFMatched << " matched, "
          << g_nPFUnmatched << " kept the calo jet's own flavor\n";
   if(g_pfHasBHad)
     cout << "\tcalo->PF bHadronNumber lookups: " << g_nBHadMatched << " matched, "

@@ -1,6 +1,8 @@
 // general ROOT/C includes
 #include <iostream>
 #include "TFile.h"
+#include "TSystem.h"
+#include "TRandom2.h"
 #include "TTree.h"
 #include "TH1F.h"
 #include "TH1D.h"

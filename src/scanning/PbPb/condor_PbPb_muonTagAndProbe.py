@@ -32,7 +32,9 @@ import os
 
 jobname = 'PbPb_SingleMuon_muonTagAndProbe'
 
-# HISingleMuon, the list PbPb_scan.C reads for its SingleMuon sample. The scan
+# HISingleMuon, the list PbPb_scan.C reads for its SingleMuon sample (the
+# "fresh" forest, as the 2026-10-04 calo SingleMuon scan, so the data/MC muon
+# scale factor comes from the same events the b-jet spectrum does). The scan
 # requires HLT_HIL3Mu12_v1 (requireTrigger in PbPb_muonTagAndProbe_scan.C), and
 # the probe can be the muon that fired it, which biases the efficiency up -- see
 # the scan's header for the bound.
@@ -40,7 +42,7 @@ jobname = 'PbPb_SingleMuon_muonTagAndProbe'
 # For the unbiased cross-check, set requireTrigger = false in the scan and use
 #   ../../../fileNames/fileNames_HIHardProbes_withCaloAndFlowJets_fresh_partial.txt
 # with jobname/outdir changed so the two outputs do not mix.
-dblist = '../../../fileNames/fileNames_HISingleMuon_HIRun2018A-04Apr2019-v1.txt'
+dblist = '../../../fileNames/fileNames_HISingleMuon_withCaloAndFlowJets_fresh.txt'
 isMC = False
 
 # Must be a directory the jobs can write: EOS via the FUSE mount works from

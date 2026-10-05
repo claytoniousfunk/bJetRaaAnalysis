@@ -61,7 +61,9 @@ TString configureOutputDatasetName(TString generator,
 				   bool doPThatCorrelationFilter,
 				   bool useManualJEC,
 				   bool useCaloJetsOverride,
-				   bool doRemoveUnmatchedJets)
+				   bool doRemoveUnmatchedJets,
+				   bool caloFlavorFromPFMatch,
+				   bool caloBHadronNumberFromPFMatch)
 {
 
   TString result = "output";
@@ -92,6 +94,12 @@ TString configureOutputDatasetName(TString generator,
   result.Append(datasetIndicator);
   // akPu4CaloJetAnalyzer jets instead of akCs4PF
   if(useCaloJetsOverride) result.Append("_caloJets");
+  // Calo-jet flavor / bHadronNumber taken from the matched PF jet
+  // (scan_calo_pf_match.h); same tags as configureOutputDatasetName_PYTHIA.h.
+  // Tagged so the scan does not collide on one filename with the generation
+  // whose calo bGS template is empty.
+  if(useCaloJetsOverride && caloFlavorFromPFMatch) result.Append("_PFflavor");
+  if(useCaloJetsOverride && caloBHadronNumberFromPFMatch) result.Append("_PFbHadNum");
   if(doPThatWeight) result.Append(Form("_pThat-%2.0f",pThat));
   else result.Append("_pThat-unweighted");
 
@@ -133,7 +141,12 @@ TString configureOutputDatasetName(TString generator,
   if(apply_JEU_shift_down) result.Append("_applyJEUShiftDown");
   if(doBJetNeutrinoEnergyShift) result.Append("_BJetNeutrinoEnergyShift");
 
-  
+  // Every scan from 2026-10-04 on carries the gen-jet muon-flag fix (separate
+  // matchFlagGen / matchFlagRGen in PYTHIAHYDJET_scan.C). Before it the gen-jet
+  // muon-tag histograms were broken; the tag keeps the two generations apart,
+  // as in configureOutputDatasetName_PYTHIA.h.
+  result.Append("_genMuTagFix");
+
   TDatime dt;
   result.Append(Form("_%i-%i-%i",dt.GetYear(),dt.GetMonth(),dt.GetDay()));
   
