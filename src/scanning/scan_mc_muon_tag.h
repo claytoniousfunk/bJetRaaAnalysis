@@ -5,7 +5,8 @@
 
 // Returns true if muon m passes matchFlagR check, optional kinematic cuts,
 // and muon quality cuts (tight or hybridSoft per fillMu* flags).
-// checkKinematic=false skips pT range and eta cuts (PYTHIAHYDJET gen-jet loop omits them).
+// checkKinematic=false skips pT range and eta cuts (no current caller; the
+// PYTHIAHYDJET gen-jet loop used it until 2026-10-04).
 inline bool passesRecoMuonCuts(eventMap* em, int m, int* matchFlagR, bool checkKinematic = true) {
     if(matchFlagR[m] == 1) return false;
     if(checkKinematic){

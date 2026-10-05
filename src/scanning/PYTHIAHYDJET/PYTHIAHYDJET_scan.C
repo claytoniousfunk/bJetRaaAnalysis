@@ -2398,7 +2398,11 @@ void PYTHIAHYDJET_scan(int group = 1){
 		
 	for(int m = 0; m < em->nMu; m++){
 
-	  if(!passesRecoMuonCuts(em, m, matchFlagRGen.data(), false)) continue;
+	  // full analysis cuts (tight, muPtCut < pT < muPtMaxCut, |eta| < 2), as in
+	  // PYTHIA_scan.C: h_inclGenJetPt_inclRecoMuonTag_flavor is the tag-frequency
+	  // numerator for the analysis reco-muon tag. Until 2026-10-04 this loop
+	  // skipped the pT and eta cuts (checkKinematic = false).
+	  if(!passesRecoMuonCuts(em, m, matchFlagRGen.data())) continue;
 
 	  if(doWDecayFilter && isWDecayMuon(em->muPt->at(m),genJetPt_i)) continue;
 
