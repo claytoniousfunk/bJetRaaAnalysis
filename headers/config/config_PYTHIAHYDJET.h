@@ -88,8 +88,8 @@ bool useManualJEC = true;
 // for response scan. The PbPb b-jet unfolding needs BOTH halves (even + odd
 // summed for the nominal response, split for the closure test): run once with
 // onlyEvenEvents, then again with onlyOddEvents.
-bool onlyEvenEvents = true;
-bool onlyOddEvents = false;
+bool onlyEvenEvents = false;
+bool onlyOddEvents = true;
 // response scan: fill only jets whose jet-branch muon (mupt/mueta, no
 // muon-tree matching) passes muPtCut and |eta| < 2
 bool onlyMuTaggedJets = false;
