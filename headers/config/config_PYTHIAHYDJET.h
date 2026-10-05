@@ -11,7 +11,10 @@ bool apply_JER_smear = false;
 bool apply_JEU_shift_up = false;
 bool apply_JEU_shift_down = false;
 // options to skip genParticle loops (for forests with no genParticle info)
-bool skipGenParticles = false; // set TRUE for MuJet and BJet datasets
+// TRUE only for forests without HiGenParticleAna/hi (the old MuJet / BJet
+// lists). Leave false for the fix2 forests: the gen-jet muon tags and the
+// tag frequency need the gen particles.
+bool skipGenParticles = false;
 // reweighting functions
 bool doPThatWeight = true;
 bool doHiBinReweight = false;
@@ -55,9 +58,9 @@ double sigma_eta = 0.005;
 // stuff for dataset naming
 TString generator = "PYTHIAHYDJET";
 // data set
-bool doDiJetSample = true;
+bool doDiJetSample = false;
 bool doMuJetSample = false;
-bool doBJetSample = false;
+bool doBJetSample = true;
 bool doDiJetSample_batch1 = false;
 bool doDiJetSample_batch2 = false;
 bool doDiJetSample_batch3 = false;
