@@ -283,7 +283,7 @@ void plotBJetFraction_caloJets_pp(){
     double ymax = 0.;
     for(int i = 1; i <= NPt; i++) if(shown(i)) ymax = TMath::Max(ymax, TMath::Max(fPct->GetBinContent(i)*(1. + fSys->GetBinContent(i)), mcPct->GetBinContent(i)));
     TH1D *fr = (TH1D*) fPct->Clone("frFrac"); fr->Reset(); fr->SetTitle("");
-    fr->GetXaxis()->SetRangeUser(xlo, xhi); fr->SetMinimum(0.); fr->SetMaximum(1.6*ymax);   // headroom for header + legend
+    fr->GetXaxis()->SetRangeUser(xlo, xhi); fr->SetMinimum(0.); fr->SetMaximum(1.85*ymax);   // headroom for header + legend
     fr->GetXaxis()->SetLabelSize(0);
     fr->GetYaxis()->SetTitle("b jets / inclusive jets [%]");
     fr->GetYaxis()->SetTitleSize(0.050); fr->GetYaxis()->SetLabelSize(0.042); fr->GetYaxis()->SetTitleOffset(1.45);

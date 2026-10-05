@@ -9,9 +9,16 @@
 // the table below is copied from its output (run 2026-10-04); re-run it and
 // update the table if the measurement changes.
 //
-// The correction uses the AVERAGE of the probe-pT bins (unweighted mean):
-//   corrected = unfolded / eps_avg
-// Its uncertainty is a new systematic source, constant in jet pT:
+// The correction is a DATA/MC SCALE FACTOR, not the absolute efficiency: the
+// next step (correctMuonTagFrequency_caloJets_pp.C) divides by the PYTHIA
+// fraction of b jets carrying an analysis RECO muon tag, which already contains
+// the MC muon efficiency (and the in-jet ID, threshold migration and acceptance).
+// So only the data/MC difference is corrected here:
+//   SF = eps_avg / eps_MC,   corrected = unfolded / SF
+// eps_avg = unweighted mean of the probe-pT bins; eps_MC = 0.9708, the analysis
+// MC value (tight | gen muon). Until an MC tag-and-probe exists the two are not
+// strictly like-for-like (see CAVEATS).
+// The SF's uncertainty (that of eps_avg) is a new systematic source, constant in jet pT:
 //   pT dependence   max |eps_bin - eps_avg| / eps_avg   (using the average
 //                   instead of the pT-dependent value)
 //   stat            error on the mean, sqrt(sum sigma_bin^2) / N / eps_avg
@@ -28,7 +35,7 @@
 //
 // Input   rootFiles/CorrectedBJetSpectra/Data/unfoldedBJetSpectrum_caloJets_pp.root
 // Output  rootFiles/CorrectedBJetSpectra/Data/bJetSpectrum_muRecoCorr_caloJets_pp.root
-//           h_bJetPt_corrected          unfolded / eps_avg, stat error
+//           h_bJetPt_corrected          unfolded / SF, stat error
 //           h_bJetPt_corrected_sysAbs   same, error = total systematic
 //           h_corr_statRel, h_corr_sysRel
 //           h_corr_sysRel_bPurity, _spectrumJEU, _iterations, _responseStat, _turnOn, _muonRecoEff
@@ -60,6 +67,7 @@ const double tnpErrUp[NTnP]   = {0.008, 0.005, 0.003, 0.002, 0.002, 0.002, 0.004
 const double tnpErrDn[NTnP]   = {0.008, 0.005, 0.004, 0.002, 0.002, 0.002, 0.004};
 const double tnpMethodSys     = 0.0030;   // integrated "all": background-method systematic
 const double tnpIntegrated    = 0.9638;   // integrated "all", for reference only
+const double effMC            = 0.9708;   // analysis MC muon efficiency, tight | gen (SF denominator)
 
 const char *inPath  = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/CorrectedBJetSpectra/Data/unfoldedBJetSpectrum_caloJets_pp.root";
 const char *outRoot = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/CorrectedBJetSpectra/Data/bJetSpectrum_muRecoCorr_caloJets_pp.root";
@@ -92,6 +100,8 @@ void correctMuonRecoEff_caloJets_pp()
   printf("  uncertainty: pT dependence %.2f%%, stat %.2f%%, method %.2f%%  ->  %.2f%%\n",
          100*relSpread, 100*relStat, 100*relMethod, 100*relEff);
   printf("  (integrated value %.4f, for reference)\n", tnpIntegrated);
+  const double sf = effAvg/effMC;
+  printf("data/MC scale factor: %.4f / %.4f = %.4f\n", effAvg, effMC, sf);
 
   // ---- inputs -----------------------------------------------------------------
   TFile *fI = TFile::Open(inPath);
@@ -108,7 +118,7 @@ void correctMuonRecoEff_caloJets_pp()
 
   // ---- correct ----------------------------------------------------------------
   TH1D *hC = (TH1D*) hU->Clone("h_bJetPt_corrected"); hC->SetDirectory(nullptr);
-  hC->Scale(1./effAvg);   // relative stat errors unchanged
+  hC->Scale(1./sf);   // relative stat errors unchanged
   hC->SetTitle("b jets, unfolded, corrected for muon reco efficiency, stat.;#it{p}_{T}^{jet} [GeV];d#it{N}/d#it{p}_{T} [GeV^{-1}]");
   TH1D *hCsys = (TH1D*) hC->Clone("h_bJetPt_corrected_sysAbs"); hCsys->SetDirectory(nullptr);
   hCsys->SetTitle("b jets, corrected, error = total systematic;#it{p}_{T}^{jet} [GeV];d#it{N}/d#it{p}_{T} [GeV^{-1}]");
@@ -143,10 +153,11 @@ void correctMuonRecoEff_caloJets_pp()
 
   TFile *fo = TFile::Open(outRoot, "recreate");
   hC->Write(); hCsys->Write(); cStat->Write(); cTot->Write(); cPur->Write(); cJEU->Write(); cIter->Write(); cResp->Write(); cTurn->Write(); cEff->Write(); hT->Write();
-  TNamed info("info", Form("pp calo b jets: unfolded spectrum / muon reco+ID efficiency %.4f (average of %d tag-and-probe probe-pT "
-                            "bins, pp_HighEGJet_tnp.root, step all, |eta|<2). Efficiency uncertainty %.2f%% (pT dependence %.2f%%, "
-                            "stat %.2f%%, method %.2f%%), added in quadrature to purity, spectrum JEU, iteration, response-MC-stat and turn-on systematics.",
-                            effAvg, NTnP, 100*relEff, 100*relSpread, 100*relStat, 100*relMethod));
+  TNamed info("info", Form("pp calo b jets: unfolded spectrum / muon data/MC scale factor %.4f = %.4f (average of %d tag-and-probe "
+                            "probe-pT bins, pp_HighEGJet_tnp.root, step all, |eta|<2) / %.4f (MC, tight | gen). Uncertainty %.2f%% (pT "
+                            "dependence %.2f%%, stat %.2f%%, method %.2f%%), added in quadrature to purity, spectrum JEU, iteration, "
+                            "response-MC-stat and turn-on systematics. The MC muon efficiency itself is in the tag-frequency step.",
+                            sf, effAvg, NTnP, effMC, 100*relEff, 100*relSpread, 100*relStat, 100*relMethod));
   info.Write();
   fo->Close();
   printf("\nwritten %s\n", outRoot);
@@ -184,7 +195,7 @@ void correctMuonRecoEff_caloJets_pp()
     la.DrawLatex(0.21, 0.84, "pp 5.02 TeV, calo jets: b jets");
     la.SetTextSize(0.034);
     la.DrawLatex(0.21, 0.785, "unfolded, corrected for muon reco efficiency");
-    la.DrawLatex(0.21, 0.74, Form("(#varepsilon_{#mu} = %.3f, tag-and-probe average)", effAvg));
+    la.DrawLatex(0.21, 0.74, Form("(data/MC SF = %.3f / %.3f = %.3f)", effAvg, effMC, sf));
 
     pBot->cd();
     TH1D *rS = (TH1D*) cTot->Clone("rS"), *rT = (TH1D*) cStat->Clone("rT");

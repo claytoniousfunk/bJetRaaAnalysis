@@ -5,9 +5,22 @@
 //
 // f is the fraction of gen b jets (|flavor| 5 plus gluon splitting 17) carrying
 // a muon tag, on the GEN jet pT axis (the spectrum is unfolded to gen level).
-// Two sources, chosen by fSource:
+// Sources, chosen by fSource:
 //
-//   "scanGenTag"   (current default) gen-muon-tagged / all gen b jets from the calo
+//   "scanRecoTag"  (current default) gen b jets tagged with the ANALYSIS reco
+//                  muon (tight ID, pT > 15 GeV, |eta| < 2, W-decay veto,
+//                  deltaR < 0.4) / all gen b jets, from the calo PYTHIA scan:
+//                  h_inclGenJetPt_inclRecoMuonTag_flavor / h_inclGenJetPt_flavor.
+//                  One factor for branching fraction x acceptance x MC muon
+//                  efficiency, including what a flat efficiency misses: muons
+//                  migrating across the 15 GeV threshold and the tight ID inside
+//                  jets. Relative to the gen tag it is 0.97 at 80-100 GeV and
+//                  0.89 at 300-500 GeV, against a flat 0.97 (MC) / 0.966 (data
+//                  tag-and-probe). Pairs with the data/MC muon scale factor of
+//                  correctMuonRecoEff_caloJets_pp.C, not the absolute efficiency.
+//                  The deltaR is to the gen-jet axis (data: reco-jet axis).
+//
+//   "scanGenTag"   (comparison; stored as h_muTagFrequency_genTag) gen-muon-tagged / all gen b jets from the calo
 //                  PYTHIA scan: h_inclGenJetPt_inclGenMuonTag_flavor /
 //                  h_inclGenJetPt_flavor. Gen-muon tag (PYTHIA_scan.C): gen muon
 //                  pT > 15 GeV in the tracker eta acceptance, deltaR < 0.4, not a
@@ -82,7 +95,7 @@ const char *outFigS = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/syste
 const double gsShift = 0.175;   // the purity fit's tagged-bGS shift, for the comparison only
 
 // see the header: "responseRecoTag" (provisional) until the scans are rerun
-const TString fSource = "scanGenTag";
+const TString fSource = "scanRecoTag";
 const double  effMuMC = 0.9708;   // MC muon efficiency, tight | gen (responseRecoTag only)
 const char *respDirF  = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PYTHIA/";
 const char *respEvenF = "PYTHIA_DiJet_response_caloJets_PFflavor_manualJEC_evenEvents_pThat-15_mu12_pTmu-15_tight_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-10-1.root";
@@ -91,7 +104,7 @@ const char *respOddF  = "PYTHIA_DiJet_response_caloJets_PFflavor_manualJEC_oddEv
 const int NIn = 6;
 const char *inKey[NIn]   = {"bPurity", "spectrumJEU", "iterations", "responseStat", "turnOn", "muonRecoEff"};
 const char *inLabel[NIn] = {"b purity (propagated through unfolding)", "spectrum JEU (gen level)", "iterations",
-                            "response-matrix MC stat.", "70-80 GeV turn-on correction", "muon reco efficiency"};
+                            "response-matrix MC stat.", "70-80 GeV turn-on correction", "muon data/MC scale factor"};
 const char *inHex[NIn]   = {"#009E73", "#0072B2", "#E69F00", "#999999", "#56B4E9", "#CC79A7"};
 const int   inStyle[NIn] = {2, 3, 7, 5, 6, 9};
 
@@ -140,15 +153,20 @@ void correctMuonTagFrequency_caloJets_pp()
 
   // ---- f ---------------------------------------------------------------------
   TH1D *allFC = nullptr, *allGS = nullptr, *tagFC = nullptr, *tagGS = nullptr;
-  if(fSource == "scanGenTag"){
+  TH1D *fGenTag = nullptr;   // gen-muon-tag fraction, for comparison
+  if(fSource == "scanGenTag" || fSource == "scanRecoTag"){
     TFile *fM = TFile::Open(mcPath);
     if(!fM || fM->IsZombie()){ printf("ERROR: cannot open %s\n", mcPath); return; }
-    TH2D *Hall = nullptr, *Htag = nullptr;
+    TH2D *Hall = nullptr, *Htag = nullptr, *Hgen = nullptr;
     fM->GetObject("h_inclGenJetPt_flavor", Hall);
-    fM->GetObject("h_inclGenJetPt_inclGenMuonTag_flavor", Htag);
-    if(!Hall || !Htag){ printf("ERROR: gen-jet flavour histograms missing in %s\n", mcPath); return; }
+    fM->GetObject(fSource == "scanRecoTag" ? "h_inclGenJetPt_inclRecoMuonTag_flavor" : "h_inclGenJetPt_inclGenMuonTag_flavor", Htag);
+    fM->GetObject("h_inclGenJetPt_inclGenMuonTag_flavor", Hgen);
+    if(!Hall || !Htag || !Hgen){ printf("ERROR: gen-jet flavour histograms missing in %s\n", mcPath); return; }
     allFC = flavorPt(Hall, {-5, 5}, "allFC"); allGS = flavorPt(Hall, {17}, "allGS");
     tagFC = flavorPt(Htag, {-5, 5}, "tagFC"); tagGS = flavorPt(Htag, {17}, "tagGS");
+    TH1D *gB = flavorPt(Hgen, {-5, 5, 17}, "genTagB"), *aB = flavorPt(Hall, {-5, 5, 17}, "allBforGen");
+    fGenTag = ratioB(gB, aB, "h_muTagFrequency_genTag");
+    fGenTag->SetTitle("fraction of gen b jets with a GEN muon tag (comparison);gen #it{p}_{T}^{jet} [GeV];#it{f}_{#mu-tag}");
   }
   else if(fSource == "responseRecoTag"){
     // the response scans book b (flavour creation + splitting together) only;
@@ -174,7 +192,7 @@ void correctMuonTagFrequency_caloJets_pp()
   fB->SetTitle("fraction of gen b jets with a muon tag;gen #it{p}_{T}^{jet} [GeV];#it{f}_{#mu-tag}");
   fFC->SetTitle("flavour-creation b jets;gen #it{p}_{T}^{jet} [GeV];#it{f}_{#mu-tag}");
   fGS->SetTitle("gluon-splitting b jets;gen #it{p}_{T}^{jet} [GeV];#it{f}_{#mu-tag}");
-  const bool haveFCGS = (fSource == "scanGenTag");
+  const bool haveFCGS = fSource.BeginsWith("scan");
 
   // f implied by the purity fit's tagged-bGS shift (comparison only):
   //   1/f = (1 - s)/f_FC + s/f_GS,  s = tagged GS share (natural + shift)
@@ -225,11 +243,14 @@ void correctMuonTagFrequency_caloJets_pp()
 
   TFile *fo = TFile::Open(outRoot, "recreate");
   fB->Write(); fFC->Write(); fGS->Write(); fShift->Write();
+  if(fGenTag) fGenTag->Write();
   hI->Write(); hIsys->Write(); iStat->Write(); iTot->Write(); iF->Write();
   for(int k = 0; k < NIn; k++) iSrc[k]->Write();
-  TNamed info("info", Form("pp calo b jets, inclusive: muon-reco-corrected unfolded spectrum / f, f = gen-muon-tagged / all gen b jets "
+  TNamed info("info", Form("pp calo b jets, inclusive: muon-SF-corrected unfolded spectrum / f, f (%s) = %s / all gen b jets "
                             "(|flavor| 5 + bGS 17) vs gen jet pT, PYTHIA natural bGS share, from %s. Syst adds f's MC stat (binomial). "
-                            "f with the purity fit's tagged-bGS shift (+%.3f) stored as h_muTagFrequency_GSshift, not used.",
+                            "Gen-muon-tag fraction stored as h_muTagFrequency_genTag; f with the purity fit's tagged-bGS shift (+%.3f) "
+                            "stored as h_muTagFrequency_GSshift; neither used.",
+                            fSource.Data(), fSource == "scanRecoTag" ? "analysis-reco-muon-tagged" : "muon-tagged",
                             gSystem->BaseName(mcPath), gsShift));
   info.Write();
   fo->Close();
@@ -243,9 +264,10 @@ void correctMuonTagFrequency_caloJets_pp()
     c->SetLeftMargin(0.14); c->SetBottomMargin(0.13); c->SetRightMargin(0.04); c->SetTopMargin(0.06);
     double ymax = 0.;
     for(int i = 1; i <= NPt; i++) for(TH1D *h : {fB, fFC, fGS}) ymax = TMath::Max(ymax, h->GetBinContent(i) + h->GetBinError(i));
+    if(fGenTag && fSource != "scanGenTag") for(int i = 1; i <= NPt; i++) ymax = TMath::Max(ymax, fGenTag->GetBinContent(i));
     TH1F *fr = c->DrawFrame(ptEdges[0], 0., ptEdges[NPt], 1.6*ymax);
     fr->GetXaxis()->SetTitle("gen #it{p}_{T}^{jet} [GeV]");
-    fr->GetYaxis()->SetTitle(haveFCGS ? "fraction of b jets with a gen muon tag" : "fraction of b jets with a muon tag");
+    fr->GetYaxis()->SetTitle(fSource == "scanGenTag" ? "fraction of b jets with a gen muon tag" : "fraction of b jets with a muon tag");
     fr->GetXaxis()->SetTitleSize(0.048); fr->GetYaxis()->SetTitleSize(0.048);
     fr->GetXaxis()->SetLabelSize(0.040); fr->GetYaxis()->SetLabelSize(0.040); fr->GetYaxis()->SetTitleOffset(1.35);
     drawUnderflowBand(0., 1.6*ymax, 0.05*ymax);
@@ -256,19 +278,27 @@ void correctMuonTagFrequency_caloJets_pp()
     styleH(dS, "#CC79A7", markCross, 1.4);
     for(int i = 1; i <= NPt; i++) if(dS->GetBinContent(i) <= 0.) dS->SetBinContent(i, -999.);
     if(haveFCGS){ dF->Draw("E1 X0 same"); dG->Draw("E1 X0 same"); dS->Draw("P same"); }
+    TH1D *dGT = nullptr;
+    if(fGenTag && fSource != "scanGenTag"){
+      dGT = (TH1D*) fGenTag->Clone("dGT"); dGT->SetDirectory(nullptr);
+      for(int i = 0; i <= NPt+1; i++) dGT->SetBinError(i, 0.);
+      styleLine(dGT, "#999999", 2); dGT->SetLineStyle(2); dGT->Draw("HIST same");
+    }
     dB->Draw("E1 X0 same");
-    TLegend *leg = haveFCGS ? makeLegend(0.42, 0.18, 0.95, 0.40, 0.034) : makeLegend(0.55, 0.18, 0.95, 0.25, 0.034);   // lower right is empty: f rises with pT
+    TLegend *leg = haveFCGS ? makeLegend(0.42, 0.18, 0.95, dGT ? 0.445 : 0.40, 0.034) : makeLegend(0.55, 0.18, 0.95, 0.25, 0.034);   // lower right is empty: f rises with pT
     leg->AddEntry(dB, "all b jets (used)", "lp");
     if(haveFCGS){
       leg->AddEntry(dF, "flavour creation", "lp");
       leg->AddEntry(dG, "gluon splitting", "lp");
       leg->AddEntry(dS, Form("tagged g#rightarrowb#bar{b} share + %.3f (not used)", gsShift), "p");
     }
+    if(dGT) leg->AddEntry(dGT, "all b, gen-muon tag (comparison)", "l");
     leg->Draw();
     TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.038);
     la.DrawLatex(0.18, 0.88, "PYTHIA, pp 5.02 TeV");
     la.SetTextSize(0.030);
-    if(haveFCGS) la.DrawLatex(0.18, 0.83, "gen muon #it{p}_{T} > 15 GeV, #DeltaR < 0.4");
+    if(fSource == "scanRecoTag") la.DrawLatex(0.18, 0.83, "reco tight muon #it{p}_{T} > 15 GeV, |#eta| < 2, #DeltaR < 0.4 (gen jets)");
+    else if(haveFCGS) la.DrawLatex(0.18, 0.83, "gen muon #it{p}_{T} > 15 GeV, #DeltaR < 0.4");
     else {
       la.DrawLatex(0.18, 0.83, Form("PROVISIONAL: reco-#mu-tagged / all matched b jets, #div %.4f", effMuMC));
       la.DrawLatex(0.18, 0.79, "(gen-muon tag needs the fixed-scan rerun)");
