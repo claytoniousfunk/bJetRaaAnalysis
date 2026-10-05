@@ -319,7 +319,20 @@ TH2D *h_muptrel_hiBin_lJets[NJetPtIndices];
 TH1D *h_inclMuPt;
 
 
-void PYTHIAHYDJET_scan(int group = 1){
+// sample / pThatMin override the config per job, so a series of scans can be
+// queued at once: condor jobs read the macro and its config when they start, not
+// when they are submitted, so flipping the config flags between submissions
+// would change the jobs still in the queue.
+//   sample:   0 = config flags, 1 = DiJet, 2 = MuJet, 3 = BJet
+//   pThatMin: < 0 = pthatcut from common.h
+void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
+
+  if(sample > 0){
+    doDiJetSample = (sample == 1);
+    doMuJetSample = (sample == 2);
+    doBJetSample  = (sample == 3);
+  }
+  if(pThatMin >= 0.) pthatcut = pThatMin;
 
   if(fillMu5){
     muPtCut = 7.0;
@@ -344,74 +357,11 @@ void PYTHIAHYDJET_scan(int group = 1){
   else if(doBJetSample) inputFileList = "../../../fileNames/fileNames_PH_BJet_withCaloAndFlowJets_fix2.txt";
   else{};
 
-  if(group == 0){ cout << "INPUTFILELIST=" << inputFileList << endl; return; } // query mode for condor submit scripts
+  TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
 
-  std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
-  if(!instr.is_open()){
-    cout << "filelist not found!! Exiting..." << endl;
-    return;
-  }
-  std::string filename;
-  Int_t ifile = 0;
-  
-  while(instr>>filename){
+  TString outputDatasetName = "";
 
-    ifile++;
-
-    if(ifile != group) continue;
-
-    std::string input = filename.c_str();
-  
-    // TString inputDataset = "";
-    // TString inputFileName = "";
-
-    // inputDataset = getDatasetName(doDiJetSample,
-    // 				  doMuJetSample,
-    // 				  doBJetSample,
-    // 				  doDiJetSample_batch1,
-    // 				  doDiJetSample_batch2,
-    // 				  doDiJetSample_batch3,
-    // 				  doDiJetSample_batch4,
-    // 				  doDiJetSample_batch5,
-    // 				  doDiJetSample_batch6,
-    // 				  doDiJetSample_batch7,
-    // 				  doDiJetSample_batch8,
-    // 				  doDiJetSample_batch9,
-    // 				  doDiJetSample_batch10,
-    // 				  doDiJetSample_batch11,
-    // 				  doDiJetSample_batch12,
-    // 				  doDiJetSample_batch13,
-    // 				  doDiJetSample_batch14,
-    // 				  doDiJetSample_batch15);
-
-    // inputFileName = getInputFileName(doDiJetSample,
-    // 				     doMuJetSample,
-    // 				     doBJetSample,
-    // 				     doDiJetSample_batch1,
-    // 				     doDiJetSample_batch2,
-    // 				     doDiJetSample_batch3,
-    // 				     doDiJetSample_batch4,
-    // 				     doDiJetSample_batch5,
-    // 				     doDiJetSample_batch6,
-    // 				     doDiJetSample_batch7,
-    // 				     doDiJetSample_batch8,
-    // 				     doDiJetSample_batch9,
-    // 				     doDiJetSample_batch10,
-    // 				     doDiJetSample_batch11,
-    // 				     doDiJetSample_batch12,
-    // 				     doDiJetSample_batch13,
-    // 				     doDiJetSample_batch14,
-    // 				     doDiJetSample_batch15);
-
-    // TString input = Form("%s%s_%i.root",inputDataset.Data(),inputFileName.Data(),group);
-
-    std::cout << "input dataset = " << input << std::endl;
-
-    TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
-
-    TString outputDatasetName = "";
-
-    outputDatasetName = configureOutputDatasetName(generator,
+  outputDatasetName = configureOutputDatasetName(generator,
 						   doDiJetSample,
 						   doMuJetSample,
 						   doBJetSample,
@@ -476,14 +426,83 @@ void PYTHIAHYDJET_scan(int group = 1){
 						   caloFlavorFromPFMatch,
 						   caloBHadronNumberFromPFMatch);
 
-    TString suffixEdit = CENT_SCHEME_SUFFIX;
+  TString suffixEdit = CENT_SCHEME_SUFFIX;
+  TString outputDir = Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data());
 
-    TString output = Form("%s%s%s/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data(),group);
+  if(group == 0){ // query mode for condor submit scripts
+    cout << "INPUTFILELIST=" << inputFileList << endl;
+    cout << "OUTPUTDIR=" << outputDir << endl;
+    return;
+  }
+
+  std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
+  if(!instr.is_open()){
+    cout << "filelist not found!! Exiting..." << endl;
+    return;
+  }
+  std::string filename;
+  Int_t ifile = 0;
+  
+  while(instr>>filename){
+
+    ifile++;
+
+    if(ifile != group) continue;
+
+    std::string input = filename.c_str();
+  
+    // TString inputDataset = "";
+    // TString inputFileName = "";
+
+    // inputDataset = getDatasetName(doDiJetSample,
+    // 				  doMuJetSample,
+    // 				  doBJetSample,
+    // 				  doDiJetSample_batch1,
+    // 				  doDiJetSample_batch2,
+    // 				  doDiJetSample_batch3,
+    // 				  doDiJetSample_batch4,
+    // 				  doDiJetSample_batch5,
+    // 				  doDiJetSample_batch6,
+    // 				  doDiJetSample_batch7,
+    // 				  doDiJetSample_batch8,
+    // 				  doDiJetSample_batch9,
+    // 				  doDiJetSample_batch10,
+    // 				  doDiJetSample_batch11,
+    // 				  doDiJetSample_batch12,
+    // 				  doDiJetSample_batch13,
+    // 				  doDiJetSample_batch14,
+    // 				  doDiJetSample_batch15);
+
+    // inputFileName = getInputFileName(doDiJetSample,
+    // 				     doMuJetSample,
+    // 				     doBJetSample,
+    // 				     doDiJetSample_batch1,
+    // 				     doDiJetSample_batch2,
+    // 				     doDiJetSample_batch3,
+    // 				     doDiJetSample_batch4,
+    // 				     doDiJetSample_batch5,
+    // 				     doDiJetSample_batch6,
+    // 				     doDiJetSample_batch7,
+    // 				     doDiJetSample_batch8,
+    // 				     doDiJetSample_batch9,
+    // 				     doDiJetSample_batch10,
+    // 				     doDiJetSample_batch11,
+    // 				     doDiJetSample_batch12,
+    // 				     doDiJetSample_batch13,
+    // 				     doDiJetSample_batch14,
+    // 				     doDiJetSample_batch15);
+
+    // TString input = Form("%s%s_%i.root",inputDataset.Data(),inputFileName.Data(),group);
+
+    std::cout << "input dataset = " << input << std::endl;
+
+
+    TString output = Form("%s/PYTHIAHYDJET_scan_output_%i.root",outputDir.Data(),group);
 
     std::cout << "output dataset = " << output << std::endl;
 
-    if(gSystem->AccessPathName(Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data()))){
-      std::cout << "\033[1;31m Output directory not found: \033[0m " << Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data()) << std::endl;
+    if(gSystem->AccessPathName(outputDir)){
+      std::cout << "\033[1;31m Output directory not found: \033[0m " << outputDir << std::endl;
       return;
     }
   

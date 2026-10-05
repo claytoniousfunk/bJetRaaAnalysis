@@ -14,29 +14,44 @@ import math
 import os
 import re
 import subprocess
+import time
 
 
-def _queryList(exe):
-    """Ask the macro which input list its current flags select (exe(0) prints it)."""
-    out = subprocess.run(['root', '-l', '-b', '-q', f'{exe}(0)'],
+def _queryList(exe, macro_args=''):
+    """Ask the macro which input list its flags select (exe(0) prints it), and the
+    output directory if it reports one (None otherwise)."""
+    out = subprocess.run(['root', '-l', '-b', '-q', f'{exe}(0{macro_args})'],
                          capture_output=True, text=True).stdout
     m = re.search(r'INPUTFILELIST=(\S+)', out)
     if not m or not m.group(1):
-        raise SystemExit(f'ERROR: {exe}(0) did not report an input list. Output tail:\n'
+        raise SystemExit(f'ERROR: {exe}(0{macro_args}) did not report an input list. Output tail:\n'
                          + '\n'.join(out.splitlines()[-15:]))
-    return m.group(1)
+    d = re.search(r'OUTPUTDIR=(\S+)', out)
+    return m.group(1), (d.group(1) if d else None)
 
 
 def submitScan(exe, jobname=None, time_flavour='workday', nsplit=5,
-               njobs_max=None, auto_submit=True):
+               njobs_max=None, auto_submit=True, macro_args=''):
+    """macro_args: extra arguments after the file index, e.g. ', 2, 30.' runs
+    exe(idx, 2, 30.). Lets one macro be queued several times with different
+    settings without editing its config between submissions."""
     pwd = os.getcwd()
     if not os.path.isfile(exe):
         raise SystemExit(f'ERROR: macro not found: {os.path.join(pwd, exe)}')
 
-    dblist = _queryList(exe)
+    # pin the date in the output name to the submission (macros that read
+    # SCAN_DATE; the others ignore it): jobs starting after midnight would
+    # otherwise look for a new day's output directory
+    scanDate = os.environ.get('SCAN_DATE') or '{0.tm_year}-{0.tm_mon}-{0.tm_mday}'.format(time.localtime())
+    os.environ['SCAN_DATE'] = scanDate
+
+    dblist, outdir = _queryList(exe, macro_args)
     if not os.path.isfile(dblist):
         raise SystemExit(f'ERROR: input list not found: {os.path.abspath(dblist)}')
     print(f'{exe} reads {dblist}')
+    if outdir is not None:
+        print(f'{exe} writes {outdir}')
+        os.makedirs(outdir, exist_ok=True)
     if jobname is None:
         jobname = os.path.splitext(exe)[0] + '_' + os.path.splitext(os.path.basename(dblist))[0]
 
@@ -52,9 +67,9 @@ def submitScan(exe, jobname=None, time_flavour='workday', nsplit=5,
     for i in range(njobs):
         start = i * nsplit + 1
         end = min((i + 1) * nsplit, nfiles)
-        script = f'#!/bin/bash\ncd {pwd}\n'
+        script = f'#!/bin/bash\ncd {pwd}\nexport SCAN_DATE={scanDate}\n'
         for idx in range(start, end + 1):
-            script += f"root -l -b -q '{exe}({idx})'\n"
+            script += f"root -l -b -q '{exe}({idx}{macro_args})'\n"
         path = f'{jobdir}/script_{i}.sh'
         with open(path, 'w') as f:
             f.write(script)
