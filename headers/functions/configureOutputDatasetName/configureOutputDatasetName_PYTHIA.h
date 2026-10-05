@@ -44,7 +44,8 @@ TString configureOutputDatasetName(TString generator,
 				   bool useCaloJetsOverride,
 				   bool useManualJEC,
 				   bool caloFlavorFromPFMatch,
-				   bool caloBHadronNumberFromPFMatch)
+				   bool caloBHadronNumberFromPFMatch,
+				   bool doAxisSmearScan)
 {
 
   TString result = "output";
@@ -107,6 +108,10 @@ TString configureOutputDatasetName(TString generator,
   // matchFlagGen / matchFlagRGen in PYTHIA_scan.C). Before it the gen-jet
   // muon-tag histograms were broken; the tag keeps the two generations apart --
   // including a same-day rescan, which would otherwise reuse the 2026-10-4 name.
+  // extra ptRel templates with the jet axis smeared by a grid of sigmas
+  // (config_PYTHIA.h); the nominal histograms are unchanged
+  if(doAxisSmearScan) result.Append("_axisSmearScan");
+
   result.Append("_genMuTagFix");
 
   TDatime dt;

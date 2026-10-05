@@ -51,6 +51,19 @@ double mu_phi = 0.0;
 double sigma_phi = 0.005;
 double mu_eta = 0.0;
 double sigma_eta = 0.005;
+// Multi-sigma jet-axis smearing scan (PYTHIA_scan.C). On top of the nominal
+// templates, the muon ptRel templates are refilled with the reco jet axis
+// smeared by each sigma below, the SAME sigma in eta and in phi, nominal jet pT
+// only. One standard-normal (eta, phi) offset is drawn per jet and scaled by
+// each sigma, so neighbouring sigmas differ only by the smearing, not by noise.
+// Purpose: pp templates with the axis smeared to PbPb-like resolution, the
+// sigma fixed per centrality class and jet-pT window by matching the
+// PYTHIA+HYDJET b and c templates and then applied to light (whose PbPb MC
+// statistics are too thin). Output names ..._<flavor>_axisSmear<k>; the sigmas
+// are stored as h_axisSmearSigma. Tagged _axisSmearScan.
+bool doAxisSmearScan = true;
+const int NAxisSmear = 9;
+const double axisSmearSigma[NAxisSmear] = {0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.10};
 // triggers
 bool applyJet60Trigger = false;
 bool applyJet80Trigger = false;

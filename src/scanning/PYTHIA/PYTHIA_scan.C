@@ -3,6 +3,7 @@
 #include "TFile.h"
 #include "TSystem.h"
 #include "TRandom2.h"
+#include "TRandom3.h"
 #include "TTree.h"
 #include "TH1F.h"
 #include "TH1D.h"
@@ -226,6 +227,10 @@ TH2D *h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[NTemplateIndices][kNJetFlavors]
 TH2D *h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[NTemplateIndices][kNJetFlavors];
 TH2D *h_muphi_recoJetPt_inclRecoMuonTag_triggerOn[NTemplateIndices][kNJetFlavors];
 TH2D *h_muJetDr_recoJetPt[NTemplateIndices][kNJetFlavors];
+// ptRel templates with the jet axis smeared by axisSmearSigma[k] (config_PYTHIA.h),
+// nominal jet pT; filled only with doAxisSmearScan
+TH2D *h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_axisSmear[NAxisSmear][kNJetFlavors];
+TH1D *h_axisSmearSigma;
 
 // >>>>>>>>>> Gen jets
 // ------------------------------- incl. gen jets per flavor ------------------
@@ -382,7 +387,8 @@ void PYTHIA_scan(int group = 1){
 						 useCaloJetsOverride,
 						 useManualJEC,
 						 caloFlavorFromPFMatch,
-						 caloBHadronNumberFromPFMatch);
+						 caloBHadronNumberFromPFMatch,
+						 doAxisSmearScan);
 
   TString outputFile = Form("%s%s/PYTHIA_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
 
@@ -516,6 +522,16 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
   h_inclMuPt = new TH1D("h_inclMuPt","incl. muon p_{T}; muon p_{T}; Entries",NMuPtBins,muPtMin,muPtMax);
 
   // muon-based 2d histograms
+  if(doAxisSmearScan){
+    h_axisSmearSigma = new TH1D("h_axisSmearSigma","jet-axis smearing #sigma (#eta and #phi) of each axisSmear index;index;#sigma",NAxisSmear,-0.5,NAxisSmear-0.5);
+    for(int k = 0; k < NAxisSmear; k++){
+      h_axisSmearSigma->SetBinContent(k+1, axisSmearSigma[k]);
+      for(int f = 0; f < kNJetFlavors; f++){
+        h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_axisSmear[k][f] = new TH2D(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_%s_axisSmear%i",kFlavorNames[f],k),Form("muon #it{p}_{T}^{rel} vs jet #it{p}_{T}, %s, jet axis smeared #sigma = %.3f",kFlavorNames[f],axisSmearSigma[k]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+        h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_axisSmear[k][f]->Sumw2();
+      }
+    }
+  }
   for(int t = 0; t < NTemplateIndices; t++) for(int f = 0; f < kNJetFlavors; f++){
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[t][f] = new TH2D(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_%s_T%i",kFlavorNames[f],t),Form("muon #it{p}_{T}^{rel} vs jet #it{p}_{T}, %s,%s",kFlavorNames[f],templateIndexNames[t].c_str()),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
     h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[t][f] = new TH2D(Form("h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn_%s_T%i",kFlavorNames[f],t),Form("muon #it{p}_{T}^{rel} vs jet #it{p}_{T}, matched muons, %s,%s",kFlavorNames[f],templateIndexNames[t].c_str()),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
@@ -743,6 +759,9 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 
   
   TRandom *randomGenerator = new TRandom2();
+  // separate, fixed-seed generator for the multi-sigma axis-smearing scan, so
+  // turning it on does not shift randomGenerator's sequence (JER-smeared templates)
+  TRandom3 axisSmearRandom(20261005);
 
   // jet-energy resolution fit function
   TF1 *JER_fxn = new TF1("JER_fxn","sqrt([0]*[0] + [1]*[1]/x + [2]*[2]/(x*x))",50,300);
@@ -1143,6 +1162,11 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
       double recoJetPt_JEUShiftDown_i = recoJetPt_i;
       double recoJetEta_i = em->jeteta[i]; // recoJetEta
       double recoJetPhi_i = em->jetphi[i]; // recoJetPhi
+
+      // multi-sigma axis-smearing scan: one standard-normal offset per jet, from
+      // its own generator so the existing random sequence (JER smear) is unchanged
+      const double axisSmearUnitEta_i = doAxisSmearScan ? axisSmearRandom.Gaus(0.,1.) : 0.;
+      const double axisSmearUnitPhi_i = doAxisSmearScan ? axisSmearRandom.Gaus(0.,1.) : 0.;
 
       // experimental jet-axis smearing
       double val_etaSmear = randomGenerator->Gaus(mu_eta,sigma_eta);
@@ -1655,6 +1679,19 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 	  h_inclRecoJetEta_inclRecoJetPhi_inclRecoMuonTag[0]->Fill(recoJetEta_i,recoJetPhi_i,w_jet);
 
 
+	  // axis-smearing scan: same tagging muon, jet axis offset by sigma x the
+	  // per-jet unit draw; ptRel does not depend on the jet pT scale
+	  if(doAxisSmearScan){
+	    const int fiS = getFlavorIdx(jetFlavorInt);
+	    for(int k = 0; k < NAxisSmear; k++){
+	      const double ptRelS = getPtRel(muPt_i, muEta_i, muPhi_i, recoJetPt_i,
+	                                     recoJetEta_i + axisSmearSigma[k]*axisSmearUnitEta_i,
+	                                     recoJetPhi_i + axisSmearSigma[k]*axisSmearUnitPhi_i);
+	      h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_axisSmear[k][kAllJets]->Fill(ptRelS, recoJetPt_i, w_jet);
+	      if(fiS > 0) h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_axisSmear[k][fiS]->Fill(ptRelS, recoJetPt_i, w_jet);
+	    }
+	  }
+
 	  // fill templates
 	  for(int t = 0; t < NTemplateIndices; t++){
 	    h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[t][kAllJets]->Fill(muPtRel_i,jetPtArray[t],w_jet);
@@ -2087,6 +2124,10 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
   h_dimuonMass_sameSign->Write();
   h_inclMuPt->Write();
 
+  if(doAxisSmearScan){
+    h_axisSmearSigma->Write();
+    for(int k = 0; k < NAxisSmear; k++) for(int f = 0; f < kNJetFlavors; f++) h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_axisSmear[k][f]->Write();
+  }
   for(int t = 0; t < NTemplateIndices; t++) for(int f = 0; f < kNJetFlavors; f++){
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[t][f]->Write();
     h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[t][f]->Write();
