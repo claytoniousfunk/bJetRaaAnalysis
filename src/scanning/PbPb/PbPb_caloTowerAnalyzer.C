@@ -382,6 +382,9 @@ TH2D *h_injMuonPtRel_donorJetPt_injectConstit[NCentralityIndices];
 //   (real mu, fake jet)   -> h_realMuonPtRel_mixedFastJetPt   (mixed-event jet)
 //   (fake mu, real jet)   -> h_mixedMuonPtRel_recoJetPt       (mixed-event muon)
 //   (fake mu, fake jet)   -> h_fastJetMuonPtRel_..._bkgSub_RC (already existed)
+//                            tower scan: tagged by dR to mixed PF muons kept
+//                            outside the clustering (towers have no species);
+//                            empty in tower scans before 2026-10-05
 // The two new ones require doEventMixing and are filled ONLY inside the
 // mixed-event branch; they stay empty in a same-event scan.
 //
@@ -1595,8 +1598,10 @@ void PbPb_caloTowerAnalyzer(int group = 1,
       // a flat list cut to the clustering acceptance, this one keeps every
       // tower above towerEtMin at any eta with its cell, as the forest takes.
       std::vector<TowerPUPoolEvent> puPool;
-      // PF muons of each puPool event, for the towerPUSub muon templates.
-      // {pT, eta, phi}; mixed-muon kinematic selection applied here, once.
+      // PF muons of each pool event, {pT, eta, phi}; mixed-muon kinematic
+      // selection applied here, once. Used by the towerPUSub muon templates
+      // and, since 2026-10-05, by the FastJet (fake mu) templates as well --
+      // so it is filled for every mixed scan, not only under doTowerPUSub.
       std::vector<std::vector<std::array<double,3>>> puPoolMuons;
 #endif
 
@@ -1623,16 +1628,16 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	               tagJetCells(puPool.back().towers, towerPUSub_vetoPtMin[CentralityIndex], towerPUSub_vetoDR)).first;
 	      puPool.back().veto = it->second;
 	    }
-	    puPoolMuons.emplace_back();
-	    // pfTree is a friend of the event tree, so getEvent above loaded it;
-	    // absent pfcandAnalyzer -> no muons, and the fake-muon terms stay empty
-	    if(em->pfTree && em->pfId){
-	      for(size_t l = 0; l < em->pfId->size(); l++){
-	        if(em->pfId->at(l) != 3) continue;
-	        const double pt = em->pfPt->at(l);
-	        if(pt < muPtCut || pt > muPtMaxCut || fabs(em->pfEta->at(l)) > 2.) continue;
-	        puPoolMuons.back().push_back({pt, em->pfEta->at(l), em->pfPhi->at(l)});
-	      }
+	  }
+	  puPoolMuons.emplace_back();
+	  // pfTree is a friend of the event tree, so getEvent above loaded it;
+	  // absent pfcandAnalyzer -> no muons, and the fake-muon terms stay empty
+	  if(em->pfTree && em->pfId){
+	    for(size_t l = 0; l < em->pfId->size(); l++){
+	      if(em->pfId->at(l) != 3) continue;
+	      const double pt = em->pfPt->at(l);
+	      if(pt < muPtCut || pt > muPtMaxCut || fabs(em->pfEta->at(l)) > 2.) continue;
+	      puPoolMuons.back().push_back({pt, em->pfEta->at(l), em->pfPhi->at(l)});
 	    }
 	  }
 #endif
@@ -1933,6 +1938,28 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	    mixedEventPFCandidates_phi.push_back(phi);
 	    mixedEventPFCandidates_id.push_back(id);
           }
+          // Mixed-event muons. Towers carry no species, so a muon can never be
+          // a clustering constituent here, and the (fake mu) templates below
+          // used to need one (getId() == 3) -- they stayed empty in every tower
+          // scan. Instead draw one event's worth of pool PF muons, as the
+          // towerPUSub block does (each pool event's muons with probability
+          // 1/N_pool), and keep them OUT of fjInputs: a forest calo jet does
+          // not contain the muon's momentum either (a muon leaves a ~MIP in
+          // the calorimeter), so the jet axis is built without it. They are
+          // appended to the mixedEventPFCandidates_* lists with id 3, which
+          // is what the mixed-muon loop below reads, and tagged to the
+          // FastJet jets by dR in the T3 fill.
+          if(!puPoolMuons.empty()){
+            std::uniform_real_distribution<double> uniMu(0., 1.);
+            const double pMuon = 1. / puPoolMuons.size();
+            for(const auto &v : puPoolMuons) for(const auto &mu : v){
+              if(uniMu(rng) >= pMuon) continue;
+              mixedEventPFCandidates_pt.push_back(mu[0]);
+              mixedEventPFCandidates_eta.push_back(mu[1]);
+              mixedEventPFCandidates_phi.push_back(mu[2]);
+              mixedEventPFCandidates_id.push_back(3);
+            }
+          }
         }
         else{
           for(int l = 0; l < em->nTower; l++){
@@ -1969,6 +1996,8 @@ void PbPb_caloTowerAnalyzer(int group = 1,
         fastjet::JetDefinition jetDef(fastjet::antikt_algorithm, dR_max_pfcand);
         fastjet::ClusterSequence cs(fjInputs, jetDef);
         std::vector<fastjet::PseudoJet> jets = fastjet::sorted_by_pt(cs.inclusive_jets(0.));
+        // muons already tagged to a FastJet jet in this resample (T3)
+        std::vector<char> mixedMuonUsedT3(mixedEventPFCandidates_id.size(), 0);
         for(const auto& jet : jets){
           if(TMath::Abs(jet.eta()) > 1.6) continue;
 	  std::vector<fastjet::PseudoJet> constituents = jet.constituents();
@@ -1977,7 +2006,6 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	  }
 	  
 	  double trackMaxPt = 0.0;
-	  bool hasFastJetRecoMuonTag = false;
 	  double fastJetMuonPt = 0.;
 	  double fastJetMuonEta = 0.;
 	  double fastJetMuonPhi = 0.;
@@ -1988,20 +2016,9 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	    if(!c.has_user_info<CandInfo>()) continue;
 	    const CandInfo &candinfo = c.user_info<CandInfo>();
 	    if(candinfo.isCharged() && c.pt() > trackMaxPt) trackMaxPt = c.pt();
-	    // c.pt() > fastJetMuonPt keeps the LEADING muon constituent. Without it
-	    // this kept whichever muon happened to come last in constituent order,
-	    // which is an arbitrary choice of tag when a jet contains more than one
-	    // candidate above muPtCut. findRecoMuonTag, which the (real mu)
-	    // templates use, resolves ties by muon index rather than pT, but at
-	    // least "leading" is a defined quantity.
-	    if(candinfo.getId() == 3 && c.pt() > muPtCut && evtTriggerDecision && c.pt() > fastJetMuonPt) {
-	      hasFastJetRecoMuonTag = true;
-	      fastJetMuonPt = c.pt();
-	      fastJetMuonEta = c.eta();
-	      fastJetMuonPhi = c.phi_std();
-	    }
-	    
-	    
+	    // The muon tag is NOT taken from the constituents: towers have no
+	    // species, so getId() == 3 never fired and the (fake mu, fake jet)
+	    // template was empty in every tower scan. See the dR tag at the fill.
 	  }
 	           
           JEC_Calo.SetJetPT(jet.pt());
@@ -2093,6 +2110,29 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	      h_fastJetPt_PF_bkgSub_RC[0]->Fill(fastJetPt_rcSub, w_resample);
               h_fastJetPt_PF_bkgSub_RC[CentralityIndex]->Fill(fastJetPt_rcSub, w_resample);
 
+	      // (fake mu, fake jet) tag: jets come in pT order; each takes the
+	      // LEADING not-yet-used mixed muon within dR < epsilon_mm of its
+	      // axis, W-decay filter against this jet's pT when on. Leading
+	      // rather than first-in-list (as the towerPUSub tagMixedMuon does)
+	      // to keep the old constituent tag's "leading muon" definition.
+	      bool hasFastJetRecoMuonTag = false;
+	      if(evtTriggerDecision){
+	        int best = -1;
+	        for(size_t m = 0; m < mixedEventPFCandidates_id.size(); m++){
+	          if(mixedEventPFCandidates_id[m] != 3 || mixedMuonUsedT3[m]) continue;
+	          const double mPt = mixedEventPFCandidates_pt[m];
+	          if(doWDecayFilter && isWDecayMuon(mPt, fastJetPt_JEC_rcSub)) continue;
+	          if(getDr(mixedEventPFCandidates_eta[m], mixedEventPFCandidates_phi[m], jet.eta(), jet.phi_std()) >= epsilon_mm) continue;
+	          if(best < 0 || mPt > mixedEventPFCandidates_pt[best]) best = (int)m;
+	        }
+	        if(best >= 0){
+	          mixedMuonUsedT3[best] = 1;
+	          hasFastJetRecoMuonTag = true;
+	          fastJetMuonPt  = mixedEventPFCandidates_pt[best];
+	          fastJetMuonEta = mixedEventPFCandidates_eta[best];
+	          fastJetMuonPhi = mixedEventPFCandidates_phi[best];
+	        }
+	      }
 	      if(hasFastJetRecoMuonTag){
 		// JEC-corrected, background-subtracted jet pT throughout: for the
 		// ptRel itself (which is built on the jet's momentum, so the scale
@@ -2198,6 +2238,8 @@ void PbPb_caloTowerAnalyzer(int group = 1,
                                 h_RC_map[CentralityIndex]->FindBin(jet.eta(), jet.phi_std()));
 	      double jetPt_rcSub = jet.pt() - rcMeanPt;
 	      JEC_Calo.SetJetPT(jetPt_rcSub);
+	      JEC_Calo.SetJetEta(jet.eta());
+	      JEC_Calo.SetJetPhi(jet.phi_std());
 	      double jetPt_JEC_rcSub = JEC_Calo.GetCorrectedPT();
 
 	      if(jetPt_JEC_rcSub < 20.) continue;
@@ -2284,7 +2326,10 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 	    // enclosing muon loop -- the two h_*muonDR_inclusiveClosest*
 	    // histograms above are pre-existing diagnostics with their own
 	    // (untriggered) convention, and changing them is out of scope here.
-	    if(evtTriggerDecision && fastJetMuonDR_recoJet_i < epsilon_mm && recoJet_match_i > 0.){
+	    // Under doTowerPUSub this histogram is already filled, jet-centric and
+	    // at weight wMix, by the towerPUSub block; filling it here as well
+	    // would count each mixed muon twice.
+	    if(!doTowerPUSub && evtTriggerDecision && fastJetMuonDR_recoJet_i < epsilon_mm && recoJet_match_i > 0.){
 	      double mixedMuonPtRel_i = getPtRel(mixedEventPFCandidates_pt.at(i),
 						 mixedEventPFCandidates_eta.at(i),
 						 mixedEventPFCandidates_phi.at(i),
@@ -2338,7 +2383,12 @@ void PbPb_caloTowerAnalyzer(int group = 1,
 		}
 	      }
 
-	      // (b) INJECTED: add the muon to the donor candidates, recluster
+	      // (b) INJECTED: add the muon to the donor candidates, recluster.
+	      // In this tower scan the muon goes in as a tower carrying its full
+	      // pT, which a forest calo jet never sees (a muon deposits ~a MIP in
+	      // the calorimeter). For calo jets the matched T2 is therefore (a),
+	      // h_injMuonPtRel_donorJetPt_noInject; (b) is kept as the PF-like
+	      // bound and for comparison with the PF scan.
 	      std::vector<fastjet::PseudoJet> injInputs = donorInputs;
 	      fastjet::PseudoJet muPJ(muPt_inj*TMath::Cos(muPhi_inj),
 				      muPt_inj*TMath::Sin(muPhi_inj),
