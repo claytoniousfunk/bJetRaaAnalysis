@@ -337,7 +337,7 @@ void PYTHIAHYDJET_scan(int group = 1){
 
   
   std::string inputFileList = "";
-  if(doDiJetSample) inputFileList = "../../../fileNames/fileNames_PH_DiJet_withCaloAndFlowJets_fix2_partial.txt"; // same list as PYTHIAHYDJET_scan_response.C: has the calo and flow jet trees
+  if(doDiJetSample) inputFileList = "../../../fileNames/fileNames_PH_DiJet_withCaloAndFlowJets_fix2.txt"; // same list as PYTHIAHYDJET_scan_response.C: has the calo and flow jet trees
   // MuJet / BJet: the 2026-09-21 fix2 forests, same production as the DiJet list
   // (calo + flow jet trees, PF tree for the calo flavor / bHadronNumber match)
   else if(doMuJetSample) inputFileList = "../../../fileNames/fileNames_PH_MuJet_withCaloAndFlowJets_fix2.txt";

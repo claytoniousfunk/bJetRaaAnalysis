@@ -219,7 +219,7 @@ void PYTHIAHYDJET_scan_response(int group = 1){
   // TString input = Form("%s%s_%i.root",inputDataset.Data(),inputFileName.Data(),group);
 
   std::string inputFileList = "";
-  inputFileList = "../../../fileNames/fileNames_PH_DiJet_withCaloAndFlowJets_fix2_partial.txt";
+  inputFileList = "../../../fileNames/fileNames_PH_DiJet_withCaloAndFlowJets_fix2.txt";
 
   if(group == 0){ cout << "INPUTFILELIST=" << inputFileList << endl; return; } // query mode for condor submit scripts
 
