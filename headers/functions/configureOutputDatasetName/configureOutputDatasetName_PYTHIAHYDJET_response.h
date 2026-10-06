@@ -1,4 +1,5 @@
 #include "TDatime.h"
+#include "TSystem.h"
 
 TString configureOutputDatasetName(TString generator,
 				   bool doDiJetSample,
@@ -114,8 +115,15 @@ TString configureOutputDatasetName(TString generator,
   if(doBJetNeutrinoEnergyShift) result.Append("_BJetNeutrinoEnergyShift");
 
   
-  TDatime dt;
-  result.Append(Form("_%i-%i-%i",dt.GetYear(),dt.GetMonth(),dt.GetDay()));
+  // SCAN_DATE (set by myProcesses/condor/scan_condor.py) pins the date to the
+  // submission, so a job that starts after midnight writes to the directory the
+  // submit script created instead of a new day's one
+  const char *scanDate = gSystem->Getenv("SCAN_DATE");
+  if(scanDate && scanDate[0]) result.Append(Form("_%s",scanDate));
+  else{
+    TDatime dt;
+    result.Append(Form("_%i-%i-%i",dt.GetYear(),dt.GetMonth(),dt.GetDay()));
+  }
   
   return result;
 

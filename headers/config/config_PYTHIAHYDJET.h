@@ -89,7 +89,7 @@ bool useManualJEC = true;
 // (src/scanning/scan_calo_jet_match.h). Applies to ALL reco-jet histograms and
 // the muon tag; event counts and gen-level histograms are unaffected. The scan
 // aborts if the forest has no calo tree. Adds _caloJetMatched to the output name.
-bool requireCaloJetMatch = false;
+bool requireCaloJetMatch = true;
 // for response scan. The PbPb b-jet unfolding needs BOTH halves (even + odd
 // summed for the nominal response, split for the closure test): run once with
 // onlyEvenEvents, then again with onlyOddEvents.

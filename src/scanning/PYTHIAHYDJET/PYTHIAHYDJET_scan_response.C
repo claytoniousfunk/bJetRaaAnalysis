@@ -224,35 +224,15 @@ void PYTHIAHYDJET_scan_response(int group = 1){
   std::string inputFileList = "";
   inputFileList = "../../../fileNames/fileNames_PH_DiJet_withCaloAndFlowJets_fix2.txt";
 
-  if(group == 0){ cout << "INPUTFILELIST=" << inputFileList << endl; return; } // query mode for condor submit scripts
+  TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
 
-  std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
-  if(!instr.is_open()){
-    cout << "filelist not found!! Exiting..." << endl;
+  TString outputDatasetName = "";
+
+  if(requireCaloJetMatch && useCaloJetsOverride){
+    std::cout << "\033[1;31m requireCaloJetMatch is a PF-jet ID; it cannot be combined with useCaloJetsOverride \033[0m" << std::endl;
     return;
   }
-  std::string filename;
-  Int_t ifile = 0;
-
-  while(instr>>filename){
-
-    ifile++;
-
-    if(ifile != group) continue;
-
-    std::string input = filename.c_str();
-
-    std::cout << "input dataset = " << input << std::endl;
-
-    TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
-
-    TString outputDatasetName = "";
-
-    if(requireCaloJetMatch && useCaloJetsOverride){
-      std::cout << "\033[1;31m requireCaloJetMatch is a PF-jet ID; it cannot be combined with useCaloJetsOverride \033[0m" << std::endl;
-      return;
-    }
-    outputDatasetName = configureOutputDatasetName(generator,
+  outputDatasetName = configureOutputDatasetName(generator,
 						   doDiJetSample,
 						   doMuJetSample,
 						   doBJetSample,
@@ -308,8 +288,34 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 						   requireCaloJetMatch);
 
 
-    TString suffixEdit = CENT_SCHEME_SUFFIX;   // "_ultraFineCentBins" etc., "" for nominal
-    TString output = Form("%s%s%s/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data(),group);
+  TString suffixEdit = CENT_SCHEME_SUFFIX;   // "_ultraFineCentBins" etc., "" for nominal
+  TString outputDir = Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data());
+
+  if(group == 0){ // query mode for condor submit scripts
+    cout << "INPUTFILELIST=" << inputFileList << endl;
+    cout << "OUTPUTDIR=" << outputDir << endl;
+    return;
+  }
+
+  std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
+  if(!instr.is_open()){
+    cout << "filelist not found!! Exiting..." << endl;
+    return;
+  }
+  std::string filename;
+  Int_t ifile = 0;
+
+  while(instr>>filename){
+
+    ifile++;
+
+    if(ifile != group) continue;
+
+    std::string input = filename.c_str();
+
+    std::cout << "input dataset = " << input << std::endl;
+
+    TString output = Form("%s/PYTHIAHYDJET_scan_output_%i.root",outputDir.Data(),group);
     //TString output = Form("%s%s_muTaggedJetsNoTrigger/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
     //TString output = Form("%s%s_evenEvents/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
     //TString output = Form("%s%s_oddEvents/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
@@ -317,8 +323,8 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 
     std::cout << "output dataset = " << output << std::endl;
 
-    if(gSystem->AccessPathName(Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data()))){
-      std::cout << "\033[1;31m Output directory not found: \033[0m " << Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data()) << std::endl;
+    if(gSystem->AccessPathName(outputDir)){
+      std::cout << "\033[1;31m Output directory not found: \033[0m " << outputDir << std::endl;
       return;
     }
 
