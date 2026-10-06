@@ -78,6 +78,11 @@ bool fillMu12 = true;
 // jet mods
 bool useCaloJetsOverride = true;
 bool useManualJEC = true;
+// PF jets only: drop every reco PF jet with no ak4Calo jet within dR < 0.2
+// (src/scanning/scan_calo_jet_match.h). Applies to ALL reco-jet histograms and
+// the muon tag; event counts and gen-level histograms are unaffected. The scan
+// aborts if the forest has no calo tree. Adds _caloJetMatched to the output name.
+bool requireCaloJetMatch = false;
 // for the response scan: keep only even- or odd-indexed events, giving the two
 // statistically independent halves unfoldClosureTest.C trains and tests on
 bool onlyEvenEvents = false;

@@ -99,6 +99,8 @@ TF1 *fitFxn_hiBin, *fitFxn_vz, *fitFxn_jetPt, *fitFxn_PYTHIA_JESb, *fitFxn_PYTHI
 #include "../../../headers/functions/jet_filter/remove_HYDJET_jet.h"
 // dataset naming functions
 #include "../../../headers/functions/configureOutputDatasetName/configureOutputDatasetName_PYTHIA_response.h"
+// calo-jet match jet ID for PF jets (config_PYTHIA.h: requireCaloJetMatch)
+#include "../scan_calo_jet_match.h"
 
 
 // Flavor for calo jets, identical to PYTHIA_scan.C. ak4CaloJetAnalyzer/t has no
@@ -219,6 +221,11 @@ void PYTHIA_scan_response(int group = 1){
 
   std::cout << "input dataset = " << input << std::endl;
 
+  if(requireCaloJetMatch && useCaloJetsOverride){
+    std::cout << "\033[1;31m requireCaloJetMatch is a PF-jet ID; it cannot be combined with useCaloJetsOverride \033[0m" << std::endl;
+    return;
+  }
+
   if(onlyEvenEvents && onlyOddEvents){
     cout << "ERROR: onlyEvenEvents and onlyOddEvents are both set in config_PYTHIA.h; that selects no events. Exiting..." << endl;
     return;
@@ -267,11 +274,20 @@ void PYTHIA_scan_response(int group = 1){
 						 caloFlavorFromPFMatch,
 						 onlyEvenEvents,
 						 onlyOddEvents,
-						 onlyMuTaggedJets);
+						 onlyMuTaggedJets,
+						 requireCaloJetMatch);
 
   //outputDatasetName.Append("_noNeutrinoInfo");
+  TString outputDir = Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data());
 
-  TString output = Form("%s%s/PYTHIA_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
+  // query mode for condor submit scripts (group 0 falls through the file lookup)
+  if(group == 0){
+    cout << "INPUTFILELIST=" << inputFileList << endl;
+    cout << "OUTPUTDIR=" << outputDir << endl;
+    return;
+  }
+
+  TString output = Form("%s/PYTHIA_scan_output_%i.root",outputDir.Data(),group);
   //TString output = Form("%s%s_muTaggedJets/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
   //TString output = Form("%s%s_muTaggedJetsNoTrigger/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
   //TString output = Form("%s%s_genMuTaggedGenJets/PYTHIAHYDJET_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
@@ -283,9 +299,8 @@ void PYTHIA_scan_response(int group = 1){
 
   // same check as PYTHIA_scan.C: stop before any work if the output directory
   // was not created, rather than fail at the write after the whole job
-  if(gSystem->AccessPathName(Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()))){
-    std::cout << "\033[1;31m Output directory not found: \033[0m "
-              << Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()) << std::endl;
+  if(gSystem->AccessPathName(outputDir)){
+    std::cout << "\033[1;31m Output directory not found: \033[0m " << outputDir << std::endl;
     return;
   }
 
@@ -562,6 +577,21 @@ void PYTHIA_scan_response(int group = 1){
            << caloPFMatchDR << "\n";
     }
   }
+  // calo jets for the PF-jet calo-match ID (scan_calo_jet_match.h)
+  g_caloTree = nullptr;
+  if(!useCaloJetsOverride){
+    if(!attachCaloJetMatchTree(f, em->evtTree->GetEntries(), caloJetTreeNamePP) && requireCaloJetMatch){
+      cout << "\033[1;31m requireCaloJetMatch is set but the calo jets cannot be read; aborting \033[0m" << endl;
+      return;
+    }
+  }
+  // with requireCaloJetMatch, a PF jet with no calo jet inside caloMatchDr is
+  // invisible to both reco-jet loops below: its gen jet becomes a miss
+  auto failsCaloJetMatch = [&](int k){
+    if(!requireCaloJetMatch) return false;
+    double caloRawPt_k;
+    return closestCaloJetDr(em->jeteta[k], em->jetphi[k], caloRawPt_k) >= caloMatchDr;
+  };
   cout << "	Loading muon..." << endl;
   em->loadMuon("ggHiNtuplizerGED/EventTree");
   cout << "	Loading muon triggers..." << endl;
@@ -634,6 +664,7 @@ void PYTHIA_scan_response(int group = 1){
     // step the un-friended PF tree to the same event; both are per-event trees
     // in the same forest file, so entry evi is the same collision
     if(g_pfFlavTree) g_pfFlavTree->GetEntry(evi);
+    loadCaloJetMatchEntry(evi);
 
     if((100*evi / NEvents) % 5 == 0 && 100*evi / NEvents > evi_frac) cout << "evt frac: " << evi_frac << "%" << endl;
     evi_frac = 100 * evi/NEvents;
@@ -690,6 +721,7 @@ void PYTHIA_scan_response(int group = 1){
     double leadingRecoJetPt = -999.0;
     
     for(int i = 0; i < em->njet; i++){
+      if(failsCaloJetMatch(i)) continue;
       JEC.SetJetPT(em->rawpt[i]);
       JEC.SetJetEta(em->jeteta[i]);
       JEC.SetJetPhi(em->jetphi[i]);
@@ -804,6 +836,7 @@ void PYTHIA_scan_response(int group = 1){
       // begin recoJet loop
       for(int k = 0; k < em->njet; k++){
 		
+	if(failsCaloJetMatch(k)) continue;
 	double dr = getDr(em->jeteta[k],em->jetphi[k],y,z);
 
 	if(dr < minDr){ 

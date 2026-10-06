@@ -146,10 +146,11 @@ default              -> akCs4PFJetAnalyzer/t
 So calo and PF live in **separate files** under the same histogram names; there
 are no calo-specific histograms. `useCaloJetsOverride` needs its own scan.
 
-The PF-jet calo-match ID works the same way: `requireCaloJetMatch` (PbPb and
-PYTHIAHYDJET configs, `src/scanning/scan_calo_jet_match.h`) drops PF jets with
-no akPu4Calo jet within dR < 0.2 from every reco-jet histogram and adds
-`_caloJetMatched` to the filename. Same names, different contents — compare
+The PF-jet calo-match ID works the same way: `requireCaloJetMatch` (PbPb,
+PYTHIAHYDJET, pp and PYTHIA configs, `src/scanning/scan_calo_jet_match.h`) drops
+PF jets with no calo jet (akPu4Calo in PbPb, ak4Calo in pp) within dR < 0.2
+from every reco-jet histogram and adds `_caloJetMatched` to the filename. Apply
+it on both sides of an R_AA or the ID's genuine-jet loss reads as suppression. Same names, different contents — compare
 matched and unmatched only across files, never assume from the key list.
 
 ## Current state of the ptRel decomposition

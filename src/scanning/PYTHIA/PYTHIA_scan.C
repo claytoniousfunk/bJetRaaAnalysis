@@ -159,6 +159,8 @@ TF1 *fitFxn_PYTHIA_HLT;
 #include "../scan_mc_jet_variants.h"
 #include "../scan_mc_muon_tag.h"
 #include "../scan_calo_pf_match.h"
+// calo-jet match jet ID for PF jets (config_PYTHIA.h: requireCaloJetMatch)
+#include "../scan_calo_jet_match.h"
 
 //~~~~~~~~~~~  initialize histograms ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // >>>>>>>>>> Reco jets
@@ -313,8 +315,6 @@ void PYTHIA_scan(int group = 1){
   // full HiForest, not the skims -- the same list PYTHIA_skim_simple.C read from
   std::string inputFileList = "../../../fileNames/fileNames_PYTHIA_DiJet_withGS.txt";
 
-  if(group == 0){ cout << "INPUTFILELIST=" << inputFileList << endl; return; } // query mode for condor submit scripts
-
   std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
   if(!instr.is_open()){ cout << "filelist not found!! Exiting..." << endl; return; }
   std::string filename; Int_t ifile = 0;
@@ -324,6 +324,11 @@ void PYTHIA_scan(int group = 1){
     return;
   }
   TString inputFile = TString(filename.c_str());
+
+  if(requireCaloJetMatch && useCaloJetsOverride){
+    std::cout << "\033[1;31m requireCaloJetMatch is a PF-jet ID; it cannot be combined with useCaloJetsOverride \033[0m" << std::endl;
+    return;
+  }
 
   TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
 
@@ -388,13 +393,20 @@ void PYTHIA_scan(int group = 1){
 						 useManualJEC,
 						 caloFlavorFromPFMatch,
 						 caloBHadronNumberFromPFMatch,
-						 doAxisSmearScan);
+						 doAxisSmearScan,
+						 requireCaloJetMatch);
+  TString outputDir = Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data());
 
-  TString outputFile = Form("%s%s/PYTHIA_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
+  if(group == 0){ // query mode for condor submit scripts
+    cout << "INPUTFILELIST=" << inputFileList << endl;
+    cout << "OUTPUTDIR=" << outputDir << endl;
+    return;
+  }
 
-  if(gSystem->AccessPathName(Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()))){
-    std::cout << "\033[1;31m Output directory not found: \033[0m "
-              << Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()) << std::endl;
+  TString outputFile = Form("%s/PYTHIA_scan_output_%i.root",outputDir.Data(),group);
+
+  if(gSystem->AccessPathName(outputDir)){
+    std::cout << "\033[1;31m Output directory not found: \033[0m " << outputDir << std::endl;
     return;
   }
 
@@ -739,6 +751,21 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
     if(g_pfHasBHad) cout << "calo bHadronNumber from the PF jet within dR < " << caloPFMatchDR << endl;
   }
   else g_pfTree = nullptr;
+  // calo jets for the PF-jet calo-match ID (scan_calo_jet_match.h)
+  g_caloTree = nullptr;
+  if(!useCaloJetsOverride){
+    if(!attachCaloJetMatchTree(f, em->evtTree->GetEntries(), caloJetTreeNamePP) && requireCaloJetMatch){
+      cout << "\033[1;31m requireCaloJetMatch is set but the calo jets cannot be read; aborting \033[0m" << endl;
+      return;
+    }
+  }
+  // with requireCaloJetMatch, a PF jet with no calo jet inside caloMatchDr is
+  // invisible to every reco-jet loop below
+  auto failsCaloJetMatch = [&](int k){
+    if(!requireCaloJetMatch) return false;
+    double caloRawPt_k;
+    return closestCaloJetDr(em->jeteta[k], em->jetphi[k], caloRawPt_k) >= caloMatchDr;
+  };
   cout << "Loading muon..." << endl;
   em->loadMuon("ggHiNtuplizerGED/EventTree");
   cout << "Loading muon triggers..." << endl;
@@ -837,6 +864,7 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
     
     em->getEvent(evi);
     if(g_pfTree) g_pfTree->GetEntry(evi);
+    loadCaloJetMatchEntry(evi);
 
     if((100*evi / NEvents) % 5 == 0 && 100*evi / NEvents > evi_frac) cout << "evt frac: " << evi_frac << "%" << endl;
     evi_frac = 100 * evi/NEvents;
@@ -1075,6 +1103,8 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
     // find leadingRecoJet
     for(int j = 0; j < em->njet ; j++){
 
+      if(failsCaloJetMatch(j)) continue;
+
       JEC.SetJetPT(em->rawpt[j]);
       JEC.SetJetEta(em->jeteta[j]);
       JEC.SetJetPhi(em->jetphi[j]);
@@ -1098,6 +1128,8 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 
     if(doLeadingXjetDumpFilter){
       for(int j = 0; j < em->njet ; j++){
+
+	if(failsCaloJetMatch(j)) continue;
 
 	JEC.SetJetPT(em->rawpt[j]);
 	JEC.SetJetEta(em->jeteta[j]);
@@ -1147,6 +1179,9 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 
     // RECO JET LOOP
     for(int i = 0; i < em->njet ; i++){
+
+      // calo-match jet ID, ahead of every reco-jet histogram and the muon tag
+      if(failsCaloJetMatch(i)) continue;
 
       // JET VARIABLES
 		
@@ -1843,6 +1878,7 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
       
       for(int k = 0; k < em->njet; k++){
 		
+	if(failsCaloJetMatch(k)) continue;
 	double dr = getDr(em->jeteta[k],em->jetphi[k],genJetEta_i,genJetPhi_i);
 
 	if(dr < minDr){ 

@@ -1,4 +1,5 @@
 #include "TDatime.h"
+#include "TSystem.h"
 
 TString configureOutputDatasetName(TString generator,
 				   bool doDiJetSample,
@@ -35,7 +36,8 @@ TString configureOutputDatasetName(TString generator,
 				   bool caloFlavorFromPFMatch,
 				   bool onlyEvenEvents,
 				   bool onlyOddEvents,
-				   bool onlyMuTaggedJets)
+				   bool onlyMuTaggedJets,
+				   bool requireCaloJetMatch = false)
 {
 
   TString result = "output";
@@ -52,6 +54,7 @@ TString configureOutputDatasetName(TString generator,
   if(useCaloJetsOverride && caloFlavorFromPFMatch) result.Append("_PFflavor");
   // jet pT from the JEC text files rather than the forest jtpt
   if(useManualJEC) result.Append("_manualJEC");
+  if(requireCaloJetMatch) result.Append("_caloJetMatched");
   // response filled from muon-tagged jets only
   if(onlyMuTaggedJets) result.Append("_muTaggedJets");
   // half-sample outputs for the closure test
@@ -87,8 +90,15 @@ TString configureOutputDatasetName(TString generator,
   if(apply_JEU_shift_up) result.Append("_applyJEUShiftUp");
   if(apply_JEU_shift_down) result.Append("_applyJEUShiftDown");
   
-  TDatime dt;
-  result.Append(Form("_%i-%i-%i",dt.GetYear(),dt.GetMonth(),dt.GetDay()));
+  // SCAN_DATE (set by myProcesses/condor/scan_condor.py) pins the date to the
+  // submission, so a job that starts after midnight writes to the directory the
+  // submit script created instead of a new day's one
+  const char *scanDate = gSystem->Getenv("SCAN_DATE");
+  if(scanDate && scanDate[0]) result.Append(Form("_%s",scanDate));
+  else{
+    TDatime dt;
+    result.Append(Form("_%i-%i-%i",dt.GetYear(),dt.GetMonth(),dt.GetDay()));
+  }
   
   return result;
 

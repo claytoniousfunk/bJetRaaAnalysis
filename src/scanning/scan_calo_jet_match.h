@@ -1,19 +1,21 @@
 #pragma once
 // CALO-JET MATCHING as a jet ID for PF jets.
 //
-// A PF jet is calo-matched when an akPu4Calo jet lies within caloMatchDr of its
-// axis. Combinatorial PF jets are built from the UE pedestal, which the calo
-// collection's own pileup subtraction removes differently, so a genuine jet
-// should appear in both collections and a fake one less often. No pT or eta
-// cut is applied to the calo jet beyond the forest's own threshold; raw pT is
-// what the diagnostics keep, because the forest calo jtpt carries the PF JEC.
+// A PF jet is calo-matched when a calo jet (akPu4Calo in PbPb, ak4Calo in pp)
+// lies within caloMatchDr of its axis. Combinatorial PF jets are built from
+// the UE pedestal, which the calo collection's own pileup subtraction removes
+// differently, so a genuine jet should appear in both collections and a fake
+// one less often. No pT or eta cut is applied to the calo jet beyond the
+// forest's own threshold; raw pT is what the diagnostics keep, because the
+// forest calo jtpt carries the PF JEC.
 //
-// With requireCaloJetMatch (config_PbPb.h / config_PYTHIAHYDJET.h) the scans
-// drop every unmatched PF jet at the top of the reco-jet loop, so the
-// requirement reaches every reco-jet histogram, the muon tag and the response
-// alike; the output name gains _caloJetMatched. Gen-level histograms and the
-// event counts (h_vz ...) are untouched. With the flag off the tree is still
-// read when present, for the dR / calo-pT diagnostics only.
+// With requireCaloJetMatch (config_PbPb.h, config_PYTHIAHYDJET.h, config_pp.h,
+// config_PYTHIA.h) the scans drop every unmatched PF jet at the top of the
+// reco-jet loop, so the requirement reaches every reco-jet histogram, the muon
+// tag and the response alike; the output name gains _caloJetMatched.
+// Gen-level histograms and the event counts (h_vz ...) are untouched. With the
+// flag off the tree is still read when present, for the dR / calo-pT
+// diagnostics only.
 //
 // Read as a plain TTree with its own buffers, NOT through eventMap: loadJet()
 // attaches the PF jet tree as a friend of evtTree, and the calo tree shares its
@@ -28,7 +30,8 @@
 #include "TTree.h"
 
 const double caloMatchDr = 0.2;
-const char  *caloJetTreeName = "akPu4CaloJetAnalyzer/t";
+const char  *caloJetTreeName   = "akPu4CaloJetAnalyzer/t";   // PbPb forests
+const char  *caloJetTreeNamePP = "ak4CaloJetAnalyzer/t";     // pp forests
 
 static TTree  *g_caloTree = nullptr;
 static Int_t   g_caloN    = 0;
@@ -37,17 +40,17 @@ static Float_t g_caloRawPt[eventMap::jetMax], g_caloEta[eventMap::jetMax], g_cal
 // Attach the calo tree for a PF scan. Returns false if the tree is missing or
 // misaligned; the caller must abort when requireCaloJetMatch is set, since a
 // scan with no calo jets would otherwise silently keep every PF jet.
-inline bool attachCaloJetMatchTree(TFile *f, Long64_t nEvents)
+inline bool attachCaloJetMatchTree(TFile *f, Long64_t nEvents, const char *treeName = caloJetTreeName)
 {
   g_caloTree = nullptr;
   g_caloN = 0;
-  TTree *t = (TTree*) f->Get(caloJetTreeName);
+  TTree *t = (TTree*) f->Get(treeName);
   if(!t){
-    std::cout << "\033[1;31m " << caloJetTreeName << " not found in " << f->GetName() << "\033[0m" << std::endl;
+    std::cout << "\033[1;31m " << treeName << " not found in " << f->GetName() << "\033[0m" << std::endl;
     return false;
   }
   if(t->GetEntries() != nEvents){
-    std::cout << "\033[1;31m " << caloJetTreeName << " has " << t->GetEntries()
+    std::cout << "\033[1;31m " << treeName << " has " << t->GetEntries()
               << " entries against " << nEvents << " events\033[0m" << std::endl;
     return false;
   }
@@ -58,7 +61,7 @@ inline bool attachCaloJetMatchTree(TFile *f, Long64_t nEvents)
   t->SetBranchAddress("jteta",  g_caloEta);
   t->SetBranchAddress("jtphi",  g_caloPhi);
   g_caloTree = t;
-  std::cout << "\tLoaded " << caloJetTreeName << " for the calo-match jet ID (dR < " << caloMatchDr << ")" << std::endl;
+  std::cout << "\tLoaded " << treeName << " for the calo-match jet ID (dR < " << caloMatchDr << ")" << std::endl;
   return true;
 }
 

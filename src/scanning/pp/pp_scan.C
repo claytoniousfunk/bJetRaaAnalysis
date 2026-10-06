@@ -86,6 +86,8 @@ TF1 *fitFxn_pp_HLT;
 #include "../../../headers/functions/getDatasetName/getDatasetName_pp.h"
 #include "../../../headers/functions/getInputFileName/getInputFileName_pp.h"
 #include "../../../headers/functions/configureOutputDatasetName/configureOutputDatasetName_pp.h"
+// calo-jet match jet ID for PF jets (config_pp.h: requireCaloJetMatch)
+#include "../scan_calo_jet_match.h"
 // dimuon mass calculation
 #include "../../../headers/functions/calculateDimuonMass.h"
 
@@ -295,7 +297,24 @@ void pp_scan(int group = 1){
   else if(doMinBiasSample) inputFileList = "../../../fileNames/fileNames_pp_ZeroBias1_withCaloJets_fresh.txt";
   else if(doHighEGJetSample) inputFileList = "../../../fileNames/fileNames_pp_HighEGJet.txt";
 
-  if(group == 0){ cout << "INPUTFILELIST=" << inputFileList << endl; return; } // query mode for condor submit scripts
+  if(requireCaloJetMatch && useCaloJetsOverride){
+    std::cout << "\033[1;31m requireCaloJetMatch is a PF-jet ID; it cannot be combined with useCaloJetsOverride \033[0m" << std::endl;
+    return;
+  }
+  TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
+  TString outputDatasetName = configureOutputDatasetName(doSingleMuonSample,doMinBiasSample,doHighEGJetSample,
+    applyJet15Trigger,applyJet30Trigger,applyJet40Trigger,applyJet60Trigger,applyJet80Trigger,applyJet100Trigger,
+    applyAntiMu5Jet30Trigger,applyAntiMu5Jet40Trigger,applyAntiMu5Jet60Trigger,
+    applyMu12TriggerEfficiencyCorrection,doJetTrkMaxFilter,doEtaPhiMask,doWDecayFilter,
+    doJESCorrection,doBJetNeutrinoEnergyShift,doJERCorrection,
+							 apply_JER_smear,apply_JEU_shift_up,apply_JEU_shift_down,muPtCut,muPtMaxCut,fillMu5,fillMu7,fillMu12, useCaloJetsOverride, useManualJEC, skipCaloL2L3Residual, requireCaloJetMatch);
+  TString outputDir = Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data());
+
+  if(group == 0){ // query mode for condor submit scripts
+    cout << "INPUTFILELIST=" << inputFileList << endl;
+    cout << "OUTPUTDIR=" << outputDir << endl;
+    return;
+  }
 
   std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
   if(!instr.is_open()){ cout << "filelist not found!! Exiting..." << endl; return; }
@@ -307,18 +326,10 @@ void pp_scan(int group = 1){
   }
   TString inputFile = TString(filename.c_str());
 
-  TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
-  TString outputDatasetName = configureOutputDatasetName(doSingleMuonSample,doMinBiasSample,doHighEGJetSample,
-    applyJet15Trigger,applyJet30Trigger,applyJet40Trigger,applyJet60Trigger,applyJet80Trigger,applyJet100Trigger,
-    applyAntiMu5Jet30Trigger,applyAntiMu5Jet40Trigger,applyAntiMu5Jet60Trigger,
-    applyMu12TriggerEfficiencyCorrection,doJetTrkMaxFilter,doEtaPhiMask,doWDecayFilter,
-    doJESCorrection,doBJetNeutrinoEnergyShift,doJERCorrection,
-							 apply_JER_smear,apply_JEU_shift_up,apply_JEU_shift_down,muPtCut,muPtMaxCut,fillMu5,fillMu7,fillMu12, useCaloJetsOverride, useManualJEC, skipCaloL2L3Residual);
-  TString outputFile = Form("%s%s/pp_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),group);
+  TString outputFile = Form("%s/pp_scan_output_%i.root",outputDir.Data(),group);
 
-  if(gSystem->AccessPathName(Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()))){
-    std::cout << "\033[1;31m Output directory not found: \033[0m "
-              << Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data()) << std::endl;
+  if(gSystem->AccessPathName(outputDir)){
+    std::cout << "\033[1;31m Output directory not found: \033[0m " << outputDir << std::endl;
     return;
   }
 
@@ -395,7 +406,8 @@ void pp_scan(TString inputFile, TString outputFile){
 						   fillMu12,
 						   useCaloJetsOverride,
 						   useManualJEC,
-						   skipCaloL2L3Residual);
+						   skipCaloL2L3Residual,
+						   requireCaloJetMatch);
 
     TString output = outputFile;
 
@@ -630,6 +642,14 @@ void pp_scan(TString inputFile, TString outputFile){
     cout << "	Loading jet..." << endl;
     if(useCaloJetsOverride) em->loadJet("ak4CaloJetAnalyzer/t");
     else em->loadJet("ak4PFJetAnalyzer/t");
+    // calo jets for the PF-jet calo-match ID (scan_calo_jet_match.h)
+    g_caloTree = nullptr;
+    if(!useCaloJetsOverride){
+      if(!attachCaloJetMatchTree(f, em->evtTree->GetEntries(), caloJetTreeNamePP) && requireCaloJetMatch){
+        std::cout << "\033[1;31m requireCaloJetMatch is set but the calo jets cannot be read; aborting \033[0m" << std::endl;
+        return;
+      }
+    }
     cout << "	Loading muon..." << endl;
     if(!doMinBiasSample) em->loadMuon("ggHiNtuplizerGED/EventTree");
     else em->loadMuon("ggHiNtuplizer/EventTree");
@@ -691,6 +711,7 @@ void pp_scan(TString inputFile, TString outputFile){
       if(evi == 0) cout << "Processing events..." << endl;
 
       em->getEvent(evi); // load event info from eventMap
+      loadCaloJetMatchEntry(evi);
       // em->muonTriggerTree->GetEntry(evi);
       // em->jetEvtTree->GetEntry(evi);
       // if(em->njet > 0){
@@ -928,6 +949,13 @@ void pp_scan(TString inputFile, TString outputFile){
 	double x = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[i];
 	double y = em->jeteta[i]; // recoJetEta
 	double z = em->jetphi[i]; // recoJetPhi
+
+	// calo-match jet ID, ahead of every reco-jet histogram and the muon tag
+	if(requireCaloJetMatch){
+	  double caloRawPt_i;
+	  if(closestCaloJetDr(y, z, caloRawPt_i) >= caloMatchDr) continue;
+	}
+
 	double jetTrkMax_i = em->jetTrkMax[i];
 	double inJetMuPt_i = em->mupt[i];
 	double inJetMuEta_i = em->mueta[i];
