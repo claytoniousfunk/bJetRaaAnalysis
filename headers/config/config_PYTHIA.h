@@ -61,7 +61,7 @@ double sigma_eta = 0.005;
 // PYTHIA+HYDJET b and c templates and then applied to light (whose PbPb MC
 // statistics are too thin). Output names ..._<flavor>_axisSmear<k>; the sigmas
 // are stored as h_axisSmearSigma. Tagged _axisSmearScan.
-bool doAxisSmearScan = true;
+bool doAxisSmearScan = false;
 const int NAxisSmear = 9;
 const double axisSmearSigma[NAxisSmear] = {0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.10};
 // triggers
@@ -76,17 +76,17 @@ bool fillMu5 = false;
 bool fillMu7 = false;
 bool fillMu12 = true;
 // jet mods
-bool useCaloJetsOverride = true;
+bool useCaloJetsOverride = false;
 bool useManualJEC = true;
 // PF jets only: drop every reco PF jet with no ak4Calo jet within dR < 0.2
 // (src/scanning/scan_calo_jet_match.h). Applies to ALL reco-jet histograms and
 // the muon tag; event counts and gen-level histograms are unaffected. The scan
 // aborts if the forest has no calo tree. Adds _caloJetMatched to the output name.
-bool requireCaloJetMatch = false;
+bool requireCaloJetMatch = true;
 // for the response scan: keep only even- or odd-indexed events, giving the two
 // statistically independent halves unfoldClosureTest.C trains and tests on
 bool onlyEvenEvents = false;
-bool onlyOddEvents = true;
+bool onlyOddEvents = false;
 // response scan: fill only jets whose jet-branch muon (mupt/mueta, no
 // muon-tree matching) passes muPtCut and |eta| < 2
 bool onlyMuTaggedJets = false;
