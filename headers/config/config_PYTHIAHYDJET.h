@@ -83,12 +83,12 @@ bool applyMu12TriggerEfficiencyCorrection = false;
 bool fillMu5 = false;
 bool fillMu7 = false;
 bool fillMu12 = true;
-bool useCaloJetsOverride = true;
+bool useCaloJetsOverride = false;
 bool useManualJEC = true;
 // for response scan. The PbPb b-jet unfolding needs BOTH halves (even + odd
 // summed for the nominal response, split for the closure test): run once with
 // onlyEvenEvents, then again with onlyOddEvents.
-bool onlyEvenEvents = true;
+bool onlyEvenEvents = false;
 bool onlyOddEvents = false;
 // response scan: fill only jets whose jet-branch muon (mupt/mueta, no
 // muon-tree matching) passes muPtCut and |eta| < 2

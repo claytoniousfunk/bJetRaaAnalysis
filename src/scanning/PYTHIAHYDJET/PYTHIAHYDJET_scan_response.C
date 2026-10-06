@@ -112,6 +112,16 @@ TF1 *fitFxn_PYTHIAHYDJET_BJetSpectraReweightToData_C1;
 // separate from the refpt == genjetpt test used for the response matrix, so the
 // two can be compared rather than conflated.
 const double recoGenMatchDr = 0.2;
+
+// CALO-JET MATCHING as a jet ID for PF jets, identical to PbPb_scan.C so data
+// and MC are directly comparable: a PF jet is calo-matched when an akPu4Calo
+// jet (any pT, forest threshold only) lies within caloMatchDr of its axis.
+// Here it is crossed with the gen match, which data cannot do, to give the
+// calo-match efficiency separately for genuine (gen-matched) and combinatorial
+// (unmatched) PF jets. Active only in PF scans (!useCaloJetsOverride); the
+// histograms are booked regardless and are empty in a calo scan.
+const double caloMatchDr = 0.2;
+const char *caloJetTreeName = "akPu4CaloJetAnalyzer/t";
 // getJetPtBin function
 #include "../../../headers/functions/getJetPtBin.h"
 // getPtRel function
@@ -364,6 +374,15 @@ void PYTHIAHYDJET_scan_response(int group = 1){
     TH1D *h_recoJetPt_all[NCentralityIndices];
     TH1D *h_recoJetPt_matchedDr[NCentralityIndices];
     TH1D *h_recoJetPt_unmatchedDr[NCentralityIndices];
+    // calo-matched subsets of the three above (same jets, weight, axis), so
+    // X_caloMatched / X is the calo-match efficiency bin by bin
+    TH1D *h_recoJetPt_all_caloMatched[NCentralityIndices];
+    TH1D *h_recoJetPt_matchedDr_caloMatched[NCentralityIndices];
+    TH1D *h_recoJetPt_unmatchedDr_caloMatched[NCentralityIndices];
+    // dR to the closest calo jet (9.9 = no calo jet in the event, overflow) and
+    // the matched calo raw pT, vs PF jet pT -- as in PbPb_scan.C
+    TH2D *h_caloJetDr_recoJetPt[NCentralityIndices];
+    TH2D *h_caloJetRawPt_recoJetPt_caloMatched[NCentralityIndices];
     // For every reco jet, the nearest gen jet regardless of whether it passes the
     // cut: separates pure combinatorial jets (no gen jet anywhere near) from soft
     // gen jets promoted upward by the underlying event (small dR, genPt << recoPt).
@@ -464,9 +483,23 @@ void PYTHIAHYDJET_scan_response(int group = 1){
       h_unmatchedRecoJetPt[i][4]->Sumw2();
       h_unmatchedRecoJetPt[i][5]->Sumw2();
       h_unmatchedRecoJetPt[i][6]->Sumw2();
+      {
+	TString centTitle = (i==0) ? Form("hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1])
+	                           : Form("hiBin %i - %i",centEdges[i-1],centEdges[i]);
+	h_recoJetPt_all_caloMatched[i]       = new TH1D(Form("h_recoJetPt_all_caloMatched_C%i",i),Form("all reco jets, calo jet within #DeltaR < %.2f, %s",caloMatchDr,centTitle.Data()),NPtBins,ptMin,ptMax);
+	h_recoJetPt_matchedDr_caloMatched[i] = new TH1D(Form("h_recoJetPt_matchedDr_caloMatched_C%i",i),Form("reco jets with a gen jet within dR, calo jet within #DeltaR < %.2f, %s",caloMatchDr,centTitle.Data()),NPtBins,ptMin,ptMax);
+	h_recoJetPt_unmatchedDr_caloMatched[i] = new TH1D(Form("h_recoJetPt_unmatchedDr_caloMatched_C%i",i),Form("reco jets with no gen jet within dR, calo jet within #DeltaR < %.2f, %s",caloMatchDr,centTitle.Data()),NPtBins,ptMin,ptMax);
+	h_caloJetDr_recoJetPt[i] = new TH2D(Form("h_caloJetDr_recoJetPt_C%i",i),Form("#DeltaR(PF jet, closest calo jet) vs p_{T}^{jet}, %s; p_{T}^{jet} [GeV]; #DeltaR",centTitle.Data()),NPtBins,ptMin,ptMax,100,0.0,1.0);
+	h_caloJetRawPt_recoJetPt_caloMatched[i] = new TH2D(Form("h_caloJetRawPt_recoJetPt_caloMatched_C%i",i),Form("matched calo raw p_{T} vs PF p_{T}^{jet}, #DeltaR < %.2f, %s; p_{T}^{jet} [GeV]; calo raw p_{T} [GeV]",caloMatchDr,centTitle.Data()),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+      }
       h_recoJetPt_all[i]->Sumw2();
       h_recoJetPt_matchedDr[i]->Sumw2();
       h_recoJetPt_unmatchedDr[i]->Sumw2();
+      h_recoJetPt_all_caloMatched[i]->Sumw2();
+      h_recoJetPt_matchedDr_caloMatched[i]->Sumw2();
+      h_recoJetPt_unmatchedDr_caloMatched[i]->Sumw2();
+      h_caloJetDr_recoJetPt[i]->Sumw2();
+      h_caloJetRawPt_recoJetPt_caloMatched[i]->Sumw2();
       h_recoPt_dRnearestGen[i]->Sumw2();
       h_recoPt_nearestGenPt[i]->Sumw2();
       h_matchedRecoJetPt_genJetPt[i][0]->Sumw2();
@@ -606,6 +639,38 @@ void PYTHIAHYDJET_scan_response(int group = 1){
       if(g_pfHasFlav) cout << "	calo flavor from the PF jet within dR < " << caloPFMatchDR << "\n";
     }
     else g_pfTree = nullptr;
+
+    // Calo jets for the PF-jet calo-match ID, read exactly as in PbPb_scan.C: a
+    // separate tree with its own buffers, not a friend of evtTree (whose friend
+    // chain already carries the PF jet tree with the same branch names).
+    TTree *caloJetTree = nullptr;
+    Int_t nCaloJet = 0;
+    static Float_t caloJetRawPt[eventMap::jetMax], caloJetEta[eventMap::jetMax], caloJetPhi[eventMap::jetMax];
+    if(!useCaloJetsOverride){
+      caloJetTree = (TTree*) f->Get(caloJetTreeName);
+      if(!caloJetTree){
+        std::cout << "\033[1;31m " << caloJetTreeName << " not found in " << input
+                  << "; calo-matched histograms will be empty \033[0m" << std::endl;
+      }
+      else if(caloJetTree->GetEntries() != em->evtTree->GetEntries()){
+        std::cout << "\033[1;31m " << caloJetTreeName << " has " << caloJetTree->GetEntries()
+                  << " entries against " << em->evtTree->GetEntries()
+                  << " events; calo-matched histograms will be empty \033[0m" << std::endl;
+        caloJetTree = nullptr;
+      }
+      else{
+        caloJetTree->SetBranchStatus("*",0);
+        caloJetTree->SetBranchStatus("nref",1);
+        caloJetTree->SetBranchStatus("rawpt",1);
+        caloJetTree->SetBranchStatus("jteta",1);
+        caloJetTree->SetBranchStatus("jtphi",1);
+        caloJetTree->SetBranchAddress("nref", &nCaloJet);
+        caloJetTree->SetBranchAddress("rawpt", caloJetRawPt);
+        caloJetTree->SetBranchAddress("jteta", caloJetEta);
+        caloJetTree->SetBranchAddress("jtphi", caloJetPhi);
+        std::cout << "	Loaded " << caloJetTreeName << " for the calo-match jet ID (dR < " << caloMatchDr << ")" << std::endl;
+      }
+    }
     if(useAnalysisMuonTag){
       cout << "	Loading muon..." << endl;
       em->loadMuon("ggHiNtuplizerGED/EventTree");
@@ -709,6 +774,9 @@ void PYTHIAHYDJET_scan_response(int group = 1){
 
       // step the un-friended PF tree to the same event
       if(g_pfTree) g_pfTree->GetEntry(evi);
+      // and the calo tree for the calo-match ID
+      nCaloJet = 0;
+      if(caloJetTree) caloJetTree->GetEntry(evi);
 
       if((100*evi / NEvents) % 5 == 0 && 100*evi / NEvents > evi_frac) cout << "evt frac: " << evi_frac << "%" << endl;
       evi_frac = 100 * evi/NEvents;
@@ -861,6 +929,30 @@ double leadingMatchedRecoJetPt = -999.0;
 	else{
 	  h_recoJetPt_unmatchedDr[0]->Fill(recoJetPt_i,w);
 	  h_recoJetPt_unmatchedDr[CentralityIndex]->Fill(recoJetPt_i,w);
+	}
+
+	// calo-match jet ID: closest calo jet to this PF jet's axis (PbPb_scan.C)
+	if(caloJetTree){
+	  double caloDrMin = 9.9; // overflow when the event has no calo jet
+	  double caloRawPtMatched = -1.0;
+	  for(int k = 0; k < nCaloJet; k++){
+	    double dr_k = getDr(recoJetEta_i, recoJetPhi_i, caloJetEta[k], caloJetPhi[k]);
+	    if(dr_k < caloDrMin){
+	      caloDrMin = dr_k;
+	      caloRawPtMatched = caloJetRawPt[k];
+	    }
+	  }
+	  h_caloJetDr_recoJetPt[0]->Fill(recoJetPt_i,caloDrMin,w);
+	  h_caloJetDr_recoJetPt[CentralityIndex]->Fill(recoJetPt_i,caloDrMin,w);
+	  if(caloDrMin < caloMatchDr){
+	    h_recoJetPt_all_caloMatched[0]->Fill(recoJetPt_i,w);
+	    h_recoJetPt_all_caloMatched[CentralityIndex]->Fill(recoJetPt_i,w);
+	    TH1D **hm = hasGenJetMatchDr_i ? h_recoJetPt_matchedDr_caloMatched : h_recoJetPt_unmatchedDr_caloMatched;
+	    hm[0]->Fill(recoJetPt_i,w);
+	    hm[CentralityIndex]->Fill(recoJetPt_i,w);
+	    h_caloJetRawPt_recoJetPt_caloMatched[0]->Fill(recoJetPt_i,caloRawPtMatched,w);
+	    h_caloJetRawPt_recoJetPt_caloMatched[CentralityIndex]->Fill(recoJetPt_i,caloRawPtMatched,w);
+	  }
 	}
 
 	// dR is capped at the histogram range so overflow does not hide the
@@ -1199,6 +1291,11 @@ double leadingMatchedRecoJetPt = -999.0;
       h_recoJetPt_all[j]->Write();
       h_recoJetPt_matchedDr[j]->Write();
       h_recoJetPt_unmatchedDr[j]->Write();
+      h_recoJetPt_all_caloMatched[j]->Write();
+      h_recoJetPt_matchedDr_caloMatched[j]->Write();
+      h_recoJetPt_unmatchedDr_caloMatched[j]->Write();
+      h_caloJetDr_recoJetPt[j]->Write();
+      h_caloJetRawPt_recoJetPt_caloMatched[j]->Write();
       h_recoPt_dRnearestGen[j]->Write();
       h_recoPt_nearestGenPt[j]->Write();
       // h_unmatchedRecoJetPt[j][1]->Write();
