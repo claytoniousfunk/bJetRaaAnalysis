@@ -109,18 +109,8 @@ TF1* getHLTFitFxn(int hiBin){
 // correction and of any JEU/JER variation applied afterwards.
 const double rawJetPtCut = 40.0;
 
-// CALO-JET MATCHING as a jet ID for PF jets. A PF jet counts as calo-matched
-// when an akPu4Calo jet lies within caloMatchDr of its axis. Combinatorial PF
-// jets are built from the UE pedestal, which the calo collection's own
-// pileup subtraction removes differently, so a genuine jet should appear in
-// both collections and a fake one less often. Active only in PF scans
-// (!useCaloJetsOverride); the histograms are booked regardless and are simply
-// empty in a calo scan. No pT or eta cut is applied to the calo jet beyond the
-// forest's own threshold -- h_caloJetRawPt_inclRecoJetPt_caloMatched keeps the
-// matched calo raw pT so one can be imposed afterwards. Calo raw pT is used
-// because the forest calo jtpt carries the PF JEC.
-const double caloMatchDr = 0.2;
-const char *caloJetTreeName = "akPu4CaloJetAnalyzer/t";
+// calo-jet match jet ID for PF jets (config_PbPb.h: requireCaloJetMatch)
+#include "../scan_calo_jet_match.h"
 
 
 
@@ -180,25 +170,14 @@ TH1D *h_inclRecoJetPt_rawPtCut[NCentralityIndices];
 // the axis mismatch h_inclRecoJetPt_rawPtCut has -- that one selects on raw pT
 // but still fills the corrected pT axis.
 TH1D *h_inclRawJetPt[NCentralityIndices];
-// Calo-matched subsets of h_inclRecoJetPt / h_inclRawJetPt: same jets, same
-// weight, same axes, plus the calo-match requirement, so matched/inclusive is
-// the calo-match efficiency bin by bin.
-TH1D *h_inclRecoJetPt_caloMatched[NCentralityIndices];
-TH1D *h_inclRawJetPt_caloMatched[NCentralityIndices];
-// dR from each inclusive PF jet to the closest calo jet, vs PF jet pT, for
-// choosing caloMatchDr. A PF jet with no calo jet in the event is filled at
-// dR = 9.9 (overflow).
+// Calo-match diagnostics (scan_calo_jet_match.h). With requireCaloJetMatch off
+// they show the full dR distribution, for choosing caloMatchDr; with it on, the
+// cut has already been applied and they stop at caloMatchDr. A PF jet with no
+// calo jet in the event is filled at dR = 9.9 (overflow).
 TH2D *h_caloJetDr_inclRecoJetPt[NCentralityIndices];
-// raw pT of the matched (closest) calo jet vs PF jet pT.
-TH2D *h_caloJetRawPt_inclRecoJetPt_caloMatched[NCentralityIndices];
-// Muon-tagged, calo-matched subsets, each with the same weight and gating as
-// its unmatched parent: _inclRecoMuonTag is ungated (weight w), _triggerOn is
-// gated on evtTriggerDecision (weight w_trig) and so normalizes to
-// h_vz_triggerOn. The ptRel 2D is the b-purity fit input for matched jets.
-TH1D *h_inclRecoJetPt_inclRecoMuonTag_caloMatched[NCentralityIndices];
-TH1D *h_inclRecoJetPt_inclRecoMuonTag_triggerOn_caloMatched[NCentralityIndices];
-TH2D *h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_caloMatched[NCentralityIndices];
 TH2D *h_caloJetDr_inclRecoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices];
+// raw pT of the closest calo jet vs PF jet pT, for jets with one inside caloMatchDr
+TH2D *h_caloJetRawPt_inclRecoJetPt[NCentralityIndices];
 
 // jetTrkMax filter diagnostics. Filled immediately BEFORE and immediately
 // AFTER the passesJetTrkMaxFilter block, with nothing else in between, so
@@ -359,7 +338,51 @@ void PbPb_scan(int group = 1){
   else if(doHardProbesSample) inputFileList = "../../../fileNames/fileNames_HIHardProbes_withCaloAndFlowJets_fresh_partial.txt";
   else{};
 
-  if(group == 0){ cout << "INPUTFILELIST=" << inputFileList << endl; return; } // query mode for condor submit scripts
+  if(requireCaloJetMatch && useCaloJetsOverride){
+    std::cout << "\033[1;31m requireCaloJetMatch is a PF-jet ID; it cannot be combined with useCaloJetsOverride \033[0m" << std::endl;
+    return;
+  }
+
+  TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
+  TString outputDatasetName = "";
+  outputDatasetName = configureOutputDatasetName(doSingleMuonSample,
+						   doMinBiasSample_Part1,
+						   doMinBiasSample_Part2,
+						   doMinBiasSample_Part3,
+						   doMinBiasSample_Part4,
+						   doHardProbesSample,
+						   applyMinBiasTrigger,
+						   applyJet60Trigger,
+						   applyJet80Trigger,
+						   applyJet100Trigger,
+						   applyMu12TriggerEfficiencyCorrection,
+						   doJetTrkMaxFilter,
+						   doEtaPhiMask,
+						   doWDecayFilter,
+						   doBJetNeutrinoEnergyShift,
+						   doJERCorrection,
+						   apply_JER_smear,
+						   apply_JEU_shift_up,
+						   apply_JEU_shift_down,
+						   muPtCut,
+						   muPtMaxCut,
+						   fillMu5,
+						   fillMu7,
+						   fillMu12,
+						   useCaloJetsOverride,
+						   useManualJEC,
+						   skipCaloL2L3Residual,
+						   requireCaloJetMatch);
+
+
+  TString suffixEdit = CENT_SCHEME_SUFFIX;
+  TString outputDir = Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data());
+
+  if(group == 0){ // query mode for condor submit scripts
+    cout << "INPUTFILELIST=" << inputFileList << endl;
+    cout << "OUTPUTDIR=" << outputDir << endl;
+    return;
+  }
 
   std::ifstream instr(inputFileList.c_str(), std::ifstream::in);
   if(!instr.is_open()){
@@ -393,45 +416,13 @@ void PbPb_scan(int group = 1){
     // std::cout << "input dataset = " << input << std::endl;
 
 
-    TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
-    TString outputDatasetName = "";
-    outputDatasetName = configureOutputDatasetName(doSingleMuonSample,
-						   doMinBiasSample_Part1,
-						   doMinBiasSample_Part2,
-						   doMinBiasSample_Part3,
-						   doMinBiasSample_Part4,
-						   doHardProbesSample,
-						   applyMinBiasTrigger,
-						   applyJet60Trigger,
-						   applyJet80Trigger,
-						   applyJet100Trigger,
-						   applyMu12TriggerEfficiencyCorrection,
-						   doJetTrkMaxFilter,
-						   doEtaPhiMask,
-						   doWDecayFilter,
-						   doBJetNeutrinoEnergyShift,
-						   doJERCorrection,
-						   apply_JER_smear,
-						   apply_JEU_shift_up,
-						   apply_JEU_shift_down,
-						   muPtCut,
-						   muPtMaxCut,
-						   fillMu5,
-						   fillMu7,
-						   fillMu12,
-						   useCaloJetsOverride,
-						   useManualJEC,
-						   skipCaloL2L3Residual);
 
-
-    TString suffixEdit = CENT_SCHEME_SUFFIX;
-
-    TString output = Form("%s%s%s/PbPb_scan_output_%i.root",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data(),group);
+    TString output = Form("%s/PbPb_scan_output_%i.root",outputDir.Data(),group);
 
     std::cout << "output dataset = " << output << std::endl;
 
-    if(gSystem->AccessPathName(Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data()))){
-      std::cout << "\033[1;31m Output directory not found: \033[0m " << Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data()) << std::endl;
+    if(gSystem->AccessPathName(outputDir)){
+      std::cout << "\033[1;31m Output directory not found: \033[0m " << outputDir << std::endl;
       return;
     }
   
@@ -676,29 +667,16 @@ void PbPb_scan(int group = 1){
 	h_muTrigEff_pass_noVeto[i] = new TH2D(Form("h_muTrigEff_pass_noVeto_C%i",i),Form("tight probe muons, mu12 prescale 1, mu12 fired, %i < hiBin < %i; muon p_{T} [GeV]; muon #eta",centEdges[i-1],centEdges[i]),200,0,200,48,-2.4,2.4);
 	h_muTrigEff_mu12Prescale[i] = new TH1D(Form("h_muTrigEff_mu12Prescale_C%i",i),Form("HLT_HIL3Mu12 prescale, %i < hiBin < %i",centEdges[i-1],centEdges[i]),20,0,20);
       }
-      // calo-matched PF jets (booked once for both branches above)
+      // calo-match diagnostics (booked once for both branches above)
       TString centTitle = (i==0) ? Form("hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1])
                                  : Form("hiBin %i - %i",centEdges[i-1],centEdges[i]);
-      h_inclRecoJetPt_caloMatched[i] = new TH1D(Form("h_inclRecoJetPt_caloMatched_C%i",i),Form("incl. reco p_{T}^{jet}, calo jet within #DeltaR < %.2f, %s",caloMatchDr,centTitle.Data()),NPtBins,ptMin,ptMax);
-      h_inclRawJetPt_caloMatched[i] = new TH1D(Form("h_inclRawJetPt_caloMatched_C%i",i),Form("incl. raw p_{T}^{jet}, calo jet within #DeltaR < %.2f, %s",caloMatchDr,centTitle.Data()),NPtBins,ptMin,ptMax);
       h_caloJetDr_inclRecoJetPt[i] = new TH2D(Form("h_caloJetDr_inclRecoJetPt_C%i",i),Form("#DeltaR(PF jet, closest calo jet) vs p_{T}^{jet}, %s; p_{T}^{jet} [GeV]; #DeltaR",centTitle.Data()),NPtBins,ptMin,ptMax,100,0.0,1.0);
-      h_caloJetRawPt_inclRecoJetPt_caloMatched[i] = new TH2D(Form("h_caloJetRawPt_inclRecoJetPt_caloMatched_C%i",i),Form("matched calo raw p_{T} vs PF p_{T}^{jet}, #DeltaR < %.2f, %s; p_{T}^{jet} [GeV]; calo raw p_{T} [GeV]",caloMatchDr,centTitle.Data()),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
-      h_inclRecoJetPt_inclRecoMuonTag_caloMatched[i] = new TH1D(Form("h_inclRecoJetPt_inclRecoMuonTag_caloMatched_C%i",i),Form("incl. reco p_{T}^{jet}, tagged with incl. reco muon, calo jet within #DeltaR < %.2f, %s",caloMatchDr,centTitle.Data()),NPtBins,ptMin,ptMax);
-      h_inclRecoJetPt_inclRecoMuonTag_triggerOn_caloMatched[i] = new TH1D(Form("h_inclRecoJetPt_inclRecoMuonTag_triggerOn_caloMatched_C%i",i),Form("incl. reco p_{T}^{jet}, tagged with incl. reco muon, trigger ON, calo jet within #DeltaR < %.2f, %s",caloMatchDr,centTitle.Data()),NPtBins,ptMin,ptMax);
       h_caloJetDr_inclRecoJetPt_inclRecoMuonTag_triggerOn[i] = new TH2D(Form("h_caloJetDr_inclRecoJetPt_inclRecoMuonTag_triggerOn_C%i",i),Form("#DeltaR(PF jet, closest calo jet) vs p_{T}^{jet}, #mu-tagged, trigger ON, %s; p_{T}^{jet} [GeV]; #DeltaR",centTitle.Data()),NPtBins,ptMin,ptMax,100,0.0,1.0);
-      // ptRel axis cloned from the unmatched parent so the two stay binned identically
-      h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_caloMatched[i] = (TH2D*) h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i]->Clone(Form("h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_caloMatched_C%i",i));
-      h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_caloMatched[i]->Reset();
-      h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_caloMatched[i]->SetTitle(Form("%s, calo jet within #DeltaR < %.2f",h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i]->GetTitle(),caloMatchDr));
+      h_caloJetRawPt_inclRecoJetPt[i] = new TH2D(Form("h_caloJetRawPt_inclRecoJetPt_C%i",i),Form("closest calo raw p_{T} vs PF p_{T}^{jet}, #DeltaR < %.2f, %s; p_{T}^{jet} [GeV]; calo raw p_{T} [GeV]",caloMatchDr,centTitle.Data()),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
       // sumw2 commands
-      h_inclRecoJetPt_inclRecoMuonTag_caloMatched[i]->Sumw2();
-      h_inclRecoJetPt_inclRecoMuonTag_triggerOn_caloMatched[i]->Sumw2();
-      h_caloJetDr_inclRecoJetPt_inclRecoMuonTag_triggerOn[i]->Sumw2();
-      h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_caloMatched[i]->Sumw2();
-      h_inclRecoJetPt_caloMatched[i]->Sumw2();
-      h_inclRawJetPt_caloMatched[i]->Sumw2();
       h_caloJetDr_inclRecoJetPt[i]->Sumw2();
-      h_caloJetRawPt_inclRecoJetPt_caloMatched[i]->Sumw2();
+      h_caloJetDr_inclRecoJetPt_inclRecoMuonTag_triggerOn[i]->Sumw2();
+      h_caloJetRawPt_inclRecoJetPt[i]->Sumw2();
       h_NJetPerEvent[i]->Sumw2();
       h_NMuTaggedJetPerEvent[i]->Sumw2();
       h_vz[i]->Sumw2();
@@ -817,36 +795,12 @@ void PbPb_scan(int group = 1){
     cout << "	Loading muon..." << endl;
     em->loadMuon("ggHiNtuplizerGED/EventTree");
 
-    // Calo jets for the PF-jet calo-match ID. Read as a separate tree with its
-    // own buffers, NOT a friend of evtTree: the friend chain already carries the
-    // PF jet tree, whose branch names (nref, rawpt, jteta, jtphi) these share.
-    // Entry-aligned with evtTree like every other forest tree.
-    TTree *caloJetTree = nullptr;
-    Int_t nCaloJet = 0;
-    static Float_t caloJetRawPt[eventMap::jetMax], caloJetEta[eventMap::jetMax], caloJetPhi[eventMap::jetMax];
+    // calo jets for the PF-jet calo-match ID (scan_calo_jet_match.h)
+    g_caloTree = nullptr;
     if(!useCaloJetsOverride){
-      caloJetTree = (TTree*) f->Get(caloJetTreeName);
-      if(!caloJetTree){
-        std::cout << "\033[1;31m " << caloJetTreeName << " not found in " << input
-                  << "; calo-matched histograms will be empty \033[0m" << std::endl;
-      }
-      else if(caloJetTree->GetEntries() != em->evtTree->GetEntries()){
-        std::cout << "\033[1;31m " << caloJetTreeName << " has " << caloJetTree->GetEntries()
-                  << " entries against " << em->evtTree->GetEntries()
-                  << " events; calo-matched histograms will be empty \033[0m" << std::endl;
-        caloJetTree = nullptr;
-      }
-      else{
-        caloJetTree->SetBranchStatus("*",0);
-        caloJetTree->SetBranchStatus("nref",1);
-        caloJetTree->SetBranchStatus("rawpt",1);
-        caloJetTree->SetBranchStatus("jteta",1);
-        caloJetTree->SetBranchStatus("jtphi",1);
-        caloJetTree->SetBranchAddress("nref", &nCaloJet);
-        caloJetTree->SetBranchAddress("rawpt", caloJetRawPt);
-        caloJetTree->SetBranchAddress("jteta", caloJetEta);
-        caloJetTree->SetBranchAddress("jtphi", caloJetPhi);
-        std::cout << "	Loaded " << caloJetTreeName << " for the calo-match jet ID (dR < " << caloMatchDr << ")" << std::endl;
+      if(!attachCaloJetMatchTree(f, em->evtTree->GetEntries()) && requireCaloJetMatch){
+        std::cout << "\033[1;31m requireCaloJetMatch is set but the calo jets cannot be read; aborting \033[0m" << std::endl;
+        return;
       }
     }
     cout << "	Loading muon triggers..." << endl;
@@ -907,8 +861,7 @@ void PbPb_scan(int group = 1){
 
 
       em->getEvent(evi); // load event info from eventMap
-      nCaloJet = 0;
-      if(caloJetTree) caloJetTree->GetEntry(evi);
+      loadCaloJetMatchEntry(evi);
     
       if(evi == 0) {
 	std::cout << "Processing events...\n";
@@ -1163,6 +1116,12 @@ void PbPb_scan(int group = 1){
 	double z = em->jetphi[i]; // recoJetPhi
 	double jetTrkMax_i = em->jetTrkMax[i];
 
+	// calo-match jet ID, ahead of every reco-jet histogram and the muon tag
+	double caloRawPtMatched = -1.0;
+	double caloDrMin = closestCaloJetDr(y, z, caloRawPtMatched);
+	bool caloMatched = (caloDrMin < caloMatchDr);
+	if(requireCaloJetMatch && !caloMatched) continue;
+
 
 	// double sigma = 0.663*JER_fxn->Eval(x);
 	// double mu = 1.0;
@@ -1253,28 +1212,13 @@ void PbPb_scan(int group = 1){
 	h_inclRawJetPt[0]->Fill(rawJetPt_i,w);
 	h_inclRawJetPt[CentralityIndex]->Fill(rawJetPt_i,w);
 
-	// calo-match jet ID: closest calo jet to this PF jet's axis
-	bool caloMatched = false;
-	double caloDrMin = 9.9; // overflow when the event has no calo jet
-	if(caloJetTree){
-	  double caloRawPtMatched = -1.0;
-	  for(int k = 0; k < nCaloJet; k++){
-	    double dr_k = getDr(y, z, caloJetEta[k], caloJetPhi[k]);
-	    if(dr_k < caloDrMin){
-	      caloDrMin = dr_k;
-	      caloRawPtMatched = caloJetRawPt[k];
-	    }
-	  }
+	// calo-match diagnostics
+	if(g_caloTree){
 	  h_caloJetDr_inclRecoJetPt[0]->Fill(x,caloDrMin,w);
 	  h_caloJetDr_inclRecoJetPt[CentralityIndex]->Fill(x,caloDrMin,w);
-	  caloMatched = (caloDrMin < caloMatchDr);
 	  if(caloMatched){
-	    h_inclRecoJetPt_caloMatched[0]->Fill(x,w);
-	    h_inclRecoJetPt_caloMatched[CentralityIndex]->Fill(x,w);
-	    h_inclRawJetPt_caloMatched[0]->Fill(rawJetPt_i,w);
-	    h_inclRawJetPt_caloMatched[CentralityIndex]->Fill(rawJetPt_i,w);
-	    h_caloJetRawPt_inclRecoJetPt_caloMatched[0]->Fill(x,caloRawPtMatched,w);
-	    h_caloJetRawPt_inclRecoJetPt_caloMatched[CentralityIndex]->Fill(x,caloRawPtMatched,w);
+	    h_caloJetRawPt_inclRecoJetPt[0]->Fill(x,caloRawPtMatched,w);
+	    h_caloJetRawPt_inclRecoJetPt[CentralityIndex]->Fill(x,caloRawPtMatched,w);
 	  }
 	}
 
@@ -1312,11 +1256,6 @@ void PbPb_scan(int group = 1){
 	  h_inclRecoJetPt_inclRecoMuonTag[0]->Fill(x,w);
 	  h_inclRecoJetPt_inclRecoMuonTag[CentralityIndex]->Fill(x,w);
 
-	  if(caloMatched){
-	    h_inclRecoJetPt_inclRecoMuonTag_caloMatched[0]->Fill(x,w);
-	    h_inclRecoJetPt_inclRecoMuonTag_caloMatched[CentralityIndex]->Fill(x,w);
-	  }
-
 	  h_inclRecoJetEta_inclRecoMuonTag[0]->Fill(y,w);
 	  h_inclRecoJetEta_inclRecoMuonTag[CentralityIndex]->Fill(y,w);
 
@@ -1343,15 +1282,9 @@ void PbPb_scan(int group = 1){
 	    h_inclRecoJetPt_inclRecoMuonTag_triggerOn[0]->Fill(x,w_trig);
 	    h_inclRecoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(x,w_trig);
 
-	    if(caloJetTree){
+	    if(g_caloTree){
 	      h_caloJetDr_inclRecoJetPt_inclRecoMuonTag_triggerOn[0]->Fill(x,caloDrMin,w_trig);
 	      h_caloJetDr_inclRecoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(x,caloDrMin,w_trig);
-	    }
-	    if(caloMatched){
-	      h_inclRecoJetPt_inclRecoMuonTag_triggerOn_caloMatched[0]->Fill(x,w_trig);
-	      h_inclRecoJetPt_inclRecoMuonTag_triggerOn_caloMatched[CentralityIndex]->Fill(x,w_trig);
-	      h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_caloMatched[0]->Fill(muPtRel,x,w_trig);
-	      h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_caloMatched[CentralityIndex]->Fill(muPtRel,x,w_trig);
 	    }
 
 	    h_inclRecoJetEta_inclRecoMuonTag_triggerOn[0]->Fill(y,w_trig);
@@ -1688,13 +1621,8 @@ void PbPb_scan(int group = 1){
       h_inclRecoJetPt[i]->Write();
       h_inclRecoJetPt_rawPtCut[i]->Write();
       h_inclRawJetPt[i]->Write();
-      h_inclRecoJetPt_caloMatched[i]->Write();
-      h_inclRawJetPt_caloMatched[i]->Write();
       h_caloJetDr_inclRecoJetPt[i]->Write();
-      h_caloJetRawPt_inclRecoJetPt_caloMatched[i]->Write();
-      h_inclRecoJetPt_inclRecoMuonTag_caloMatched[i]->Write();
-      h_inclRecoJetPt_inclRecoMuonTag_triggerOn_caloMatched[i]->Write();
-      h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn_caloMatched[i]->Write();
+      h_caloJetRawPt_inclRecoJetPt[i]->Write();
       h_caloJetDr_inclRecoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
       h_inclRecoJetPt_preTrkMaxFilter[i]->Write();
       h_inclRecoJetPt_postTrkMaxFilter[i]->Write();

@@ -133,6 +133,8 @@ TF1 *fitFxn_PYTHIAHYDJET_HLT_C4, *fitFxn_PYTHIAHYDJET_HLT_C3, *fitFxn_PYTHIAHYDJ
 #include "../scan_mc_jet_variants.h"
 #include "../scan_mc_muon_tag.h"
 #include "../scan_calo_pf_match.h"
+// calo-jet match jet ID for PF jets (config_PYTHIAHYDJET.h: requireCaloJetMatch)
+#include "../scan_calo_jet_match.h"
 
 // ---- calo-jet flavor --------------------------------------------------------
 // akPu4CaloJetAnalyzer/t has no matchedPartonFlavor, matchedHadronFlavor or
@@ -361,6 +363,10 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 
   TString outputDatasetName = "";
 
+  if(requireCaloJetMatch && useCaloJetsOverride){
+    cout << "\033[1;31m requireCaloJetMatch is a PF-jet ID; it cannot be combined with useCaloJetsOverride \033[0m" << endl;
+    return;
+  }
   outputDatasetName = configureOutputDatasetName(generator,
 						   doDiJetSample,
 						   doMuJetSample,
@@ -424,7 +430,8 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 						   useCaloJetsOverride,
 						   doRemoveUnmatchedJets,
 						   caloFlavorFromPFMatch,
-						   caloBHadronNumberFromPFMatch);
+						   caloBHadronNumberFromPFMatch,
+						   requireCaloJetMatch);
 
   TString suffixEdit = CENT_SCHEME_SUFFIX;
   TString outputDir = Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data());
@@ -1049,6 +1056,21 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
       if(g_pfHasBHad) cout << "	calo bHadronNumber from the PF jet within dR < " << caloPFMatchDR << "\n";
     }
     else g_pfTree = nullptr;
+    // calo jets for the PF-jet calo-match ID (scan_calo_jet_match.h)
+    g_caloTree = nullptr;
+    if(!useCaloJetsOverride){
+      if(!attachCaloJetMatchTree(f, em->evtTree->GetEntries()) && requireCaloJetMatch){
+        cout << "\033[1;31m requireCaloJetMatch is set but the calo jets cannot be read; aborting \033[0m" << endl;
+        return;
+      }
+    }
+    // with requireCaloJetMatch, a PF jet with no calo jet inside caloMatchDr is
+    // invisible to every reco-jet loop below
+    auto failsCaloJetMatch = [&](int k){
+      if(!requireCaloJetMatch) return false;
+      double caloRawPt_k;
+      return closestCaloJetDr(em->jeteta[k], em->jetphi[k], caloRawPt_k) >= caloMatchDr;
+    };
     cout << "	Loading muon..." << endl;
     em->loadMuon("ggHiNtuplizerGED/EventTree");
     cout << "	Loading muon triggers..." << endl;
@@ -1151,6 +1173,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 
       em->getEvent(evi); // load event info from eventMap
       if(g_pfTree) g_pfTree->GetEntry(evi);
+      loadCaloJetMatchEntry(evi);
 
       if((100*evi / NEvents) % 5 == 0 && (100*evi / NEvents) > evi_frac){
 
@@ -1343,6 +1366,8 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
       if(doLeadingXjetDumpFilter){
 	for(int j = 0; j < em->njet ; j++){
 
+	  if(failsCaloJetMatch(j)) continue;
+
 	  JEC.SetJetPT(em->rawpt[j]);
 	  JEC.SetJetEta(em->jeteta[j]);
 	  JEC.SetJetPhi(em->jetphi[j]);
@@ -1436,6 +1461,9 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
    
       // RECO JET LOOP
       for(int i = 0; i < em->njet ; i++){
+
+	// calo-match jet ID, ahead of every reco-jet histogram and the muon tag
+	if(failsCaloJetMatch(i)) continue;
 
 	if(onlyOneMuonTaggedJetPerEvent){
 	  if(eventHasInclRecoMuonTag) continue;
@@ -2284,6 +2312,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 
 	for(int k = 0; k < em->njet; k++){
 		
+	  if(failsCaloJetMatch(k)) continue;
 	  if(remove_HYDJET_jet(em->pthat,em->jetpt[k])) continue;
 	  double dr = getDr(em->jeteta[k],em->jetphi[k],genJetEta_i,genJetPhi_i);
 

@@ -56,3 +56,8 @@ bool useManualJEC = true;
 // together, or the comparison mixes conventions. Adds _noL2L3Residual to the
 // output name.
 bool skipCaloL2L3Residual = false;
+// PF jets only: drop every reco PF jet with no akPu4Calo jet within dR < 0.2
+// (src/scanning/scan_calo_jet_match.h). Applies to ALL reco-jet histograms and
+// the muon tag; event counts and gen-level histograms are unaffected. The scan
+// aborts if the forest has no calo tree. Adds _caloJetMatched to the output name.
+bool requireCaloJetMatch = true;

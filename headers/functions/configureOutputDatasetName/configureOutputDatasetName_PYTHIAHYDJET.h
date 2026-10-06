@@ -64,13 +64,15 @@ TString configureOutputDatasetName(TString generator,
 				   bool useCaloJetsOverride,
 				   bool doRemoveUnmatchedJets,
 				   bool caloFlavorFromPFMatch,
-				   bool caloBHadronNumberFromPFMatch)
+				   bool caloBHadronNumberFromPFMatch,
+				   bool requireCaloJetMatch = false)
 {
 
   TString result = "output";
   result.Append(Form("_%s",generator.Data()));
   // jet pT from the JEC text files rather than the forest jtpt
   if(useManualJEC) result.Append("_manualJEC");
+  if(requireCaloJetMatch) result.Append("_caloJetMatched");
 
   TString datasetIndicator = "";
   if(doMuJetSample) datasetIndicator = "_MuJet";
