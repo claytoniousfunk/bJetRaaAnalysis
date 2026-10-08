@@ -37,7 +37,8 @@ TString configureOutputDatasetName(TString generator,
 				   bool onlyEvenEvents,
 				   bool onlyOddEvents,
 				   bool onlyMuTaggedJets,
-				   bool requireCaloJetMatch = false)
+				   bool requireCaloJetMatch = false,
+				   bool doLeadMuTagEventReweight = false)
 {
 
   TString result = "output";
@@ -80,6 +81,7 @@ TString configureOutputDatasetName(TString generator,
   if(doJetAxisSmearing) result.Append(Form("_jetAxisSmear_muPhi-%1.3f_sigmaPhi-%1.3f_muEta-%1.3f_sigmaEta-%1.3f",mu_phi,sigma_phi,mu_eta,sigma_eta));
   // lesser-likely customizations
   if(doWeightCut) result.Append("_weightCut");
+  if(doLeadMuTagEventReweight) result.Append("_leadMuTagEventReweight");
   if(doHadronPtRelReweight) result.Append("_hadronPtRelReweight");
   if(doHadronPtRelReweightToMuon) result.Append("_hadronPtRelReweightToMuon");
   if(doBJetEnergyShift) result.Append("_bJetEnergyShift");
