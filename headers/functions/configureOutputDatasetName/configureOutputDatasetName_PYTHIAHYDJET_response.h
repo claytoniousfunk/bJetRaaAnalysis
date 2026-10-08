@@ -54,7 +54,8 @@ TString configureOutputDatasetName(TString generator,
 				   bool onlyOddEvents,
 				   bool onlyMuTaggedJets,
 				   bool useAnalysisMuonTag,
-				   bool requireCaloJetMatch = false)
+				   bool requireCaloJetMatch = false,
+				   bool doLeadMuTagEventReweight = false)
 {
 
   TString result = "output";
@@ -105,6 +106,7 @@ TString configureOutputDatasetName(TString generator,
   // lesser-likely customizations
   if(doWeightCut) result.Append("_weightCut");
   if(doBJetSpectraReweightToData) result.Append("_BJetSpectraReweightToData");
+  if(doLeadMuTagEventReweight) result.Append("_leadMuTagEventReweight");
   if(doHadronPtRelReweight) result.Append("_hadronPtRelReweight");
   if(doBJetEnergyShift) result.Append("_bJetEnergyShift");
   if(doJERCorrection) result.Append("_JERCorrection");

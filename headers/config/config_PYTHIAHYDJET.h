@@ -38,6 +38,12 @@ bool doWeightCut = false;
 bool doJetAxisSmearing = false;
 bool doWDecayFilter = true;
 bool doBJetSpectraReweightToData = false;
+// "reverse unfolding" (2026-10-08), PYTHIAHYDJET_scan_response.C only: an EVENT
+// weight at the leading muon-tagged reco jet's pT, the PbPb b-jet data / MC reco
+// ratio (headers/fitParameters/leadMuTagEventWeight_PYTHIAHYDJET_PF.h, generated
+// by src/calculateBJetsPerZ/reverseUnfoldReweight_PF_PbPb.C). Adds
+// _leadMuTagEventReweight to the response file name.
+bool doLeadMuTagEventReweight = true;
 bool doPThatCorrelationFilter = true;
 // drop reco jets with no matched gen jet (refpt < 0): the HYDJET background fakes.
 // Their count is pThat-independent but they carry the pThat weight of the event,
@@ -89,7 +95,7 @@ bool useManualJEC = true;
 // (src/scanning/scan_calo_jet_match.h). Applies to ALL reco-jet histograms and
 // the muon tag; event counts and gen-level histograms are unaffected. The scan
 // aborts if the forest has no calo tree. Adds _caloJetMatched to the output name.
-bool requireCaloJetMatch = true;
+bool requireCaloJetMatch = false;
 // for response scan. The PbPb b-jet unfolding needs BOTH halves (even + odd
 // summed for the nominal response, split for the closure test): run once with
 // onlyEvenEvents, then again with onlyOddEvents.
