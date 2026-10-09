@@ -1,3 +1,15 @@
+// Leading-track (and all-track) ptRel in pp jet60 data, from the 2025 skims of the
+// HighEGJet forest that stores the jet trackMax direction (the current pp forests do
+// not). 2026-10-09 (user): + track pT axis, for an ATLAS-style data-driven light
+// template (arXiv:2204.13530: track-jet pairs in inclusive-jet data, track pT
+// reweighted to the light-jet muon pT); see src/plots/bPurity/studyDataDrivenLight_pp_PF.C.
+//   h_jetTrkMaxPtRel_trkPt_recoJetPt   leading track: ptRel x track pT x jet pT
+// (The skims hold filterTree, evtTree, hltTree and jetTree only -- no track or muon
+// tree, checked 2026-10-09 -- so the ATLAS all-track version is not possible here.)
+// On the ptRel x muon pT x jet pT binning of the muon templates
+// (headers/AnalysisSetup/ptRelMuPt3D.h: track pT from 15 GeV, the muon threshold).
+// JEC: the current pp PF set (Spring18 ppRef V6, as pp_scan.C), was Fall17 (2025-11-24).
+// Run per skim group:  root -l -b -q 'pp_jetTrkMax_scan.C(<group>)'
 // general ROOT/C includes
 #include <iostream>
 #include "TFile.h"
@@ -32,6 +44,7 @@
 
 // event map
 #include "../../../eventMap/eventMap.h"
+#include "../../../headers/AnalysisSetup/ptRelMuPt3D.h"   // ptRel x (track) pT x jet pT binning
 // jet corrector
 #include "../../../JetEnergyCorrections/JetCorrector.h"
 // general analysis variables
@@ -74,21 +87,22 @@ TH1D *h_jetTrkMaxEta[NJetPtIndices];
 TH1D *h_jetTrkMaxPhi[NJetPtIndices];
 TH1D *h_jetTrkMaxDR[NJetPtIndices];
 TH1D *h_jetTrkMaxPtRel[NJetPtIndices];
+TH3D *h_jetTrkMaxPtRel_trkPt_recoJetPt;   // leading track
 
 
 ///////////////////////  start the program
 void pp_jetTrkMax_scan(int group = 1){
 
   TString input = Form("/eos/cms/store/group/phys_heavyions/cbennett/skims/output_skims_pp_HighEGJet_withJetTrackMaxInfo/pp_skim_output_%i.root",group);
-  TString output = Form("/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/output_pp_jetTrkMax_trkPt-14_jet60_updatedJEC_2025-11-24/pp_scan_output_%i.root",group);
+  TString output = Form("/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/output_pp_jetTrkMax_trkPtAxis_jet60_ppRefJEC_2026-10-9/pp_scan_output_%i.root",group);
 
 
   // JET ENERGY CORRECTIONS
   vector<string> Files;
-  // Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2Relative_AK4PF.txt"); // L2Relative correction
-  // Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2L3Residual_AK4PF.txt"); // L2L3Residual correction
-  Files.push_back("../../../JetEnergyCorrections/Fall17_17Nov2017F_V6_DATA_L2Relative_AK4PF.txt"); // L2Relative correction
-  Files.push_back("../../../JetEnergyCorrections/Fall17_17Nov2017F_V6_DATA_L2L3Residual_AK4PF.txt"); // L2L3Residual correction
+  Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2Relative_AK4PF.txt"); // L2Relative correction (as pp_scan.C, 2026-10-09)
+  Files.push_back("../../../JetEnergyCorrections/Spring18_ppRef5TeV_V6_DATA_L2L3Residual_AK4PF.txt"); // L2L3Residual correction
+  // Files.push_back("../../../JetEnergyCorrections/Fall17_17Nov2017F_V6_DATA_L2Relative_AK4PF.txt"); // the 2025-11-24 scan
+  // Files.push_back("../../../JetEnergyCorrections/Fall17_17Nov2017F_V6_DATA_L2L3Residual_AK4PF.txt");
   JetCorrector JEC(Files);
   /// >>>>>>>>>>>>>>> print out some info
   printIntroduction_pp_scan_V3p7();
@@ -97,6 +111,7 @@ void pp_jetTrkMax_scan(int group = 1){
   h_jetPt = new TH1D("h_jetPt","jetPt",NPtBins,ptMin,ptMax);
 
   h_jetPt->Sumw2();
+  h_jetTrkMaxPtRel_trkPt_recoJetPt = bookPtRelMuPt3D("h_jetTrkMaxPtRel_trkPt_recoJetPt", "leading track p_{T}^{rel} x track p_{T} x jet p_{T}");
 
   // loop through jet pT indices
   for(int j = 0; j < NJetPtIndices; j++){
@@ -142,14 +157,11 @@ void pp_jetTrkMax_scan(int group = 1){
   em->init();
   cout << "	Loading jet..." << endl;
   em->loadJet(jetTreeString);
-  cout << "	Loading muon..." << endl;
-  em->loadMuon(muonTreeString);
+  // no muon tree in the skims (and no muons are used here)
   cout << "	Loading muon triggers..." << endl;
-  em->loadMuonTrigger(hltString);
-  cout << "	Loading tracks..." << endl;
-  em->loadTrack("ppTrack/trackTree");
-  cout << "	Loading gen particles..." << endl;
-  em->loadGenParticle();
+  em->loadHLT(hltString);   // was loadMuonTrigger (renamed in eventMap.h)
+  // no track tree in the skims: only the jet trackMax branches
+  // data: no gen particles (the old em->loadGenParticle() no longer compiles)
   cout << "	Variables initilized!" << endl << endl ;
   int NEvents = em->evtTree->GetEntries();
   cout << "	Number of events = " << NEvents << endl;
@@ -227,7 +239,9 @@ void pp_jetTrkMax_scan(int group = 1){
      
      		
       if(TMath::Abs(recoJetEta_i) > 1.6 || recoJetPt_i < 80.) continue;
+
       if(jetTrkMax_i < 14.) continue;
+      h_jetTrkMaxPtRel_trkPt_recoJetPt->Fill(jetTrkMaxPtRel_i, jetTrkMax_i, recoJetPt_i, w);
 
       int jetPtIndex = getJetPtBin(recoJetPt_i);
       
@@ -265,6 +279,7 @@ void pp_jetTrkMax_scan(int group = 1){
   // >>>>>>>>>> write histograms
 
   h_jetPt->Write();
+  h_jetTrkMaxPtRel_trkPt_recoJetPt->Write();
 
   for(int j = 0; j < NJetPtIndices; j++){
 
