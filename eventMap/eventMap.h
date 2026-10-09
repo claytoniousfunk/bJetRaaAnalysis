@@ -476,7 +476,9 @@ void eventMap::loadMuonAnalyzer(const char* name){
 }
 
 void eventMap::loadHLT(const char* name){
-  muonTriggerTree = (TTree*) _file->Get("hltanalysis/HltTree");
+  // the name argument was ignored (always hltanalysis/HltTree); every forest caller
+  // passes exactly that, and the legacy skims (pp_jetTrkMax_scan.C) call it "hltTree"
+  muonTriggerTree = (TTree*) _file->Get(Form("%s",name));
   evtTree->AddFriend(muonTriggerTree);
   //evtTree->SetBranchAddress("HLT_HIL3Mu5_v1",&HLT_HIL3Mu5_v1);
   //evtTree->SetBranchAddress("HLT_HIL3Mu5_v1_Prescl",&HLT_HIL3Mu5_v1_Prescl);

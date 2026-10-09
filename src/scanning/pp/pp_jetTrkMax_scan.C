@@ -154,7 +154,7 @@ void pp_jetTrkMax_scan(int group = 1){
   em->isMC = isMC_status;
   em->AASetup = AASetup_status;
   cout << "	Initializing variables ... " << endl;
-  em->init();
+  em->init("evtTree");   // the skims' event tree (eventMap::init() opens the forest's hiEvtAnalyzer/HiTree)
   cout << "	Loading jet..." << endl;
   em->loadJet(jetTreeString);
   // no muon tree in the skims (and no muons are used here)
@@ -167,8 +167,9 @@ void pp_jetTrkMax_scan(int group = 1){
   cout << "	Number of events = " << NEvents << endl;
 
 
-  // define event filters
-  em->regEventFilter(NeventFilters_SingleMuon, eventFilters_SingleMuon);
+  // event filters: already applied in the skims (their filterTree is not the forest's
+  // skimanalysis/HltTree that regEventFilter opens, and unregistered filters would
+  // reject every event)
 
   
   // event loop
@@ -200,7 +201,6 @@ void pp_jetTrkMax_scan(int group = 1){
     if(fabs(em->vz) > 15.0) continue;
 
     // event filters
-    if(em->checkEventFilter()) continue; // comment out for local skims (already applied)
 
     if(em->HLT_HIAK4PFJet60_v1 == 0) continue;
     //if(em->HLT_HIAK4PFJet80_v1 == 0) continue;
