@@ -204,7 +204,16 @@ double distTiltWeight(double genPt, double expo){
   return TMath::Power(x/kDistTiltPtRef, expo);
 }
 
-void PYTHIAHYDJET_scan_response(int group = 1){
+// parity (2026-10-08): -1 = onlyEvenEvents / onlyOddEvents from config_PYTHIAHYDJET.h;
+// 0 = even events only, 1 = odd only, overriding the config. Lets the two halves
+// for a closure test be queued from one checkout
+// (condor_PYTHIAHYDJET_response.py even|odd, which passes it via macro_args).
+void PYTHIAHYDJET_scan_response(int group = 1, int parity = -1){
+
+  if(parity == 0){ onlyEvenEvents = true;  onlyOddEvents = false; }
+  else if(parity == 1){ onlyEvenEvents = false; onlyOddEvents = true; }
+  else if(parity != -1){ std::cout << "\033[1;31m parity must be -1 (config), 0 (even) or 1 (odd) \033[0m" << std::endl; return; }
+  if(onlyEvenEvents && onlyOddEvents){ std::cout << "\033[1;31m onlyEvenEvents and onlyOddEvents are both set \033[0m" << std::endl; return; }
 
   std::cout << "setting pthat cut to 15...\n";
   pthatcut = 15.;
