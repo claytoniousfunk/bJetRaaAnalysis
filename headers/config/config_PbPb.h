@@ -60,4 +60,4 @@ bool skipCaloL2L3Residual = false;
 // (src/scanning/scan_calo_jet_match.h). Applies to ALL reco-jet histograms and
 // the muon tag; event counts and gen-level histograms are unaffected. The scan
 // aborts if the forest has no calo tree. Adds _caloJetMatched to the output name.
-bool requireCaloJetMatch = true;
+bool requireCaloJetMatch = false;   // plain PF (2026-10-09: ptRel x muon pT rescan, as the 2026-9-24 plain-PF SingleMuon scan)

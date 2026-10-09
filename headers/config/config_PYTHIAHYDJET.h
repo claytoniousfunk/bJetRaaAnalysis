@@ -43,7 +43,7 @@ bool doBJetSpectraReweightToData = false;
 // ratio (headers/fitParameters/leadMuTagEventWeight_PYTHIAHYDJET_PF.h, generated
 // by src/calculateBJetsPerZ/reverseUnfoldReweight_PF_PbPb.C). Adds
 // _leadMuTagEventReweight to the response file name.
-bool doLeadMuTagEventReweight = true;
+bool doLeadMuTagEventReweight = false;   // off: template and ptRel x muon pT scans must not carry it; the reverse unfolding (nominal since late 2026-10-09) is done offline
 bool doPThatCorrelationFilter = true;
 // drop reco jets with no matched gen jet (refpt < 0): the HYDJET background fakes.
 // Their count is pThat-independent but they carry the pThat weight of the event,

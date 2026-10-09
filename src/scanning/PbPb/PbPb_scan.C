@@ -34,6 +34,7 @@
 
 // event map
 #include "../../../eventMap/eventMap.h"
+#include "../../../headers/AnalysisSetup/ptRelMuPt3D.h"   // ptRel x muon pT x jet pT (2026-10-09)
 // jet corrector
 #include "../../../JetEnergyCorrections/JetCorrector.h"
 // jet uncertainty
@@ -272,6 +273,7 @@ TH2D *h_inclRecoJetEta_inclRecoJetPhi_inclRecoMuonTag_triggerOn[NCentralityIndic
 TH1D *h_inclMuPt;
 TH1D *h_nMu_triggerOn;
 TH2D *h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices];
+TH3D *h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices];   // ptRelMuPt3D.h
 TH2D *h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices];
 TH2D *h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices];
 TH2D *h_muphi_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices];
@@ -723,6 +725,7 @@ void PbPb_scan(int group = 1){
       h_mupt_jetpt[i]->Sumw2();
       h_muptrel_jetpt[i]->Sumw2();
       h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i]->Sumw2();
+      h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i] = bookPtRelMuPt3D(Form("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i), Form("muon p_{T}^{rel} x muon p_{T} x jet p_{T}, centrality index %i",i));
       h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i]->Sumw2();
       h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[i]->Sumw2();
       h_muphi_recoJetPt_inclRecoMuonTag_triggerOn[i]->Sumw2();
@@ -1313,6 +1316,8 @@ void PbPb_scan(int group = 1){
 	    h_muJetDr_recoJetPt[0]->Fill(muJetDr,x,w_trig);
 
 	    h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muPtRel,x,w_trig);
+	    h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[0]->Fill(muPtRel,muPt,x,w_trig);
+	    h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muPtRel,muPt,x,w_trig);
 	    h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muPt,x,w_trig);
 	    h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muEta,x,w_trig);
 	    h_muphi_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muPhi,x,w_trig);
@@ -1662,6 +1667,7 @@ void PbPb_scan(int group = 1){
       h_muptrel_jetpt[i]->Write();
 
       h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
+      h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
       h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
       h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
       h_muphi_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();

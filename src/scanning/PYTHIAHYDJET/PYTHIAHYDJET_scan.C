@@ -35,6 +35,7 @@
 
 // event map
 #include "../../../eventMap/eventMap.h"
+#include "../../../headers/AnalysisSetup/ptRelMuPt3D.h"   // ptRel x muon pT x jet pT (2026-10-09)
 // jet corrector
 #include "../../../JetEnergyCorrections/JetCorrector.h"
 // jet uncertainty
@@ -269,6 +270,7 @@ TH2D *h_inclRecoJetEta_inclRecoJetPhi_matchedRecoMuonTag_triggerOn[NCentralityIn
 // ------------------------------- in-jet reco muons by flavor, trigger on ----
 // per-flavor template histograms [NCentralityIndices][NTemplateIndices][kNJetFlavors]
 TH2D *h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices][NTemplateIndices][kNJetFlavors];
+TH3D *h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices][kNJetFlavors];   // ptRelMuPt3D.h, nominal jet pT only
 TH2D *h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[NCentralityIndices][NTemplateIndices][kNJetFlavors];
 TH2D *h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[NCentralityIndices][NTemplateIndices][kNJetFlavors];
 TH2D *h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices][NTemplateIndices][kNJetFlavors];
@@ -835,6 +837,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 
       for(int t = 0; t < NTemplateIndices; t++) for(int f = 0; f < kNJetFlavors; f++){
 	h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i][t][f]->Sumw2();
+	if(t == 0) h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i][f] = bookPtRelMuPt3D(Form("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn_%s_C%i",kFlavorNames[f],i), Form("muon p_{T}^{rel} x muon p_{T} x jet p_{T}, %s, centrality index %i",kFlavorNames[f],i));
 	h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[i][t][f]->Sumw2();
 	h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[i][t][f]->Sumw2();
 	h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i][t][f]->Sumw2();
@@ -2089,6 +2092,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 	      h_muJetDr_recoJetPt[0][t][kAllJets]->Fill(muDR_i,jetPtArray[t],w_jet);
 
 	      h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex][t][kAllJets]->Fill(muPtRel_i,jetPtArray[t],w_jet);
+	      if(t == 0){ h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[0][kAllJets]->Fill(muPtRel_i,muPt_i,jetPtArray[t],w_jet); h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex][kAllJets]->Fill(muPtRel_i,muPt_i,jetPtArray[t],w_jet); }
 	      if(hasMatchedRecoMuonTag) h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[CentralityIndex][t][kAllJets]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 	      else h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[CentralityIndex][t][kAllJets]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 	      h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex][t][kAllJets]->Fill(muPt_i,jetPtArray[t],w_jet);
@@ -2109,6 +2113,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 		h_muJetDr_recoJetPt[0][t][fi]->Fill(muDR_i,jetPtArray[t],w_jet);
 
 		h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex][t][fi]->Fill(muPtRel_i,jetPtArray[t],w_jet);
+		if(t == 0){ h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[0][fi]->Fill(muPtRel_i,muPt_i,jetPtArray[t],w_jet); h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex][fi]->Fill(muPtRel_i,muPt_i,jetPtArray[t],w_jet); }
 		if(hasMatchedRecoMuonTag) h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[CentralityIndex][t][fi]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 		else h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[CentralityIndex][t][fi]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 		h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex][t][fi]->Fill(muPt_i,jetPtArray[t],w_jet);
@@ -2643,6 +2648,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 
       for(int t = 0; t < NTemplateIndices; t++) for(int f = 0; f < kNJetFlavors; f++){
 	h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i][t][f]->Write();
+	if(t == 0) h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i][f]->Write();
 	h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[i][t][f]->Write();
 	h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[i][t][f]->Write();
 	if(f == kAllJets){

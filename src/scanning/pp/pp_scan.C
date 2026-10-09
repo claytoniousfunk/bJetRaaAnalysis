@@ -34,6 +34,7 @@
 
 // event map
 #include "../../../eventMap/eventMap.h"
+#include "../../../headers/AnalysisSetup/ptRelMuPt3D.h"   // ptRel x muon pT x jet pT (2026-10-09)
 // jet corrector
 #include "../../../JetEnergyCorrections/JetCorrector.h"
 // jet uncertainty
@@ -257,6 +258,7 @@ TH2D *h_inclRecoJetPt_inclRecoJetPhi_inclRecoMuonTag_triggerOn;
 // ~~~~~~~~~ muon variables ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 TH1D *h_inclMuPt;
 TH2D *h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn;
+TH3D *h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn;   // ptRelMuPt3D.h
 TH2D *h_mupt_recoJetPt_inclRecoMuonTag_triggerOn;
 TH2D *h_mueta_recoJetPt_inclRecoMuonTag_triggerOn;
 TH2D *h_muphi_recoJetPt_inclRecoMuonTag_triggerOn;
@@ -616,6 +618,7 @@ void pp_scan(TString inputFile, TString outputFile){
     h_inclMuPt->Sumw2();
 
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
+    h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn = bookPtRelMuPt3D("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn", "muon p_{T}^{rel} x muon p_{T} x jet p_{T}");
     h_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
     h_mueta_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
     h_muphi_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
@@ -1052,6 +1055,7 @@ void pp_scan(TString inputFile, TString outputFile){
 	    h_inclRecoJetPt_inclRecoJetPhi_inclRecoMuonTag_triggerOn->Fill(x,z,w_trig);
 	 
 	    h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muPtRel,x,w_trig);
+	    h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muPtRel,muPt,x,w_trig);
 	    h_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muPt,x,w_trig);
 	    h_mueta_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muEta,x,w_trig);
 	    h_muphi_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muPhi,x,w_trig);
@@ -1367,6 +1371,7 @@ void pp_scan(TString inputFile, TString outputFile){
     h_nEventsNoJetTrigSel->Write();
 
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn->Write();
+    h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Write();
     h_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Write();
     h_mueta_recoJetPt_inclRecoMuonTag_triggerOn->Write();
     h_muphi_recoJetPt_inclRecoMuonTag_triggerOn->Write();
