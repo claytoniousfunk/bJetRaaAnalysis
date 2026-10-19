@@ -4,8 +4,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(
 from myProcesses.condor.scan_condor import submitScan
 
 # PbPb leading-track ptRel (data-driven light template), 2026-10-19. The macro picks
-# its own input list (the PbPb_pfCandAnalyzer.C MinBias forests with tracks; the
-# leading track is found from PbPbTracks/trackTree) and output directory; the
+# its own input list (the MinBias Part1 calo/flow-jet + PF + towers forest; the
+# leading track is found from PbPbTracks/trackTree, or the charged PF candidates if
+# the forest has no track tree) and output directory; the
 # submit script asks it with PbPb_jetTrkMax_scan.C(0). Run from src/scanning/PbPb/.
 # Merge afterwards:  hadd -f <outdir>.root <outdir>/PbPb_scan_output_*.root
 exe = 'PbPb_jetTrkMax_scan.C'

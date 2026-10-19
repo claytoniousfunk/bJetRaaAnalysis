@@ -3,13 +3,20 @@
 // inclusive-jet data, track pT reweighted to the light-jet muon pT). The PbPb
 // counterpart of src/scanning/pp/pp_jetTrkMax_scan.C. 2026-10-19 (user).
 //
-// Input: the PbPb_pfCandAnalyzer.C forests (HIMinimumBias0 Part1 with tracks and PF
-// candidates), one file per index of
-//   fileNames/fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt
-// These do not store the jet trackMax direction, so the leading track is found here
-// from PbPbTracks/trackTree: the highest-pT SELECTED track within dR < 0.4 of the
-// akCs4PF jet axis. (The forests that did store trackMaxEta/Phi, the 2025-01-31
-// HIHardProbes trackMax production and its skims, are gone from EOS, 2026-10-19.)
+// Input: the HIMinimumBias0 Part1 forest with calo and flow jets, PF candidates and
+// towers (the PbPb_caloTowerAnalyzer.C production, CRAB 260926), one file per index of
+//   fileNames/fileNames_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh.txt
+// These do not store the jet trackMax direction, so the leading track is found here:
+// the highest-pT SELECTED track within dR < 0.4 of the akCs4PF jet axis. (The forests
+// that did store trackMaxEta/Phi, the 2025-01-31 HIHardProbes trackMax production and
+// its skims, are gone from EOS, 2026-10-19.)
+//
+// Track source, decided per file and recorded in the provenance:
+//   PbPbTracks/trackTree if the forest has it, with the cuts below;
+//   otherwise the charged hadrons (pfId == 1) of pfcandAnalyzer/pfTree. PF has
+//   already cleaned these (track quality, and high-pT tracks without the calorimeter
+//   energy to match are not called charged hadrons), but none of the cuts below can
+//   be applied to them, and PF candidates are the akCs4PF jets' own constituents.
 //
 // Track selection (the 2018 PbPb charged-hadron cuts): highPurity, sigma(pT)/pT < 0.1,
 // |dz/sigma| < 3, |dxy/sigma| < 3, nHit >= 11, chi2/ndof/nLayer < 0.18, and above
@@ -79,11 +86,13 @@
 
 
 namespace jtm {
-const char *inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt";
+const char *inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh.txt";
 const char *outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
-const char *outputName = "output_PbPb_MinBias_Part1_leadTrkPtRel_trkPtAxis";
+const char *outputName = "output_PbPb_MinBias_Part1_caloFlowPFTowers_leadTrkPtRel_trkPtAxis";
 const char *jetTreeName = "akCs4PFJetAnalyzer/t";
 const char *trkTreeName = "PbPbTracks/trackTree";
+const char *pfDirName = "pfcandAnalyzer";   // fallback: its pfTree, pfId == 1
+bool usePF = false;
 // as PbPb_scan.C and PbPb_pfCandAnalyzer.C
 const int NeventFilters = 5;
 std::string eventFilters[NeventFilters] = {"pprimaryVertexFilter", "HBHENoiseFilterResultRun2Loose", "collisionEventSelectionAODv2", "phfCoincFilter2Th4", "pclusterCompatibilityFilter"};
@@ -161,6 +170,7 @@ bool passTrack(int k){
 }
 
 std::string cutsApplied(){
+  if(usePF) return std::string("none: charged PF candidates (pfId == 1) of ") + pfDirName + "/pfTree";
   std::string s = "trkPt/Eta/Phi";
   if(hasHP) s += ", highPurity"; if(hasPtErr) s += ", ptErr/pt"; if(hasIP) s += ", IP significance";
   if(hasHits) s += ", nHit"; if(hasChi2) s += ", chi2/ndof/nLayer"; if(hasCalo) s += ", calo match > 20 GeV";
@@ -268,11 +278,18 @@ void PbPb_jetTrkMax_scan(int group = 1){
 
   TTree *trkTree = nullptr;
   f->GetObject(jtm::trkTreeName, trkTree);
-  if(!trkTree){ cout << "ERROR: no " << jtm::trkTreeName << " in " << input << endl; return; }
-  if(trkTree->GetEntries() != NEvents){ cout << "ERROR: " << jtm::trkTreeName << " has " << trkTree->GetEntries() << " entries, the event tree " << NEvents << endl; return; }
-  const std::string trkErr = jtm::loadTracks(trkTree);
-  if(!trkErr.empty()){ cout << "ERROR: " << jtm::trkTreeName << ": " << trkErr << endl; return; }
-  cout << "track cuts: " << jtm::cutsApplied() << endl;
+  if(trkTree){
+    if(trkTree->GetEntries() != NEvents){ cout << "ERROR: " << jtm::trkTreeName << " has " << trkTree->GetEntries() << " entries, the event tree " << NEvents << endl; return; }
+    const std::string trkErr = jtm::loadTracks(trkTree);
+    if(!trkErr.empty()){ cout << "ERROR: " << jtm::trkTreeName << ": " << trkErr << endl; return; }
+  }
+  else{
+    if(!f->Get(Form("%s/pfTree", jtm::pfDirName))){ cout << "ERROR: neither " << jtm::trkTreeName << " nor " << jtm::pfDirName << "/pfTree in " << input << endl; return; }
+    cout << "no " << jtm::trkTreeName << ": tracks = charged PF candidates of " << jtm::pfDirName << "/pfTree" << endl;
+    em->loadParticleFlowAnalyzer(jtm::pfDirName);   // friend of evtTree, read by getEvent
+    jtm::usePF = true;
+  }
+  cout << "track source: " << (jtm::usePF ? "PF candidates" : jtm::trkTreeName) << "; cuts: " << jtm::cutsApplied() << endl;
 
   long nEvt = 0, nJet = 0, nLead = 0, nPerp = 0;
   std::vector<int> sel;
@@ -293,7 +310,16 @@ void PbPb_jetTrkMax_scan(int group = 1){
 
     // selected tracks hard enough for any histogram; the leading track below the floor
     // would fill nothing, so prefiltering does not change which track leads
-    trkTree->GetEntry(evi);
+    if(jtm::usePF){   // charged PF candidates into the track arrays; no cuts apply to them
+      jtm::nTrk = 0;
+      const int nPF = em->pfPt ? (int) em->pfPt->size() : 0;
+      for(int l = 0; l < nPF && jtm::nTrk < jtm::trkMax; l++){
+        if(em->pfId->at(l) != 1) continue;
+        jtm::trkPt[jtm::nTrk] = em->pfPt->at(l); jtm::trkEta[jtm::nTrk] = em->pfEta->at(l); jtm::trkPhi[jtm::nTrk] = em->pfPhi->at(l);
+        jtm::nTrk++;
+      }
+    }
+    else trkTree->GetEntry(evi);
     if(jtm::nTrk > jtm::trkMax){ cout << "ERROR: nTrk " << jtm::nTrk << " > " << jtm::trkMax << endl; return; }
     sel.clear();
     for(int k = 0; k < jtm::nTrk; k++) if(jtm::trkPt[k] >= jtm::trkPtFloor && jtm::passTrack(k)) sel.push_back(k);
@@ -373,10 +399,11 @@ void PbPb_jetTrkMax_scan(int group = 1){
   auto wf = TFile::Open(output,"recreate");
   if(!wf || wf->IsZombie()){ cout << "ERROR: cannot write " << output << endl; return; }
 
+  const TString trkSource = jtm::usePF ? TString::Format("%s/pfTree, pfId == 1", jtm::pfDirName) : TString(jtm::trkTreeName);
   TNamed prov("provenance", Form("macro: PbPb_jetTrkMax_scan.C\ngitHash: %s\ndirty: %s\ninput list: %s\ninput file: %s\njets: %s\ntracks: %s\ntrack cuts: %s\ncentrality: %s\nJEC: Autumn18_HI_V8 AK4PF L2Relative + L2L3Residual\nwritten: %s",
                                  jtm::shellLine("git rev-parse --short HEAD 2>/dev/null").c_str(),
                                  jtm::shellLine("git status --porcelain --untracked-files=no 2>/dev/null | head -1 | grep -q . && echo yes || echo no").c_str(),
-                                 jtm::inputFileList, input.c_str(), jtm::jetTreeName, jtm::trkTreeName, jtm::cutsApplied().c_str(),
+                                 jtm::inputFileList, input.c_str(), jtm::jetTreeName, trkSource.Data(), jtm::cutsApplied().c_str(),
                                  CENT_SCHEME_SUFFIX, TDatime().AsSQLString()));
   prov.Write();
 
