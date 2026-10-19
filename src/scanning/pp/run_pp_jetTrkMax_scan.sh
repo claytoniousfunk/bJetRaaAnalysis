@@ -3,6 +3,8 @@
 # Run ON LXPLUS from src/scanning/pp/ (2026-10-09). The skims are small (~77k
 # events, ~3 MB each), so this is a local loop rather than condor.
 #   ./run_pp_jetTrkMax_scan.sh [nParallel=8] [firstN=all]   # firstN: trial on the first N groups
+# 2026-10-19: use condor_pp_jetTrkMax_scan.py for the full set. This loop dies with
+# the ssh session (the 2026-10-09 run left 5 group outputs) and then hadds what is there.
 # (The group list is GRPS: bash's GROUPS is a read-only builtin holding the user's
 # group ids, and assigning to it silently does nothing -- the first version of this
 # script ran a single bogus group because of that.)
