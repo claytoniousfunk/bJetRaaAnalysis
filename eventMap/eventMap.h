@@ -36,6 +36,10 @@ public :
   // attached only if present; otherwise hasDeepCSV stays false and every value reads -99.
   void loadDeepCSV();
   bool hasDeepCSV = false;
+  // CSVv2 discriminant (discr_csvV2), the tagger of the CMS b-jet shapes analyses (AN-2017/337,
+  // AN-2020/029), opt-in the same way (2026-10-22); the forest stores -10 for unevaluated jets.
+  void loadCSVv2();
+  bool hasCSVv2 = false;
   void loadBTaggerInputVariables();
   // pfCsTree is only created by loadParticleFlowAnalyzer_PFCs(), which just the
   // pfCandAnalyzer scans call. It is a separate tree rather than a friend of
@@ -135,7 +139,7 @@ public :
   Int_t refparton_flavorForB[jetMax];
   Int_t refparton_flavor[jetMax];
   Int_t genMatchIndex[jetMax]; 
-  Float_t disc_csvV2[jetMax];
+  Float_t disc_csvV2[jetMax];     // loadCSVv2(); -10 when the tagger could not evaluate the jet, -99 when the tree has no branch
   Float_t disc_deepCSV[jetMax];   // loadDeepCSV(); -1 when the tagger could not evaluate the jet, -99 when the tree has no branch
   Int_t GSP_evt[jetMax];
   Int_t muN[jetMax];
@@ -618,6 +622,20 @@ void eventMap::loadDeepCSV(){
   }
   evtTree->SetBranchAddress("discr_deepCSV", &disc_deepCSV);
   hasDeepCSV = true;
+}
+
+void eventMap::loadCSVv2(){
+  for(int k = 0; k < jetMax; k++) disc_csvV2[k] = -99.;
+  if(recoJetTree == nullptr){
+    std::cout<<"loadCSVv2: call loadJet(jetset_name) first."<<std::endl;
+    return;
+  }
+  if(!recoJetTree->GetBranch("discr_csvV2")){
+    std::cout<<"loadCSVv2: "<<recoJetTree->GetName()<<" has no discr_csvV2 branch; CSVv2 values stay -99."<<std::endl;
+    return;
+  }
+  evtTree->SetBranchAddress("discr_csvV2", &disc_csvV2);
+  hasCSVv2 = true;
 }
 
 void eventMap::loadBTaggerInputVariables(){

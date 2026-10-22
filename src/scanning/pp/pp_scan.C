@@ -35,7 +35,7 @@
 // event map
 #include "../../../eventMap/eventMap.h"
 #include "../../../headers/AnalysisSetup/ptRelMuPt3D.h"   // ptRel x muon pT x jet pT (2026-10-09)
-#include "../../../headers/AnalysisSetup/ptRelDeepCSV3D.h" // ptRel x jet pT x DeepCSV (2026-10-22)
+#include "../../../headers/AnalysisSetup/ptRelDeepCSV3D.h" // ptRel x jet pT x CSVv2 (2026-10-22; DeepCSV until the same day)
 // jet corrector
 #include "../../../JetEnergyCorrections/JetCorrector.h"
 // jet uncertainty
@@ -260,7 +260,7 @@ TH2D *h_inclRecoJetPt_inclRecoJetPhi_inclRecoMuonTag_triggerOn;
 TH1D *h_inclMuPt;
 TH2D *h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn;
 TH3D *h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn;   // ptRelMuPt3D.h
-TH3D *h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn = nullptr;   // ptRelDeepCSV3D.h, doDeepCSVMap
+TH3D *h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = nullptr;   // ptRelDeepCSV3D.h, doCSVv2Map
 TH2D *h_mupt_recoJetPt_inclRecoMuonTag_triggerOn;
 TH2D *h_mueta_recoJetPt_inclRecoMuonTag_triggerOn;
 TH2D *h_muphi_recoJetPt_inclRecoMuonTag_triggerOn;
@@ -621,7 +621,7 @@ void pp_scan(TString inputFile, TString outputFile){
 
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
     h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn = bookPtRelMuPt3D("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn", "muon p_{T}^{rel} x muon p_{T} x jet p_{T}");
-    if(doDeepCSVMap) h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn = bookPtRelJetPtDeepCSV3D("h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn", "muon p_{T}^{rel} x jet p_{T} x DeepCSV");
+    if(doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = bookPtRelJetPtCSVv2_3D("h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn", "muon p_{T}^{rel} x jet p_{T} x CSVv2");
     h_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
     h_mueta_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
     h_muphi_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
@@ -648,7 +648,7 @@ void pp_scan(TString inputFile, TString outputFile){
     cout << "	Loading jet..." << endl;
     if(useCaloJetsOverride) em->loadJet("ak4CaloJetAnalyzer/t");
     else em->loadJet("ak4PFJetAnalyzer/t");
-    if(doDeepCSVMap) em->loadDeepCSV();   // discr_deepCSV of the same jet collection (-99 if the tree has none)
+    if(doCSVv2Map) em->loadCSVv2();   // discr_csvV2 of the same jet collection (-99 if the tree has none)
     // calo jets for the PF-jet calo-match ID (scan_calo_jet_match.h)
     g_caloTree = nullptr;
     if(!useCaloJetsOverride){
@@ -1060,7 +1060,7 @@ void pp_scan(TString inputFile, TString outputFile){
 	 
 	    h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muPtRel,x,w_trig);
 	    h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muPtRel,muPt,x,w_trig);
-	    if(doDeepCSVMap) h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn->Fill(muPtRel,x,em->disc_deepCSV[i],w_trig);
+	    if(doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn->Fill(muPtRel,x,em->disc_csvV2[i],w_trig);
 	    h_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muPt,x,w_trig);
 	    h_mueta_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muEta,x,w_trig);
 	    h_muphi_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muPhi,x,w_trig);
@@ -1377,7 +1377,7 @@ void pp_scan(TString inputFile, TString outputFile){
 
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn->Write();
     h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Write();
-    if(doDeepCSVMap) h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn->Write();
+    if(doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn->Write();
     h_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Write();
     h_mueta_recoJetPt_inclRecoMuonTag_triggerOn->Write();
     h_muphi_recoJetPt_inclRecoMuonTag_triggerOn->Write();
