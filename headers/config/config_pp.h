@@ -38,6 +38,10 @@ bool apply_JEU_shift_down = false;
 bool doSingleMuonSample = true;
 bool doMinBiasSample = false;
 bool doHighEGJetSample = false;
+// ptRel x jet pT x DeepCSV map of the triggered muon-tagged jets (headers/AnalysisSetup/ptRelDeepCSV3D.h,
+// as PYTHIA_scan.C; eventMap::loadDeepCSV reads discr_deepCSV from the jet tree). Additive: no
+// existing histogram changes, so the output name is unchanged.
+bool doDeepCSVMap = true;
 // jet mods
 bool useCaloJetsOverride = false;
 bool useManualJEC = true;
