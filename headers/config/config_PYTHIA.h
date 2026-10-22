@@ -64,6 +64,10 @@ double sigma_eta = 0.005;
 bool doAxisSmearScan = true;
 const int NAxisSmear = 9;
 const double axisSmearSigma[NAxisSmear] = {0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.10};
+// ptRel x jet pT x DeepCSV maps of the muon-tagged jets, per flavor, nominal jet pT
+// (headers/AnalysisSetup/ptRelDeepCSV3D.h; eventMap::loadDeepCSV reads discr_deepCSV from the
+// jet tree). Additive: no existing histogram changes, so the output name is unchanged.
+bool doDeepCSVMap = true;
 // triggers
 bool applyJet60Trigger = false;
 bool applyJet80Trigger = false;

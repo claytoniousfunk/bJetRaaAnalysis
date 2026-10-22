@@ -31,6 +31,11 @@ public :
   void loadMuonAnalyzer(const char* name);
   void loadHLT(const char* name);
   void loadBTagger();
+  // DeepCSV b-tag discriminant of each reco jet (discr_deepCSV), opt-in (2026-10-22): not every
+  // jet tree has it (MiniAOD forests, ak4PF in the PYTHIA+HYDJET forests), so the branch is
+  // attached only if present; otherwise hasDeepCSV stays false and every value reads -99.
+  void loadDeepCSV();
+  bool hasDeepCSV = false;
   void loadBTaggerInputVariables();
   // pfCsTree is only created by loadParticleFlowAnalyzer_PFCs(), which just the
   // pfCandAnalyzer scans call. It is a separate tree rather than a friend of
@@ -131,6 +136,7 @@ public :
   Int_t refparton_flavor[jetMax];
   Int_t genMatchIndex[jetMax]; 
   Float_t disc_csvV2[jetMax];
+  Float_t disc_deepCSV[jetMax];   // loadDeepCSV(); -1 when the tagger could not evaluate the jet, -99 when the tree has no branch
   Int_t GSP_evt[jetMax];
   Int_t muN[jetMax];
   Float_t jtPfCHF[jetMax], jtPfNHF[jetMax], jtPfCEF[jetMax], jtPfNEF[jetMax], jtPfMUF[jetMax];
@@ -598,6 +604,20 @@ void eventMap::loadBTagger(){
   evtTree->SetBranchAddress("svtxdl", &svtxdl);
   evtTree->SetBranchAddress("svtxdls", &svtxdls);
   evtTree->SetBranchAddress("svtxm", &svtxm);
+}
+
+void eventMap::loadDeepCSV(){
+  for(int k = 0; k < jetMax; k++) disc_deepCSV[k] = -99.;
+  if(recoJetTree == nullptr){
+    std::cout<<"loadDeepCSV: call loadJet(jetset_name) first."<<std::endl;
+    return;
+  }
+  if(!recoJetTree->GetBranch("discr_deepCSV")){
+    std::cout<<"loadDeepCSV: "<<recoJetTree->GetName()<<" has no discr_deepCSV branch; DeepCSV values stay -99."<<std::endl;
+    return;
+  }
+  evtTree->SetBranchAddress("discr_deepCSV", &disc_deepCSV);
+  hasDeepCSV = true;
 }
 
 void eventMap::loadBTaggerInputVariables(){
