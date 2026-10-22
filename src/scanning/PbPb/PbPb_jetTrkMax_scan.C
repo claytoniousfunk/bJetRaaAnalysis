@@ -83,6 +83,8 @@
 #include "../../../headers/functions/getJetPtBin.h"
 // getPtRel function
 #include "../../../headers/functions/getPtRel.h"
+// track source, selection and matching, shared with pp_jetTrkPtRel_scan.C
+#include "../../../headers/functions/jetTrackPtRel.h"
 
 
 namespace jtm {
@@ -91,8 +93,6 @@ const char *outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanni
 const char *outputName = "output_PbPb_MinBias_Part1_caloFlowPFTowers_leadTrkPtRel_trkPtAxis";
 const char *jetTreeName = "akCs4PFJetAnalyzer/t";
 const char *trkTreeName = "PbPbTracks/trackTree";
-const char *pfDirName = "pfcandAnalyzer";   // fallback: its pfTree, pfId == 1
-bool usePF = false;
 // as PbPb_scan.C and PbPb_pfCandAnalyzer.C
 const int NeventFilters = 5;
 std::string eventFilters[NeventFilters] = {"pprimaryVertexFilter", "HBHENoiseFilterResultRun2Loose", "collisionEventSelectionAODv2", "phfCoincFilter2Th4", "pclusterCompatibilityFilter"};
@@ -101,9 +101,6 @@ const double trkPtFloor = 14.;     // lowest track pT any histogram uses (the 1D
 const double trkPtCut3D = 15.;     // the 3D axis starts here
 const double trkMaxCut1D = 14.;    // the 2025 1D set
 const double jetPtCut1D = 80.;
-// track selection
-const double maxPtErrFrac = 0.1, maxIPSig = 3., maxChi2PerLayer = 0.18, caloMatchPtMin = 20., caloMatchFrac = 0.5;
-const int minNHit = 11;
 
 TString outputDir(){
   // SCAN_DATE (set by myProcesses/condor/scan_condor.py) pins the date to the submission
@@ -119,72 +116,6 @@ std::string shellLine(const char *cmd){
   char buf[512]; if(fgets(buf, sizeof(buf), p)) out = buf; pclose(p);
   while(!out.empty() && (out.back() == '\n' || out.back() == '\r')) out.pop_back();
   return out.empty() ? "unavailable" : out;
-}
-
-// track tree, read directly (eventMap::loadTrack sets trkPt twice, array then vector)
-const int trkMax = 100000;
-int nTrk = 0;
-Float_t trkPt[trkMax], trkEta[trkMax], trkPhi[trkMax], trkPtError[trkMax];
-Float_t trkDxy1[trkMax], trkDxyError1[trkMax], trkDz1[trkMax], trkDzError1[trkMax];
-Float_t trkChi2[trkMax], pfEcal[trkMax], pfHcal[trkMax];
-UChar_t trkNHit[trkMax], trkNlayer[trkMax], trkNdof[trkMax];
-Bool_t highPurity[trkMax];
-bool hasPtErr = false, hasIP = false, hasHits = false, hasChi2 = false, hasCalo = false, hasHP = false;
-
-// enable and address one branch; false if the forest lacks it
-bool bind(TTree *t, const char *name, void *addr){
-  if(!t->GetBranch(name)){ printf("WARNING: %s has no branch %s -- that cut is dropped\n", trkTreeName, name); return false; }
-  t->SetBranchStatus(name, 1); t->SetBranchAddress(name, addr); return true;
-}
-
-// returns "" on success, else the reason the tree cannot be read
-std::string loadTracks(TTree *t){
-  t->SetBranchStatus("*", 0);
-  for(const char *b : {"nTrk", "trkPt", "trkEta", "trkPhi"}) if(!t->GetBranch(b)) return std::string("no branch ") + b;
-  if(strlen(t->GetBranch("trkPt")->GetClassName()) > 0) return std::string("trkPt is a ") + t->GetBranch("trkPt")->GetClassName() + ", expected a C array";
-  bind(t, "nTrk", &nTrk); bind(t, "trkPt", trkPt); bind(t, "trkEta", trkEta); bind(t, "trkPhi", trkPhi);
-  hasHP = bind(t, "highPurity", highPurity);
-  hasPtErr = bind(t, "trkPtError", trkPtError);
-  hasIP = bind(t, "trkDxy1", trkDxy1) & bind(t, "trkDxyError1", trkDxyError1) & bind(t, "trkDz1", trkDz1) & bind(t, "trkDzError1", trkDzError1);
-  hasHits = bind(t, "trkNHit", trkNHit);
-  hasChi2 = bind(t, "trkChi2", trkChi2) & bind(t, "trkNdof", trkNdof) & bind(t, "trkNlayer", trkNlayer);
-  hasCalo = bind(t, "pfEcal", pfEcal) & bind(t, "pfHcal", pfHcal);
-  return "";
-}
-
-bool passTrack(int k){
-  const double pt = trkPt[k];
-  if(hasHP && !highPurity[k]) return false;
-  if(hasPtErr && trkPtError[k] > maxPtErrFrac*pt) return false;
-  if(hasIP){
-    if(trkDzError1[k] <= 0. || trkDxyError1[k] <= 0.) return false;
-    if(TMath::Abs(trkDz1[k]/trkDzError1[k]) > maxIPSig || TMath::Abs(trkDxy1[k]/trkDxyError1[k]) > maxIPSig) return false;
-  }
-  if(hasHits && trkNHit[k] < minNHit) return false;
-  if(hasChi2){
-    if(trkNdof[k] == 0 || trkNlayer[k] == 0) return false;
-    if(trkChi2[k]/trkNdof[k]/trkNlayer[k] > maxChi2PerLayer) return false;
-  }
-  if(hasCalo && pt > caloMatchPtMin && (pfEcal[k] + pfHcal[k])/TMath::CosH(trkEta[k]) < caloMatchFrac*pt) return false;
-  return true;
-}
-
-std::string cutsApplied(){
-  if(usePF) return std::string("none: charged PF candidates (pfId == 1) of ") + pfDirName + "/pfTree";
-  std::string s = "trkPt/Eta/Phi";
-  if(hasHP) s += ", highPurity"; if(hasPtErr) s += ", ptErr/pt"; if(hasIP) s += ", IP significance";
-  if(hasHits) s += ", nHit"; if(hasChi2) s += ", chi2/ndof/nLayer"; if(hasCalo) s += ", calo match > 20 GeV";
-  return s;
-}
-
-// leading selected track (index into sel) within coneR of (eta, phi); -1 if none
-int leading(const std::vector<int> &sel, double eta, double phi){
-  int best = -1;
-  for(int k : sel){
-    if(getDr(trkEta[k], trkPhi[k], eta, phi) >= coneR) continue;
-    if(best < 0 || trkPt[k] > trkPt[best]) best = k;
-  }
-  return best;
 }
 }
 
@@ -276,20 +207,9 @@ void PbPb_jetTrkMax_scan(int group = 1){
   const Long64_t NEvents = em->evtTree->GetEntries();
   cout << "Number of events = " << NEvents << endl;
 
-  TTree *trkTree = nullptr;
-  f->GetObject(jtm::trkTreeName, trkTree);
-  if(trkTree){
-    if(trkTree->GetEntries() != NEvents){ cout << "ERROR: " << jtm::trkTreeName << " has " << trkTree->GetEntries() << " entries, the event tree " << NEvents << endl; return; }
-    const std::string trkErr = jtm::loadTracks(trkTree);
-    if(!trkErr.empty()){ cout << "ERROR: " << jtm::trkTreeName << ": " << trkErr << endl; return; }
-  }
-  else{
-    if(!f->Get(Form("%s/pfTree", jtm::pfDirName))){ cout << "ERROR: neither " << jtm::trkTreeName << " nor " << jtm::pfDirName << "/pfTree in " << input << endl; return; }
-    cout << "no " << jtm::trkTreeName << ": tracks = charged PF candidates of " << jtm::pfDirName << "/pfTree" << endl;
-    em->loadParticleFlowAnalyzer(jtm::pfDirName);   // friend of evtTree, read by getEvent
-    jtm::usePF = true;
-  }
-  cout << "track source: " << (jtm::usePF ? "PF candidates" : jtm::trkTreeName) << "; cuts: " << jtm::cutsApplied() << endl;
+  const std::string trkErr = jtrk::openTracks(f, em, jtm::trkTreeName, NEvents);
+  if(!trkErr.empty()){ cout << "ERROR: " << trkErr << " in " << input << endl; return; }
+  cout << "track source: " << jtrk::trackSource() << "; cuts: " << jtrk::cutsApplied() << endl;
 
   long nEvt = 0, nJet = 0, nLead = 0, nPerp = 0;
   std::vector<int> sel;
@@ -308,21 +228,8 @@ void PbPb_jetTrkMax_scan(int group = 1){
 
     const double w = 1.0;   // data
 
-    // selected tracks hard enough for any histogram; the leading track below the floor
-    // would fill nothing, so prefiltering does not change which track leads
-    if(jtm::usePF){   // charged PF candidates into the track arrays; no cuts apply to them
-      jtm::nTrk = 0;
-      const int nPF = em->pfPt ? (int) em->pfPt->size() : 0;
-      for(int l = 0; l < nPF && jtm::nTrk < jtm::trkMax; l++){
-        if(em->pfId->at(l) != 1) continue;
-        jtm::trkPt[jtm::nTrk] = em->pfPt->at(l); jtm::trkEta[jtm::nTrk] = em->pfEta->at(l); jtm::trkPhi[jtm::nTrk] = em->pfPhi->at(l);
-        jtm::nTrk++;
-      }
-    }
-    else trkTree->GetEntry(evi);
-    if(jtm::nTrk > jtm::trkMax){ cout << "ERROR: nTrk " << jtm::nTrk << " > " << jtm::trkMax << endl; return; }
-    sel.clear();
-    for(int k = 0; k < jtm::nTrk; k++) if(jtm::trkPt[k] >= jtm::trkPtFloor && jtm::passTrack(k)) sel.push_back(k);
+    // selected tracks hard enough for any histogram (jetTrackPtRel.h)
+    if(!jtrk::selectTracks(em, evi, jtm::trkPtFloor, sel)) return;
 
     for(int i = 0; i < em->njet; i++){
 
@@ -341,29 +248,29 @@ void PbPb_jetTrkMax_scan(int group = 1){
 
       // every selected track in the jet (ATLAS)
       for(int k : sel){
-        if(jtm::trkPt[k] < jtm::trkPtCut3D) continue;
-        if(getDr(jtm::trkEta[k], jtm::trkPhi[k], recoJetEta_i, recoJetPhi_i) >= jtm::coneR) continue;
-        const double pr = getPtRel(jtm::trkPt[k], jtm::trkEta[k], jtm::trkPhi[k], recoJetPt_i, recoJetEta_i, recoJetPhi_i);
-        h_jetTrkPtRel_trkPt_recoJetPt[0]->Fill(pr, jtm::trkPt[k], recoJetPt_i, w);
-        h_jetTrkPtRel_trkPt_recoJetPt[CentralityIndex]->Fill(pr, jtm::trkPt[k], recoJetPt_i, w);
+        if(jtrk::trkPt[k] < jtm::trkPtCut3D) continue;
+        if(getDr(jtrk::trkEta[k], jtrk::trkPhi[k], recoJetEta_i, recoJetPhi_i) >= jtm::coneR) continue;
+        const double pr = getPtRel(jtrk::trkPt[k], jtrk::trkEta[k], jtrk::trkPhi[k], recoJetPt_i, recoJetEta_i, recoJetPhi_i);
+        h_jetTrkPtRel_trkPt_recoJetPt[0]->Fill(pr, jtrk::trkPt[k], recoJetPt_i, w);
+        h_jetTrkPtRel_trkPt_recoJetPt[CentralityIndex]->Fill(pr, jtrk::trkPt[k], recoJetPt_i, w);
       }
 
       // leading track in the perpendicular cone (eta, phi + pi/2): underlying event only
       const double perpPhi = TVector2::Phi_mpi_pi(recoJetPhi_i + 0.5*TMath::Pi());
-      const int kp = jtm::leading(sel, recoJetEta_i, perpPhi);
-      if(kp >= 0 && jtm::trkPt[kp] >= jtm::trkPtCut3D){
-        const double pr = getPtRel(jtm::trkPt[kp], jtm::trkEta[kp], jtm::trkPhi[kp], recoJetPt_i, recoJetEta_i, perpPhi);
-        h_perpTrkMaxPtRel_trkPt_recoJetPt[0]->Fill(pr, jtm::trkPt[kp], recoJetPt_i, w);
-        h_perpTrkMaxPtRel_trkPt_recoJetPt[CentralityIndex]->Fill(pr, jtm::trkPt[kp], recoJetPt_i, w);
+      const int kp = jtrk::leading(sel, recoJetEta_i, perpPhi, jtm::coneR);
+      if(kp >= 0 && jtrk::trkPt[kp] >= jtm::trkPtCut3D){
+        const double pr = getPtRel(jtrk::trkPt[kp], jtrk::trkEta[kp], jtrk::trkPhi[kp], recoJetPt_i, recoJetEta_i, perpPhi);
+        h_perpTrkMaxPtRel_trkPt_recoJetPt[0]->Fill(pr, jtrk::trkPt[kp], recoJetPt_i, w);
+        h_perpTrkMaxPtRel_trkPt_recoJetPt[CentralityIndex]->Fill(pr, jtrk::trkPt[kp], recoJetPt_i, w);
         nPerp++;
       }
 
       // leading track in the jet
-      const int k = jtm::leading(sel, recoJetEta_i, recoJetPhi_i);
+      const int k = jtrk::leading(sel, recoJetEta_i, recoJetPhi_i, jtm::coneR);
       if(k < 0) continue;
-      const double jetTrkMax_i = jtm::trkPt[k];
-      const double jetTrkMaxEta_i = jtm::trkEta[k];
-      const double jetTrkMaxPhi_i = jtm::trkPhi[k];
+      const double jetTrkMax_i = jtrk::trkPt[k];
+      const double jetTrkMaxEta_i = jtrk::trkEta[k];
+      const double jetTrkMaxPhi_i = jtrk::trkPhi[k];
       const double jetTrkMaxDR_i = getDr(jetTrkMaxEta_i, jetTrkMaxPhi_i, recoJetEta_i, recoJetPhi_i);
       const double jetTrkMaxPtRel_i = getPtRel(jetTrkMax_i, jetTrkMaxEta_i, jetTrkMaxPhi_i, recoJetPt_i, recoJetEta_i, recoJetPhi_i);
 
@@ -399,11 +306,11 @@ void PbPb_jetTrkMax_scan(int group = 1){
   auto wf = TFile::Open(output,"recreate");
   if(!wf || wf->IsZombie()){ cout << "ERROR: cannot write " << output << endl; return; }
 
-  const TString trkSource = jtm::usePF ? TString::Format("%s/pfTree, pfId == 1", jtm::pfDirName) : TString(jtm::trkTreeName);
+  const TString trkSource = jtrk::trackSource();
   TNamed prov("provenance", Form("macro: PbPb_jetTrkMax_scan.C\ngitHash: %s\ndirty: %s\ninput list: %s\ninput file: %s\njets: %s\ntracks: %s\ntrack cuts: %s\ncentrality: %s\nJEC: Autumn18_HI_V8 AK4PF L2Relative + L2L3Residual\nwritten: %s",
                                  jtm::shellLine("git rev-parse --short HEAD 2>/dev/null").c_str(),
                                  jtm::shellLine("git status --porcelain --untracked-files=no 2>/dev/null | head -1 | grep -q . && echo yes || echo no").c_str(),
-                                 jtm::inputFileList, input.c_str(), jtm::jetTreeName, trkSource.Data(), jtm::cutsApplied().c_str(),
+                                 jtm::inputFileList, input.c_str(), jtm::jetTreeName, trkSource.Data(), jtrk::cutsApplied().c_str(),
                                  CENT_SCHEME_SUFFIX, TDatime().AsSQLString()));
   prov.Write();
 

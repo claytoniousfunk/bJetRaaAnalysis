@@ -44,6 +44,15 @@ bool doBJetSpectraReweightToData = false;
 // by src/calculateBJetsPerZ/reverseUnfoldReweight_PF_PbPb.C). Adds
 // _leadMuTagEventReweight to the response file name.
 bool doLeadMuTagEventReweight = false;   // off: template and ptRel x muon pT scans must not carry it; the reverse unfolding (nominal since late 2026-10-09) is done offline
+// Track-ptRel closure (2026-10-21, user): with this on, every selected track (pT > 15
+// GeV, dR < 0.4; PbPbTracks/trackTree or the charged PF candidates,
+// headers/functions/jetTrackPtRel.h) of every jet passing the template selection
+// fills h_jetTrkPtRel_trkPt_recoJetPt_<flavor>_C<i>, same weight, jet pT and truth
+// flavor as the muon 3D h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn_<flavor>_C<i>
+// (no trigger requirement on the tracks). Tests the data-driven light template's
+// premise: light-jet tracks and light-jet muons share a ptRel distribution at fixed
+// pT. Adds _trkPtRel to the output name. Off for the template scans.
+bool doTrackPtRelHists = false;
 bool doPThatCorrelationFilter = true;
 // drop reco jets with no matched gen jet (refpt < 0): the HYDJET background fakes.
 // Their count is pThat-independent but they carry the pThat weight of the event,

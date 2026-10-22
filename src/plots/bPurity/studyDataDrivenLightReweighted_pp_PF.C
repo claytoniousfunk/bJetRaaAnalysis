@@ -10,7 +10,7 @@
 //                     PYTHIA scan's h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn_<fl>Jets
 //   light template    sum over track-pT bins of T(ptRel, p) x M_L(p) / T(p) (shapes)
 // c and b: the nominal PYTHIA templates (per-window smearing), c at its MC share of
-// non-b; fit 0-3 GeV (nominal edge). Printed beside: the nominal fit, the unweighted
+// non-b; fit 0 to fitEdge (default 5 GeV, 2026-10-19 user; the nominal edge is 3). Printed beside: the nominal fit, the unweighted
 // track template, PYTHIA truth, and <pT> of tracks / target to show the reweighting.
 // tracksFile = "closure": the PYTHIA light muons themselves stand in for the tracks
 // (unsmeared), so the reweighted template must equal PYTHIA's unsmeared light.
@@ -20,6 +20,9 @@
 // track template removes most of the excess; the track-pT reweighting pulls the
 // purity back up where the tracks are much harder than the light muons (49 vs 28
 // GeV at 200-300). Closure passes (reweighted <ptRel> = PYTHIA light).
+// Those are fit 0-3 GeV. Fit 0-5 GeV (the default since 2026-10-19): nominal
+// +16/+11/+24/+40/+62%, unweighted +10/-3/+5/+13/+12%, reweighted +11/-1/+8/+18/+26%;
+// chi2/ndf 2-14 / 9, the 120-200 GeV windows worst.
 // Usage, from src/plots/bPurity/:
 //   root -l -b -q 'studyDataDrivenLightReweighted_pp_PF.C("<pp_jetTrkMax output>.root")'
 //   root -l -b -q 'studyDataDrivenLightReweighted_pp_PF.C("closure")'
@@ -56,8 +59,10 @@ double mean3(TH1D *h){ double s = 0, n = 0; for(int i = 1; i <= h->FindBin(2.999
 } // namespace ddr
 using namespace ddr;
 
-void studyDataDrivenLightReweighted_pp_PF(const char *tracksFile = ""){
+void studyDataDrivenLightReweighted_pp_PF(const char *tracksFile = "", double fitEdge = 5.0){
   setJetCollection("PFJets"); RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
+  fitEdgeFixed = fitEdge;   // kEdgeFixed: every fit below runs 0 to fitEdge
+  printf("fit range 0-%.1f GeV\n", lightTailEdge(Tpl()));
   const bool closure = TString(tracksFile) == "closure";
   TFile *fD = TFile::Open(dataPath), *fM = TFile::Open(mcPath), *f3 = TFile::Open(mc3DFile);
   TFile *fT = closure ? nullptr : TFile::Open(tracksFile[0] ? tracksFile : defaultTracks);

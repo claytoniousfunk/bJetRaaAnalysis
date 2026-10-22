@@ -107,6 +107,8 @@ TF1 *fitFxn_PYTHIAHYDJET_HLT_C4, *fitFxn_PYTHIAHYDJET_HLT_C3, *fitFxn_PYTHIAHYDJ
 #include "../../../headers/functions/getJetPtBin.h"
 // getPtRel function
 #include "../../../headers/functions/getPtRel.h"
+// track source and selection for the doTrackPtRelHists closure (shared with the data track scans)
+#include "../../../headers/functions/jetTrackPtRel.h"
 // isQualityMuon_hybridSoft function
 #include "../../../headers/functions/isQualityMuon_hybridSoft.h"
 // isQualityMuon_tight function
@@ -271,6 +273,7 @@ TH2D *h_inclRecoJetEta_inclRecoJetPhi_matchedRecoMuonTag_triggerOn[NCentralityIn
 // per-flavor template histograms [NCentralityIndices][NTemplateIndices][kNJetFlavors]
 TH2D *h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices][NTemplateIndices][kNJetFlavors];
 TH3D *h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices][kNJetFlavors];   // ptRelMuPt3D.h, nominal jet pT only
+TH3D *h_jetTrkPtRel_trkPt_recoJetPt[NCentralityIndices][kNJetFlavors] = {};   // doTrackPtRelHists: every track in the jet, same binning
 TH2D *h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[NCentralityIndices][NTemplateIndices][kNJetFlavors];
 TH2D *h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[NCentralityIndices][NTemplateIndices][kNJetFlavors];
 TH2D *h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices][NTemplateIndices][kNJetFlavors];
@@ -436,6 +439,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 						   requireCaloJetMatch);
 
   TString suffixEdit = CENT_SCHEME_SUFFIX;
+  if(doTrackPtRelHists) outputDatasetName.Append("_trkPtRel");   // track-ptRel closure histograms
   TString outputDir = Form("%s%s%s",outputBaseDir.Data(),outputDatasetName.Data(),suffixEdit.Data());
 
   if(group == 0){ // query mode for condor submit scripts
@@ -838,6 +842,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
       for(int t = 0; t < NTemplateIndices; t++) for(int f = 0; f < kNJetFlavors; f++){
 	h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i][t][f]->Sumw2();
 	if(t == 0) h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i][f] = bookPtRelMuPt3D(Form("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn_%s_C%i",kFlavorNames[f],i), Form("muon p_{T}^{rel} x muon p_{T} x jet p_{T}, %s, centrality index %i",kFlavorNames[f],i));
+	if(t == 0 && doTrackPtRelHists) h_jetTrkPtRel_trkPt_recoJetPt[i][f] = bookPtRelMuPt3D(Form("h_jetTrkPtRel_trkPt_recoJetPt_%s_C%i",kFlavorNames[f],i), Form("track p_{T}^{rel} x track p_{T} x jet p_{T}, every track in the jet, %s, centrality index %i",kFlavorNames[f],i));
 	h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[i][t][f]->Sumw2();
 	h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[i][t][f]->Sumw2();
 	h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i][t][f]->Sumw2();
@@ -1090,6 +1095,12 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 
     // define event filters
     em->regEventFilter(NeventFilters, eventFilters);
+    if(doTrackPtRelHists){   // tracks for the closure: the track tree, else charged PF candidates
+      const std::string trkErr = jtrk::openTracks(f, em, "PbPbTracks/trackTree", NEvents);
+      if(!trkErr.empty()){ cout << "\033[1;31m doTrackPtRelHists: " << trkErr << " in " << input << "\033[0m" << endl; return; }
+      cout << "	track source: " << jtrk::trackSource() << "; cuts: " << jtrk::cutsApplied() << endl;
+    }
+    std::vector<int> trkSel;   // this event's selected tracks above 15 GeV (doTrackPtRelHists)
 
     TRandom *randomGenerator = new TRandom2();
 
@@ -1225,6 +1236,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
       }
     
       double w = w_pthat * w_reweight_hiBin * w_reweight_vz;
+      if(doTrackPtRelHists && !jtrk::selectTracks(em, evi, 15., trkSel)) return;
 
       h_vz[0]->Fill(em->vz,w);
       h_vz[CentralityIndex]->Fill(em->vz,w);
@@ -2022,6 +2034,19 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 
 	} 
 
+	// track-ptRel closure: every selected track in this jet, the muon 3D's weight, jet pT and flavor
+	if(doTrackPtRelHists && !trkSel.empty()){
+	  const int fiT = getFlavorIdx(jetFlavorInt);
+	  for(int k : trkSel){
+	    if(getDr(jtrk::trkEta[k], jtrk::trkPhi[k], recoJetEta_i, recoJetPhi_i) >= 0.4) continue;
+	    const double prT = getPtRel(jtrk::trkPt[k], jtrk::trkEta[k], jtrk::trkPhi[k], recoJetPt_i, recoJetEta_i, recoJetPhi_i);
+	    for(int cc : {0, CentralityIndex}){
+	      h_jetTrkPtRel_trkPt_recoJetPt[cc][kAllJets]->Fill(prT, jtrk::trkPt[k], recoJetPt_i, w_jet);
+	      if(fiT > 0) h_jetTrkPtRel_trkPt_recoJetPt[cc][fiT]->Fill(prT, jtrk::trkPt[k], recoJetPt_i, w_jet);
+	    }
+	  }
+	}
+
 	if(hasInclRecoMuonTag){
 
 	  eventHasInclRecoMuonTag = true;
@@ -2649,6 +2674,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
       for(int t = 0; t < NTemplateIndices; t++) for(int f = 0; f < kNJetFlavors; f++){
 	h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i][t][f]->Write();
 	if(t == 0) h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i][f]->Write();
+	if(t == 0 && doTrackPtRelHists) h_jetTrkPtRel_trkPt_recoJetPt[i][f]->Write();
 	h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[i][t][f]->Write();
 	h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[i][t][f]->Write();
 	if(f == kAllJets){

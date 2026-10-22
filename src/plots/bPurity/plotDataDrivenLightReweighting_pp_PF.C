@@ -15,11 +15,12 @@
 //      ratio to PYTHIA nominal.
 //   3. result: fitted b purity vs jet pT with the light template replaced
 //      (unweighted, reweighted) and nominal, against PYTHIA truth; below, / truth.
-// c and b stay PYTHIA in every fit (c at its MC share of non-b), fit 0-3 GeV.
+// c and b stay PYTHIA in every fit (c at its MC share of non-b), fit 0 to fitEdge
+// (argument, default 5 GeV, 2026-10-19 user; the nominal edge is 3), in the file names.
 // Output: figures/bPurity/PFJets_pp/dataDrivenLight/
-//   dataDrivenLight_trackPtWeight.pdf, dataDrivenLight_ptRelTemplates.pdf,
-//   dataDrivenLight_purity.pdf
-// Usage, from src/plots/bPurity/:  root -l -b -q plotDataDrivenLightReweighting_pp_PF.C
+//   dataDrivenLight_trackPtWeight.pdf, dataDrivenLight_ptRelTemplates.pdf (fit-independent),
+//   dataDrivenLight_purity_fit0to<edge>.pdf
+// Usage, from src/plots/bPurity/:  root -l -b -q 'plotDataDrivenLightReweighting_pp_PF.C(5.0)'
 #include "studyDataDrivenLightReweighted_pp_PF.C"
 #include "TCanvas.h"
 #include "TPad.h"
@@ -56,8 +57,10 @@ void label(double x, double y, const char *s, double size = 0.065, int align = 1
 }
 using namespace pdl;
 
-void plotDataDrivenLightReweighting_pp_PF(){
+void plotDataDrivenLightReweighting_pp_PF(double fitEdge = 5.0){
   setJetCollection("PFJets"); RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
+  fitEdgeFixed = fitEdge;   // kEdgeFixed: every fit below runs 0 to fitEdge
+  printf("fit range 0-%.1f GeV\n", lightTailEdge(Tpl()));
   initPlotStyle(); gStyle->SetEndErrorSize(0);
   gSystem->mkdir(outDir, kTRUE);
   TFile *fD = TFile::Open(dataPath), *fM = TFile::Open(mcPath), *f3 = TFile::Open(mc3DFile), *fT = TFile::Open(defaultTracks);
@@ -181,12 +184,12 @@ void plotDataDrivenLightReweighting_pp_PF(){
     TLegend *lg = makeLegend(0.20, 0.62, 0.62, 0.88, 0.045);
     lg->AddEntry(gT, "PYTHIA truth", "l"); lg->AddEntry(gN, "fit, PYTHIA light (nominal)", "p");
     lg->AddEntry(gU, "fit, data tracks unweighted", "p"); lg->AddEntry(gR, "fit, data tracks reweighted", "p"); lg->Draw();
-    label(0.20, 0.97, hdr, 0.042, 13); label(0.62, 0.86, "c, b: PYTHIA; fit 0-3 GeV", 0.040, 13);
+    label(0.20, 0.97, hdr, 0.042, 13); label(0.62, 0.86, Form("c, b: PYTHIA; fit 0-%g GeV", fitEdge), 0.040, 13);
     bot->cd();
     TH1D *fb = new TH1D("frR", "", 1, 80, 300); fb->SetStats(0); fb->SetMinimum(0.8); fb->SetMaximum(1.7);
     styleRatioAxes(fb, "p_{T}^{jet} [GeV]", "fit / truth"); fb->Draw("axis");
     unityLine(80, 300)->Draw();
     gr(rNom, hexMC, markOpenSquare)->Draw("pz same"); gr(rUn, okabeHex[1], markOpenCircle)->Draw("pz same"); gr(rRw, hexCorrected, markFilledDiamond)->Draw("pz same");
-    savePdfTight(c, Form("%s/dataDrivenLight_purity.pdf", outDir));
+    savePdfTight(c, Form("%s/dataDrivenLight_purity_fit0to%g.pdf", outDir, fitEdge));
   }
 }
