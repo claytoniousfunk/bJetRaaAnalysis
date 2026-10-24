@@ -35,6 +35,7 @@
 // event map
 #include "../../../eventMap/eventMap.h"
 #include "../../../headers/AnalysisSetup/ptRelMuPt3D.h"   // ptRel x muon pT x jet pT (2026-10-09)
+#include "../../../headers/AnalysisSetup/ptRelDeepCSV3D.h" // ptRel x jet pT x CSVv2 (2026-10-24)
 // jet corrector
 #include "../../../JetEnergyCorrections/JetCorrector.h"
 // jet uncertainty
@@ -274,6 +275,7 @@ TH1D *h_inclMuPt;
 TH1D *h_nMu_triggerOn;
 TH2D *h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices];
 TH3D *h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices];   // ptRelMuPt3D.h
+TH3D *h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[NCentralityIndices] = {nullptr};   // ptRelDeepCSV3D.h, doCSVv2Map
 TH2D *h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices];
 TH2D *h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices];
 TH2D *h_muphi_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices];
@@ -726,6 +728,7 @@ void PbPb_scan(int group = 1){
       h_muptrel_jetpt[i]->Sumw2();
       h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i]->Sumw2();
       h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i] = bookPtRelMuPt3D(Form("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i), Form("muon p_{T}^{rel} x muon p_{T} x jet p_{T}, centrality index %i",i));
+      if(doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i] = bookPtRelJetPtCSVv2_3D(Form("h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_C%i",i), Form("muon p_{T}^{rel} x jet p_{T} x CSVv2, centrality index %i",i));
       h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i]->Sumw2();
       h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[i]->Sumw2();
       h_muphi_recoJetPt_inclRecoMuonTag_triggerOn[i]->Sumw2();
@@ -795,6 +798,7 @@ void PbPb_scan(int group = 1){
     cout << "	Loading jet..." << endl;
     if(useCaloJetsOverride) em->loadJet("akPu4CaloJetAnalyzer/t");
     else em->loadJet("akCs4PFJetAnalyzer/t");
+    if(doCSVv2Map) em->loadCSVv2();   // discr_csvV2 of the same jet collection (-99 if the tree has none)
     cout << "	Loading muon..." << endl;
     em->loadMuon("ggHiNtuplizerGED/EventTree");
 
@@ -1318,6 +1322,7 @@ void PbPb_scan(int group = 1){
 	    h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muPtRel,x,w_trig);
 	    h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[0]->Fill(muPtRel,muPt,x,w_trig);
 	    h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muPtRel,muPt,x,w_trig);
+	    if(doCSVv2Map){ h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[0]->Fill(muPtRel,x,em->disc_csvV2[i],w_trig); h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muPtRel,x,em->disc_csvV2[i],w_trig); }
 	    h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muPt,x,w_trig);
 	    h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muEta,x,w_trig);
 	    h_muphi_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muPhi,x,w_trig);
@@ -1668,6 +1673,7 @@ void PbPb_scan(int group = 1){
 
       h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
       h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
+      if(doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i]->Write();
       h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
       h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
       h_muphi_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();

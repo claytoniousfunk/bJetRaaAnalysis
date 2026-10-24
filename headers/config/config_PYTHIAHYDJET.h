@@ -53,12 +53,13 @@ bool doLeadMuTagEventReweight = false;   // off: template and ptRel x muon pT sc
 // premise: light-jet tracks and light-jet muons share a ptRel distribution at fixed
 // pT. Adds _trkPtRel to the output name. Off for the template scans.
 bool doTrackPtRelHists = false;
-// ptRel x jet pT x DeepCSV maps of the muon-tagged jets, per centrality index and flavor,
-// nominal jet pT (headers/AnalysisSetup/ptRelDeepCSV3D.h, as PYTHIA_scan.C; eventMap::loadDeepCSV
-// reads discr_deepCSV from akCs4PF / akPu4Calo, which carry it in these forests). Additive: no
+// ptRel x jet pT x CSVv2 maps of the muon-tagged jets, per centrality index and flavor,
+// nominal jet pT (headers/AnalysisSetup/ptRelDeepCSV3D.h, as PYTHIA_scan.C; eventMap::loadCSVv2
+// reads discr_csvV2 from akCs4PF / akPu4Calo, which carry it in these forests). Additive: no
 // existing histogram changes, so the output name is unchanged. ~0.84 MB per map in memory,
 // NCentralityIndices x kNJetFlavors maps (~140 MB with the ultraFine scheme).
-bool doDeepCSVMap = true;
+// CSVv2 replaced DeepCSV on 2026-10-24 (the tagger of the CMS b-jet shapes analyses).
+bool doCSVv2Map = true;
 bool doPThatCorrelationFilter = true;
 // drop reco jets with no matched gen jet (refpt < 0): the HYDJET background fakes.
 // Their count is pThat-independent but they carry the pThat weight of the event,

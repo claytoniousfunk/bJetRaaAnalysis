@@ -41,6 +41,11 @@ bool doMinBiasSample_Part4 = false;
 bool doHardProbesSample = false;
 bool doNoRhoModificationSample = false;
 bool doWithRhoModificationSample = false;
+// ptRel x jet pT x CSVv2 map of the triggered muon-tagged jets, per centrality index (PbPb_scan.C;
+// headers/AnalysisSetup/ptRelDeepCSV3D.h, as pp_scan.C; eventMap::loadCSVv2 reads discr_csvV2 from
+// akCs4PF / akPu4Calo). Additive: no existing histogram changes, so the output name is unchanged.
+// ~0.84 MB per map in memory, NCentralityIndices maps (~16 MB ultraFine). 2026-10-24.
+bool doCSVv2Map = true;
 // reweight functions (for bkg subtraction)
 bool doHiBinReweightToHardProbesJet80 = false;
 bool useCaloJetsOverride = false;
