@@ -40,6 +40,10 @@ public :
   // AN-2020/029), opt-in the same way (2026-10-22); the forest stores -10 for unevaluated jets.
   void loadCSVv2();
   bool hasCSVv2 = false;
+  // negative-tag CSVv2 (ndiscr_csvV2: tracks with negative impact parameter), opt-in the same way (2026-10-26,
+  // headers/AnalysisSetup/system8.h); -99 when the tree has no branch
+  void loadNegCSVv2();
+  bool hasNegCSVv2 = false;
   void loadBTaggerInputVariables();
   // pfCsTree is only created by loadParticleFlowAnalyzer_PFCs(), which just the
   // pfCandAnalyzer scans call. It is a separate tree rather than a friend of
@@ -636,6 +640,20 @@ void eventMap::loadCSVv2(){
   }
   evtTree->SetBranchAddress("discr_csvV2", &disc_csvV2);
   hasCSVv2 = true;
+}
+
+void eventMap::loadNegCSVv2(){
+  for(int k = 0; k < jetMax; k++) ndisc_csvV2[k] = -99.;
+  if(recoJetTree == nullptr){
+    std::cout<<"loadNegCSVv2: call loadJet(jetset_name) first."<<std::endl;
+    return;
+  }
+  if(!recoJetTree->GetBranch("ndiscr_csvV2")){
+    std::cout<<"loadNegCSVv2: "<<recoJetTree->GetName()<<" has no ndiscr_csvV2 branch; values stay -99."<<std::endl;
+    return;
+  }
+  evtTree->SetBranchAddress("ndiscr_csvV2", &ndisc_csvV2);
+  hasNegCSVv2 = true;
 }
 
 void eventMap::loadBTaggerInputVariables(){

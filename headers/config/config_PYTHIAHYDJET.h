@@ -60,6 +60,10 @@ bool doTrackPtRelHists = false;
 // NCentralityIndices x kNJetFlavors maps (~140 MB with the ultraFine scheme).
 // CSVv2 replaced DeepCSV on 2026-10-24 (the tagger of the CMS b-jet shapes analyses).
 bool doCSVv2Map = true;
+// System8 maps for a data measurement of the CSVv2 b-tag efficiency (headers/AnalysisSetup/system8.h:
+// away jet = leading other jet, |eta| < 1.6, pT > 30 GeV, |dphi| > 2.5, tagged if CSVv2 > 0.84; maps in CSVv2
+// working-point categories). Additive: no existing histogram changes, output name unchanged. 2026-10-26.
+bool doSystem8Maps = true;
 bool doPThatCorrelationFilter = true;
 // drop reco jets with no matched gen jet (refpt < 0): the HYDJET background fakes.
 // Their count is pThat-independent but they carry the pThat weight of the event,

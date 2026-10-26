@@ -37,6 +37,7 @@
 #include "../../../eventMap/eventMap.h"
 #include "../../../headers/AnalysisSetup/ptRelMuPt3D.h"   // ptRel x muon pT x jet pT (2026-10-09)
 #include "../../../headers/AnalysisSetup/ptRelDeepCSV3D.h" // ptRel x jet pT x CSVv2 (2026-10-22; DeepCSV until the same day)
+#include "../../../headers/AnalysisSetup/system8.h"      // System8 away-jet and negative-tag maps (2026-10-26)
 // jet corrector
 #include "../../../JetEnergyCorrections/JetCorrector.h"
 // jet uncertainty
@@ -230,6 +231,7 @@ TH2D *h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[NTemplateIndices][kNJet
 TH2D *h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[NTemplateIndices][kNJetFlavors];
 TH3D *h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[kNJetFlavors];   // ptRelMuPt3D.h, nominal jet pT only
 TH3D *h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[kNJetFlavors] = {nullptr};   // ptRelDeepCSV3D.h, nominal jet pT only, doCSVv2Map
+TH3D *h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[kNJetFlavors] = {nullptr}, *h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[kNJetFlavors] = {nullptr};   // system8.h, nominal jet pT, doSystem8Maps
 TH2D *h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[NTemplateIndices][kNJetFlavors];
 TH2D *h_muphi_recoJetPt_inclRecoMuonTag_triggerOn[NTemplateIndices][kNJetFlavors];
 TH2D *h_muJetDr_recoJetPt[NTemplateIndices][kNJetFlavors];
@@ -623,6 +625,7 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[t][f]->Sumw2();
     if(t == 0) h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[f] = bookPtRelMuPt3D(Form("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn_%s",kFlavorNames[f]), Form("muon p_{T}^{rel} x muon p_{T} x jet p_{T}, %s",kFlavorNames[f]));
     if(t == 0 && doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[f] = bookPtRelJetPtCSVv2_3D(Form("h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_%s",kFlavorNames[f]), Form("muon p_{T}^{rel} x jet p_{T} x CSVv2, %s",kFlavorNames[f]));
+    if(t == 0 && doSystem8Maps){ h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[f] = bookS8Map(Form("h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_%s",kFlavorNames[f]), Form("System8 n, %s",kFlavorNames[f]), "CSVv2"); h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[f] = bookS8Map(Form("h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_%s",kFlavorNames[f]), Form("System8 p, %s",kFlavorNames[f]), "CSVv2"); }
     h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[t][f]->Sumw2();
     h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[t][f]->Sumw2();
     h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[t][f]->Sumw2();
@@ -751,6 +754,7 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
   if(useCaloJetsOverride) em->loadJet("ak4CaloJetAnalyzer/t");
   else em->loadJet("ak4PFJetAnalyzer/t");
   if(doCSVv2Map) em->loadCSVv2();   // discr_csvV2 of the same jet collection (-99 if the tree has none)
+  if(doSystem8Maps && !doCSVv2Map) em->loadCSVv2();   // system8.h needs discr_csvV2
   // second, un-friended read of the PF jet tree for calo bHadronNumber
   if(useCaloJetsOverride){
     attachCaloPFMatchTree(f, "ak4PFJetAnalyzer/t", caloFlavorFromPFMatch, caloBHadronNumberFromPFMatch);
@@ -1739,6 +1743,7 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 	    h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[t][kAllJets]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 	    if(t == 0) h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[kAllJets]->Fill(muPtRel_i,muPt_i,jetPtArray[t],w_jet);
 	    if(t == 0 && doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[kAllJets]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet);
+	    if(t == 0 && doSystem8Maps){ const int s8 = s8AwayState(em, i); if(s8 > 0) h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[kAllJets]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); if(s8 > 1) h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[kAllJets]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); }
 	    if(hasMatchedRecoMuonTag) h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[t][kAllJets]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 	    else h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[t][kAllJets]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 	    h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[t][kAllJets]->Fill(muPt_i,jetPtArray[t],w_jet);
@@ -1751,6 +1756,7 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 	      h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[t][fi]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 	      if(t == 0) h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[fi]->Fill(muPtRel_i,muPt_i,jetPtArray[t],w_jet);
 	      if(t == 0 && doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[fi]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet);
+	      if(t == 0 && doSystem8Maps){ const int s8 = s8AwayState(em, i); if(s8 > 0) h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[fi]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); if(s8 > 1) h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[fi]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); }
 	      if(hasMatchedRecoMuonTag) h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[t][fi]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 	      else h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[t][fi]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 	      h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[t][fi]->Fill(muPt_i,jetPtArray[t],w_jet);
@@ -2179,6 +2185,7 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[t][f]->Write();
     if(t == 0) h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[f]->Write();
     if(t == 0 && doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[f]->Write();
+    if(t == 0 && doSystem8Maps){ h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[f]->Write(); h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[f]->Write(); }
     h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[t][f]->Write();
     h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[t][f]->Write();
     h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[t][f]->Write();

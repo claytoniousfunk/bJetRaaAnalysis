@@ -36,6 +36,7 @@
 #include "../../../eventMap/eventMap.h"
 #include "../../../headers/AnalysisSetup/ptRelMuPt3D.h"   // ptRel x muon pT x jet pT (2026-10-09)
 #include "../../../headers/AnalysisSetup/ptRelDeepCSV3D.h" // ptRel x jet pT x CSVv2 (2026-10-22; DeepCSV until the same day)
+#include "../../../headers/AnalysisSetup/system8.h"      // System8 away-jet and negative-tag maps (2026-10-26)
 // jet corrector
 #include "../../../JetEnergyCorrections/JetCorrector.h"
 // jet uncertainty
@@ -261,6 +262,7 @@ TH1D *h_inclMuPt;
 TH2D *h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn;
 TH3D *h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn;   // ptRelMuPt3D.h
 TH3D *h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = nullptr;   // ptRelDeepCSV3D.h, doCSVv2Map
+TH3D *h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = nullptr, *h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = nullptr;   // system8.h, doSystem8Maps
 TH2D *h_mupt_recoJetPt_inclRecoMuonTag_triggerOn;
 TH2D *h_mueta_recoJetPt_inclRecoMuonTag_triggerOn;
 TH2D *h_muphi_recoJetPt_inclRecoMuonTag_triggerOn;
@@ -622,6 +624,7 @@ void pp_scan(TString inputFile, TString outputFile){
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
     h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn = bookPtRelMuPt3D("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn", "muon p_{T}^{rel} x muon p_{T} x jet p_{T}");
     if(doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = bookPtRelJetPtCSVv2_3D("h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn", "muon p_{T}^{rel} x jet p_{T} x CSVv2");
+    if(doSystem8Maps){ h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = bookS8Map("h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn", "System8 n: muon jets with an away jet", "CSVv2"); h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = bookS8Map("h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn", "System8 p: away jet b-tagged", "CSVv2"); }
     h_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
     h_mueta_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
     h_muphi_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
@@ -649,6 +652,7 @@ void pp_scan(TString inputFile, TString outputFile){
     if(useCaloJetsOverride) em->loadJet("ak4CaloJetAnalyzer/t");
     else em->loadJet("ak4PFJetAnalyzer/t");
     if(doCSVv2Map) em->loadCSVv2();   // discr_csvV2 of the same jet collection (-99 if the tree has none)
+    if(doSystem8Maps && !doCSVv2Map) em->loadCSVv2();   // system8.h needs discr_csvV2
     // calo jets for the PF-jet calo-match ID (scan_calo_jet_match.h)
     g_caloTree = nullptr;
     if(!useCaloJetsOverride){
@@ -1061,6 +1065,7 @@ void pp_scan(TString inputFile, TString outputFile){
 	    h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muPtRel,x,w_trig);
 	    h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muPtRel,muPt,x,w_trig);
 	    if(doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn->Fill(muPtRel,x,em->disc_csvV2[i],w_trig);
+	    if(doSystem8Maps){ const int s8 = s8AwayState(em, i); if(s8 > 0) h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn->Fill(muPtRel,x,em->disc_csvV2[i],w_trig); if(s8 > 1) h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn->Fill(muPtRel,x,em->disc_csvV2[i],w_trig); }
 	    h_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muPt,x,w_trig);
 	    h_mueta_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muEta,x,w_trig);
 	    h_muphi_recoJetPt_inclRecoMuonTag_triggerOn->Fill(muPhi,x,w_trig);
@@ -1378,6 +1383,7 @@ void pp_scan(TString inputFile, TString outputFile){
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn->Write();
     h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Write();
     if(doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn->Write();
+    if(doSystem8Maps){ h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn->Write(); h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn->Write(); }
     h_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Write();
     h_mueta_recoJetPt_inclRecoMuonTag_triggerOn->Write();
     h_muphi_recoJetPt_inclRecoMuonTag_triggerOn->Write();

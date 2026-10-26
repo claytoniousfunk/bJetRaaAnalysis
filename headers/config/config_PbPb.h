@@ -46,6 +46,10 @@ bool doWithRhoModificationSample = false;
 // akCs4PF / akPu4Calo). Additive: no existing histogram changes, so the output name is unchanged.
 // ~0.84 MB per map in memory, NCentralityIndices maps (~16 MB ultraFine). 2026-10-24.
 bool doCSVv2Map = true;
+// System8 maps for a data measurement of the CSVv2 b-tag efficiency (headers/AnalysisSetup/system8.h:
+// away jet = leading other jet, |eta| < 1.6, pT > 30 GeV, |dphi| > 2.5, tagged if CSVv2 > 0.84; maps in CSVv2
+// working-point categories). Additive: no existing histogram changes, output name unchanged. 2026-10-26.
+bool doSystem8Maps = true;
 // reweight functions (for bkg subtraction)
 bool doHiBinReweightToHardProbesJet80 = false;
 bool useCaloJetsOverride = false;
