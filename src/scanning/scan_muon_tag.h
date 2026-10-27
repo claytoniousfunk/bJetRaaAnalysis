@@ -3,14 +3,16 @@
 // Requires config globals: muPtCut, muPtMaxCut, fillMu12, fillMu5, fillMu7,
 //   doWDecayFilter, epsilon_mm.
 // Updates matchFlagR[m] = 1 to prevent double-counting.
-// Sets muPtRel, muPt, muEta, muPhi, muJetDr via out-params on match.
+// Sets muPtRel, muPt, muEta, muPhi, muJetDr via out-params on match, and the muon's index in the
+// muon tree via muIdx when given (2026-10-27, for the muon IP3D maps).
 // Returns true if a muon-tagged jet was found.
 
 inline bool findRecoMuonTag(
     eventMap* em,
     double x, double y, double z,
     int* matchFlagR,
-    double& muPtRel, double& muPt, double& muEta, double& muPhi, double& muJetDr
+    double& muPtRel, double& muPt, double& muEta, double& muPhi, double& muJetDr,
+    int* muIdx = nullptr
 ) {
     for(int m = 0; m < em->nMu; m++){
         double muPt_m = em->muPt->at(m);
@@ -48,6 +50,7 @@ inline bool findRecoMuonTag(
             muEta = muEta_m;
             muPhi = muPhi_m;
             muJetDr = muJetDr_m;
+            if(muIdx) *muIdx = m;
             return true;
         }
     }

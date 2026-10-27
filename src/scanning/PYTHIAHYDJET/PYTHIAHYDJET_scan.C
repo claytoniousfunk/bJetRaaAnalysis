@@ -38,6 +38,7 @@
 #include "../../../headers/AnalysisSetup/ptRelMuPt3D.h"   // ptRel x muon pT x jet pT (2026-10-09)
 #include "../../../headers/AnalysisSetup/ptRelDeepCSV3D.h" // ptRel x jet pT x CSVv2 (2026-10-24; DeepCSV from 2026-10-22)
 #include "../../../headers/AnalysisSetup/system8.h"      // System8 away-jet and negative-tag maps (2026-10-26)
+#include "../../../headers/AnalysisSetup/muonIP3D.h"     // muon ln|IP3D| maps for the IP3D template fit (2026-10-27)
 // jet corrector
 #include "../../../JetEnergyCorrections/JetCorrector.h"
 // jet uncertainty
@@ -277,6 +278,7 @@ TH2D *h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices][NTemplat
 TH3D *h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices][kNJetFlavors];   // ptRelMuPt3D.h, nominal jet pT only
 TH3D *h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[NCentralityIndices][kNJetFlavors] = {{nullptr}};   // ptRelDeepCSV3D.h, nominal jet pT only, doCSVv2Map
 TH3D *h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[NCentralityIndices][kNJetFlavors] = {{nullptr}}, *h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[NCentralityIndices][kNJetFlavors] = {{nullptr}};   // system8.h, nominal jet pT, doSystem8Maps
+TH3D *h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[NCentralityIndices][kNJetFlavors] = {{nullptr}}, *h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices][kNJetFlavors] = {{nullptr}};   // muonIP3D.h, nominal jet pT, doMuonIP3DMaps
 TH3D *h_jetTrkPtRel_trkPt_recoJetPt[NCentralityIndices][kNJetFlavors] = {};   // doTrackPtRelHists: every track in the jet, same binning
 TH2D *h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[NCentralityIndices][NTemplateIndices][kNJetFlavors];
 TH2D *h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[NCentralityIndices][NTemplateIndices][kNJetFlavors];
@@ -847,6 +849,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 	h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i][t][f]->Sumw2();
 	if(t == 0) h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i][f] = bookPtRelMuPt3D(Form("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn_%s_C%i",kFlavorNames[f],i), Form("muon p_{T}^{rel} x muon p_{T} x jet p_{T}, %s, centrality index %i",kFlavorNames[f],i));
 	if(t == 0 && doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i][f] = bookPtRelJetPtCSVv2_3D(Form("h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_%s_C%i",kFlavorNames[f],i), Form("muon p_{T}^{rel} x jet p_{T} x CSVv2, %s, centrality index %i",kFlavorNames[f],i));
+	if(t == 0 && doMuonIP3DMaps){ h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i][f] = bookMuIP3DMap(Form("h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_%s_C%i",kFlavorNames[f],i), Form("muon IP3D, %s, centrality index %i",kFlavorNames[f],i)); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[i][f] = bookMuPtRelIP3DMap(Form("h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn_%s_C%i",kFlavorNames[f],i), Form("muon ptRel x IP3D, %s, centrality index %i",kFlavorNames[f],i)); }
 	if(t == 0 && doSystem8Maps){ h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i][f] = bookS8Map(Form("h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_%s_C%i",kFlavorNames[f],i), Form("System8 n, %s, centrality index %i",kFlavorNames[f],i), "CSVv2"); h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i][f] = bookS8Map(Form("h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_%s_C%i",kFlavorNames[f],i), Form("System8 p, %s, centrality index %i",kFlavorNames[f],i), "CSVv2"); }
 	if(t == 0 && doTrackPtRelHists) h_jetTrkPtRel_trkPt_recoJetPt[i][f] = bookPtRelMuPt3D(Form("h_jetTrkPtRel_trkPt_recoJetPt_%s_C%i",kFlavorNames[f],i), Form("track p_{T}^{rel} x track p_{T} x jet p_{T}, every track in the jet, %s, centrality index %i",kFlavorNames[f],i));
 	h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[i][t][f]->Sumw2();
@@ -1062,7 +1065,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
     cout << "	Loading jet..." << endl;
     em->loadJet(useCaloJetsOverride ? "akPu4CaloJetAnalyzer/t" : "akCs4PFJetAnalyzer/t");
     if(doCSVv2Map) em->loadCSVv2();   // discr_csvV2 of the same jet collection (-99 if the tree has none)
-    if(doSystem8Maps && !doCSVv2Map) em->loadCSVv2();   // system8.h needs discr_csvV2
+    if((doSystem8Maps || doMuonIP3DMaps) && !doCSVv2Map) em->loadCSVv2();   // system8.h, muonIP3D.h need discr_csvV2
 
     // second, un-friended read of the PF jet tree, for what calo jets borrow from
     // the nearest PF jet (scan_calo_pf_match.h)
@@ -1089,6 +1092,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
     };
     cout << "	Loading muon..." << endl;
     em->loadMuon("ggHiNtuplizerGED/EventTree");
+    if(doMuonIP3DMaps && !em->loadMuonIP3D()){ std::cout << "\033[1;31m doMuonIP3DMaps is set but the muon tree has no muIP3D; aborting \033[0m" << std::endl; return; }
     cout << "	Loading muon triggers..." << endl;
     em->loadHLT("hltanalysis/HltTree");
     //cout << "	Loading tracks..." << endl;
@@ -1578,6 +1582,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 	double muEta_i = -1.0;
 	double muPhi_i = -1.0;
 	double muDR_i = -1.0;
+	int muIdx_i = -1;   // index of the tagging muon (muonIP3D.h maps)
 		
 	int genMuIndex = -1;
 	bool hasInclGenMuonTag = false;
@@ -1821,6 +1826,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 
 	    muPtRel_i = getPtRel(recoMuonPt_m,recoMuonEta_m,recoMuonPhi_m,recoJetPt_i,recoJetEta_i,recoJetPhi_i);
 	    muDR_i = getDr(recoMuonEta_m,recoMuonPhi_m,recoJetEta_i,recoJetPhi_i);
+	    muIdx_i = m;
 
 	    double delta = (getPtRel(recoMuonPt_m,recoMuonEta_m,recoMuonPhi_m,recoJetPt_i,recoJetEta_i,recoJetPhi_i) - getPtRel(recoMuonPt_m,recoMuonEta_m,recoMuonPhi_m,recoJetPt_i,em->jet_wta_eta[i],em->jet_wta_phi[i])) / getPtRel(recoMuonPt_m,recoMuonEta_m,recoMuonPhi_m,recoJetPt_i,em->jet_wta_eta[i],em->jet_wta_phi[i]);
 	  
@@ -2128,6 +2134,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 	      if(t == 0){ h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[0][kAllJets]->Fill(muPtRel_i,muPt_i,jetPtArray[t],w_jet); h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex][kAllJets]->Fill(muPtRel_i,muPt_i,jetPtArray[t],w_jet); }
 	      if(t == 0 && doCSVv2Map){ h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[0][kAllJets]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[CentralityIndex][kAllJets]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); }
 	      if(t == 0 && doSystem8Maps){ const int s8 = s8AwayState(em, i); for(int ci : {0, CentralityIndex}){ if(s8 > 0) h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[ci][kAllJets]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); if(s8 > 1) h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[ci][kAllJets]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); } }
+	      if(t == 0 && doMuonIP3DMaps){ const double lip = muLnIP3D(em, muIdx_i); for(int ci : {0, CentralityIndex}){ h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[ci][kAllJets]->Fill(lip,jetPtArray[t],em->disc_csvV2[i],w_jet); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[ci][kAllJets]->Fill(muPtRel_i,lip,jetPtArray[t],w_jet); } }
 	      if(hasMatchedRecoMuonTag) h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[CentralityIndex][t][kAllJets]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 	      else h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[CentralityIndex][t][kAllJets]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 	      h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex][t][kAllJets]->Fill(muPt_i,jetPtArray[t],w_jet);
@@ -2151,6 +2158,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 		if(t == 0){ h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[0][fi]->Fill(muPtRel_i,muPt_i,jetPtArray[t],w_jet); h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex][fi]->Fill(muPtRel_i,muPt_i,jetPtArray[t],w_jet); }
 		if(t == 0 && doCSVv2Map){ h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[0][fi]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[CentralityIndex][fi]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); }
 		if(t == 0 && doSystem8Maps){ const int s8 = s8AwayState(em, i); for(int ci : {0, CentralityIndex}){ if(s8 > 0) h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[ci][fi]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); if(s8 > 1) h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[ci][fi]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); } }
+		if(t == 0 && doMuonIP3DMaps){ const double lip = muLnIP3D(em, muIdx_i); for(int ci : {0, CentralityIndex}){ h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[ci][fi]->Fill(lip,jetPtArray[t],em->disc_csvV2[i],w_jet); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[ci][fi]->Fill(muPtRel_i,lip,jetPtArray[t],w_jet); } }
 		if(hasMatchedRecoMuonTag) h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[CentralityIndex][t][fi]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 		else h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[CentralityIndex][t][fi]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 		h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex][t][fi]->Fill(muPt_i,jetPtArray[t],w_jet);
@@ -2688,6 +2696,7 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
 	if(t == 0) h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i][f]->Write();
 	if(t == 0 && doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i][f]->Write();
 	if(t == 0 && doSystem8Maps){ h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i][f]->Write(); h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i][f]->Write(); }
+	if(t == 0 && doMuonIP3DMaps){ h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i][f]->Write(); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[i][f]->Write(); }
 	if(t == 0 && doTrackPtRelHists) h_jetTrkPtRel_trkPt_recoJetPt[i][f]->Write();
 	h_muptrel_recoJetPt_matchedRecoMuonTag_triggerOn[i][t][f]->Write();
 	h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[i][t][f]->Write();

@@ -40,6 +40,8 @@ public :
   // AN-2020/029), opt-in the same way (2026-10-22); the forest stores -10 for unevaluated jets.
   void loadCSVv2();
   bool hasCSVv2 = false;
+  bool loadMuonIP3D();   // muIP3D / muIP3DErr of the muon tree (ggHiNtuplizer); call after loadMuon. false if absent
+  bool hasMuonIP3D = false;
   // negative-tag CSVv2 (ndiscr_csvV2: tracks with negative impact parameter), opt-in the same way (2026-10-26,
   // headers/AnalysisSetup/system8.h); -99 when the tree has no branch
   void loadNegCSVv2();
@@ -154,6 +156,7 @@ public :
   int nMu=0;
   int nInner = 0;
   vector<Float_t> *muPt=0, *muEta=0, *muPhi=0, *muChi2NDF=0, *muInnerD0=0, *muInnerDz=0;
+  vector<Float_t> *muIP3D=0, *muIP3DErr=0;   // loadMuonIP3D(): 3D impact parameter of the muon (cm, unsigned) and its error
   vector<Int_t> *muIsPF=0, *muIsGlobal=0, *muIsTracker=0, *muMuonHits=0, *muStations=0, *muTrkLayers=0, *muPixelHits=0, *muCharge=0, *muIDTight=0;
   vector <int> *innerNTrkHits=0;
 
@@ -478,6 +481,18 @@ void eventMap::loadMuon(const char* name){
   evtTree->SetBranchAddress("muCharge",&muCharge);
   evtTree->SetBranchAddress("muIDTight",&muIDTight);
 
+}
+
+bool eventMap::loadMuonIP3D(){
+  if(muonTree == nullptr){ std::cout<<"loadMuonIP3D: call loadMuon(name) first."<<std::endl; return false; }
+  if(!muonTree->GetBranch("muIP3D") || !muonTree->GetBranch("muIP3DErr")){
+    std::cout<<"loadMuonIP3D: "<<muonTree->GetName()<<" has no muIP3D / muIP3DErr branch."<<std::endl;
+    return false;
+  }
+  evtTree->SetBranchAddress("muIP3D",&muIP3D);
+  evtTree->SetBranchAddress("muIP3DErr",&muIP3DErr);
+  hasMuonIP3D = true;
+  return true;
 }
 
 void eventMap::loadMuonAnalyzer(const char* name){

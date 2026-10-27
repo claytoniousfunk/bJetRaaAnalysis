@@ -64,6 +64,10 @@ bool doCSVv2Map = true;
 // away jet = leading other jet, |eta| < 1.6, pT > 30 GeV, |dphi| > 2.5, tagged if CSVv2 > 0.84; maps in CSVv2
 // working-point categories). Additive: no existing histogram changes, output name unchanged. 2026-10-26.
 bool doSystem8Maps = true;
+// Muon IP3D maps (headers/AnalysisSetup/muonIP3D.h: ln|IP3D| x jet pT x CSVv2 category and ptRel x ln|IP3D| x jet
+// pT, for the IP3D template fit of CMS BTV-12-001). Additive: no existing histogram changes, output name unchanged.
+// Needs muIP3D in the muon tree (ggHiNtuplizer); the scan aborts if it is missing. 2026-10-27.
+bool doMuonIP3DMaps = true;
 bool doPThatCorrelationFilter = true;
 // drop reco jets with no matched gen jet (refpt < 0): the HYDJET background fakes.
 // Their count is pThat-independent but they carry the pThat weight of the event,
