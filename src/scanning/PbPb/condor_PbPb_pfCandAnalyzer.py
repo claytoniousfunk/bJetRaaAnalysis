@@ -30,7 +30,9 @@ jobname = 'PbPb_pfCandAnalyzer'
 #dblist = '../../../fileNames/fileNames_HISingleMuon_withPFCandidates_partial.txt'
 # must match the list PbPb_pfCandAnalyzer.C picks from config_PbPb.h: the jobs
 # pass a line index, so this only sets how many jobs there are
-dblist = '../../../fileNames/fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt'
+# 2026-10-29: the June withTracksAndPFCandidates production is gone from EOS
+#dblist = '../../../fileNames/fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt'
+dblist = '../../../fileNames/fileNames_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh.txt'
 
 # How the analyzer is run.
 #

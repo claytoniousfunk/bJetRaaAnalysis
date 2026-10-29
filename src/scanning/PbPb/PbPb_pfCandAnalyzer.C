@@ -372,6 +372,13 @@ void PbPb_pfCandAnalyzer(int group = 1){
   // config_PbPb.h split doMinBiasSample into Part1..Part4 (2026-09-20). Only
   // Part 1 has a PF-candidate forest list, so that is the only part this scan
   // can run on.
+  //
+  // 2026-10-29: the June withTracksAndPFCandidates MinBias production is gone
+  // from EOS (crab 260629_192125 directory empty). MinBias now reads the
+  // September withCaloAndFlowJets_withPFAndTowers_fresh forest, which carries
+  // pfM (doForestCSJets needs it). Its pfcandAnalyzer keeps |eta| < 3 only, so
+  // the forest-CS jets match the forest's akCs4PF 95-98% exactly rather than
+  // all of them (headers/functions/csJetEmulation.h).
   if(doMinBiasSample_Part2 || doMinBiasSample_Part3 || doMinBiasSample_Part4){
     std::cout << "ERROR:  only MinBias Part 1 has a PF-candidate forest list "
               << "(fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt). "
@@ -381,7 +388,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
   std::string inputFileList = "";
   if(doSingleMuonSample) inputFileList = "../../../fileNames/fileNames_HISingleMuon_withPFCandidates_partial.txt";
-  else if(doMinBiasSample_Part1) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withTracksAndPFCandidates.txt";
+  else if(doMinBiasSample_Part1) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh.txt";
   else if(doHardProbesSample) {
     inputFileList = "";
     std::cout << "no withPFCandidates forest for HardProbes.  Exiting...\n";
@@ -399,7 +406,8 @@ void PbPb_pfCandAnalyzer(int group = 1){
   // Only withPFCandidates forests carry the PF-candidate trees this scan
   // clusters. Enforce it on the list itself, so no sample flag -- present or
   // future -- can route it to a forest without them.
-  if(inputFileList.find("PFCandidates") == std::string::npos){
+  if(inputFileList.find("PFCandidates") == std::string::npos &&
+     inputFileList.find("withPFAndTowers") == std::string::npos){
     std::cout << "ERROR:  input list \"" << inputFileList << "\" is not a withPFCandidates list "
               << "(check the sample flags in config_PbPb.h).  Exiting...\n";
     return;
@@ -1003,6 +1011,11 @@ void PbPb_pfCandAnalyzer(int group = 1){
 
   
     TFile *f = TFile::Open(input.c_str());
+    // a missing input used to fall through to eventMap and segfault there
+    if(!f || f->IsZombie()){
+      std::cout << "ERROR:  cannot open input " << input << ".  Exiting...\n";
+      return;
+    }
     cout << "	File opened!" << endl;
     auto em = new eventMap(f);
     em->isMC = isMC_status;
