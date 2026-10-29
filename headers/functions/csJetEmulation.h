@@ -61,11 +61,14 @@
 //     far that reaches: dropping 2.5 < |eta| < 3 as well takes the |eta| < 1
 //     jets in 0-30% from 98.5% to 84% exact. The non-exact fraction also grows
 //     with |eta| (0-30%: 98% / 89% / 85% within 1e-5 at |eta| < 1.0 / 1.0-1.3
-//     / 1.3-1.6, mean emulated/forest - 1 at most 1.2e-3). Most of the
-//     remaining mismatch is therefore probably the missing HF (likely, not
-//     proven). A forest with pfAbsEtaMax 5 would settle it. CS particles
-//     beyond |eta| ~ 1.7 (the [2.1, 3] rho bin) do not reproduce from this
-//     tree.
+//     / 1.3-1.6, mean emulated/forest - 1 at most 1.2e-3). CONFIRMED on a
+//     forest whose pfcandAnalyzer does carry HF
+//     (~/Downloads/HiForestAOD_PbPbMinBias_1kEvents.root, 1000 events): all
+//     2371 matched jets (rawpt > 10, |eta| < 1.6, every class) agree to
+//     1e-5, max |deta|, |dphi| ~1e-7, and every emulated jet above 30 GeV
+//     has a forest partner. So the emulation is exact when the input is
+//     complete; scan only forests with HF in pfcandAnalyzer. CS particles at
+//     large |eta| still differ there (the tree drops |eta| > 5).
 //   * Float storage of the candidates (and the forest's -ffast-math build)
 //     can flip near-ties in the CS ghost-particle ordering: one ghost moves to
 //     another particle, ~0.05 GeV.
