@@ -37,6 +37,8 @@
 // FastJet
 #ifdef DO_FASTJET
 #include "fastjet/ClusterSequence.hh"
+// forest akCs4PF emulation (doForestCSJets, pseudoJets.h); needs fjcontrib
+#include "../../../headers/functions/csJetEmulation.h"
 #endif
 #include "../../../headers/fastJetCandInfo.h"
 
@@ -221,6 +223,19 @@ TProfile2D  *h_randConeEtaPhi_sigSel[NCentralityIndices];
 
 TH1D        *h_fastJetPt_PF_bkgSub_RC[NCentralityIndices];
 TH1D        *h_fastJetPt_PF_JEC_bkgSub_RC[NCentralityIndices];
+
+// Forest akCs4PF emulation (doForestCSJets, pseudoJets.h), |eta| < 1.6, the
+// event's own candidates (same-event) or the mixed event's (mixed-event).
+// h_csJetPt is the subtracted raw pT (the forest's rawpt), _JEC adds JEC_PF.
+// The muon histograms take jets with a PF-muon constituent above muPtCut in
+// trigger-on events (gated, like h_fastJetMuonPtRel_*): the leading such muon
+// at its ORIGINAL momentum (CS lowers constituent pT; the data tag uses the
+// reco muon), ptRel / dR against the subtracted CS axis, JEC pT on y.
+// Booked unconditionally, empty when doForestCSJets is off.
+TH1D *h_csJetPt[NCentralityIndices];
+TH1D *h_csJetPt_JEC[NCentralityIndices];
+TH2D *h_csJetMuonPtRel_csJetPt[NCentralityIndices];
+TH2D *h_csJetMuonDR_csJetPt[NCentralityIndices];
 
 // Same as h_fastJetPt_PF_bkgSub_RC, restricted to events passing the signal
 // jet-pT selection (see doSignalSelectedRC in pseudoJets.h). Only ever
@@ -456,6 +471,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 						   pseudoJetCandPt_min,
 						   bkgMapTag().c_str(),
 						   constituentTag().c_str());
+    outputDatasetName += forestCSTag().c_str();
 
 
     TString suffixEdit = CENT_SCHEME_SUFFIX;
@@ -687,6 +703,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_pseudoJetPt_geoCorr[i] = new TH1D(Form("h_pseudoJetPt_geoCorr_C%i",i),Form("PseudoJet pT, geometric correction, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF[i] = new TH1D(Form("h_fastJetPt_PF_C%i",i),Form("FastJet (PF) anti-kT pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_JEC[i] = new TH1D(Form("h_fastJetPt_PF_JEC_C%i",i),Form("FastJet anti-kT pT (PF, JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_csJetPt[i] = new TH1D(Form("h_csJetPt_C%i",i),Form("forest akCs4PF emulation raw pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_csJetPt_JEC[i] = new TH1D(Form("h_csJetPt_JEC_C%i",i),Form("forest akCs4PF emulation pT (JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
+	h_csJetMuonPtRel_csJetPt[i] = new TH2D(Form("h_csJetMuonPtRel_csJetPt_C%i",i),Form("akCs4PF emulation muon #it{p}_{T}^{rel} vs jet #it{p}_{T} (JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_csJetMuonDR_csJetPt[i] = new TH2D(Form("h_csJetMuonDR_csJetPt_C%i",i),Form("akCs4PF emulation muon #Delta R vs jet #it{p}_{T} (JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
 	h_fastJetPt_PFCs[i] = new TH1D(Form("h_fastJetPt_PFCs_C%i",i),Form("FastJet (PFCs) anti-kT pT, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PFCs_JEC[i] = new TH1D(Form("h_fastJetPt_PFCs_JEC_C%i",i),Form("FastJet anti-kT pT (PFCs, JEC), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_bkgSub_RC[i] = new TH1D(Form("h_fastJetPt_PF_bkgSub_RC_C%i",i),Form("FastJet anti-kT pT (PF, bkg sub, random-cone), hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
@@ -789,6 +809,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	h_pseudoJetPt_geoCorr[i] = new TH1D(Form("h_pseudoJetPt_geoCorr_C%i",i),Form("PseudoJet pT, geometry correction, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF[i] = new TH1D(Form("h_fastJetPt_PF_C%i",i),Form("FastJet (PF) anti-kT pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PF_JEC[i] = new TH1D(Form("h_fastJetPt_PF_JEC_C%i",i),Form("FastJet (PF) anti-kT pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_csJetPt[i] = new TH1D(Form("h_csJetPt_C%i",i),Form("forest akCs4PF emulation raw pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_csJetPt_JEC[i] = new TH1D(Form("h_csJetPt_JEC_C%i",i),Form("forest akCs4PF emulation pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
+	h_csJetMuonPtRel_csJetPt[i] = new TH2D(Form("h_csJetMuonPtRel_csJetPt_C%i",i),Form("akCs4PF emulation muon #it{p}_{T}^{rel} vs jet #it{p}_{T} (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NMuRelPtBins,muRelPtMin,muRelPtMax,NPtBins,ptMin,ptMax);
+	h_csJetMuonDR_csJetPt[i] = new TH2D(Form("h_csJetMuonDR_csJetPt_C%i",i),Form("akCs4PF emulation muon #Delta R vs jet #it{p}_{T} (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NdRBins,dRBinMin,dRBinMax,NPtBins,ptMin,ptMax);
 	h_fastJetPt_PFCs[i] = new TH1D(Form("h_fastJetPt_PFCs_C%i",i),Form("FastJet (PFCs) anti-kT pT, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_fastJetPt_PFCs_JEC[i] = new TH1D(Form("h_fastJetPt_PFCs_JEC_C%i",i),Form("FastJet (PFCs) anti-kT pT (JEC), hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 
@@ -873,6 +897,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_pseudoJetPt[i]->Sumw2();
       h_pseudoJetPt_geoCorr[i]->Sumw2();
       h_fastJetPt_PF[i]->Sumw2();
+      h_csJetPt[i]->Sumw2();
+      h_csJetPt_JEC[i]->Sumw2();
+      h_csJetMuonPtRel_csJetPt[i]->Sumw2();
+      h_csJetMuonDR_csJetPt[i]->Sumw2();
       h_fastJetPt_PF_JEC[i]->Sumw2();
       h_fastJetPt_PFCs[i]->Sumw2();
       h_fastJetPt_PFCs_JEC[i]->Sumw2();
@@ -1001,6 +1029,11 @@ void PbPb_pfCandAnalyzer(int group = 1){
     cout << "	Loading PF candidates..." << endl;
     em->loadParticleFlowAnalyzer_PFCs("pfcandAnalyzerCS");
     em->loadParticleFlowAnalyzer("pfcandAnalyzer");
+    if(doForestCSJets && !em->hasPFMass){
+      std::cout << "ERROR:  doForestCSJets needs pfM in pfcandAnalyzer/pfTree (the CS emulation clusters\n"
+                << "        massive candidates, as the forest does); this forest has none.  Exiting...\n";
+      return;
+    }
     cout << "	Variables initilized!" << endl << endl ;
     int NEvents = em->evtTree->GetEntries();
     cout << "	Number of events = " << NEvents << endl;
@@ -1283,6 +1316,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
       
       // pre-load mixed-event PF candidates from same-centrality events into a pool
       std::vector<double> pool_pfPt, pool_pfEta, pool_pfPhi, pool_pfId;
+      std::vector<double> pool_pfM;   // only filled for doForestCSJets
 
       // DONOR EVENT for the muon-injection study. The first centrality-matched
       // event at or after evi+1 -- which is exactly the first event this pool
@@ -1305,6 +1339,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	    pool_pfEta.push_back(em->pfEta->at(l));
 	    pool_pfPhi.push_back(em->pfPhi->at(l));
 	    pool_pfId.push_back(em->pfId->at(l));
+	    if(doForestCSJets) pool_pfM.push_back(em->pfM->at(l));
 	    if(eventsInPool == 0){          // this event is the donor
 	      donor_pfPt.push_back(em->pfPt->at(l));
 	      donor_pfEta.push_back(em->pfEta->at(l));
@@ -1452,6 +1487,9 @@ void PbPb_pfCandAnalyzer(int group = 1){
 	std::vector<int> mixedEventPFCandidates_id;
 	// FastJet anti-kT clustering on PF candidates
         std::vector<fastjet::PseudoJet> fjInputs;
+	// inputs of the forest akCs4PF emulation: every candidate, with its
+	// mass, before the pT and species cuts below (doForestCSJets)
+	std::vector<CSJetInput> csIn;
         if(doEventMixing && poolSize > 0){
           std::uniform_int_distribution<int> poolDist(0, poolSize - 1);
           for(int s = 0; s < NCandidatesToSample; s++){
@@ -1460,6 +1498,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
             double eta = pool_pfEta[idx];
             double phi = pool_pfPhi[idx];
 	    int id = pool_pfId[idx];
+	    if(doForestCSJets) csIn.push_back({pt, eta, phi, pool_pfM[idx], id});
             if(pt < pseudoJetCandPt_min) continue;
             if(!isClusteringCand(id)) continue;   // calo-constituent study
             double px = pt * TMath::Cos(phi);
@@ -1483,6 +1522,7 @@ void PbPb_pfCandAnalyzer(int group = 1){
             double eta = em->pfEta->at(l);
             double phi = em->pfPhi->at(l);
 	    int id = em->pfId->at(l);
+	    if(doForestCSJets) csIn.push_back({pt, eta, phi, em->pfM->at(l), id});
             if(pt < pseudoJetCandPt_min) continue;
             if(!isClusteringCand(id)) continue;   // calo-constituent study
             double px = pt * TMath::Cos(phi);
@@ -1506,6 +1546,59 @@ void PbPb_pfCandAnalyzer(int group = 1){
         // that the mixed event is being built at the right multiplicity.
         h_nPFcandFastJet[0]->Fill((int)fjInputs.size(), w_resample);
         h_nPFcandFastJet[CentralityIndex]->Fill((int)fjInputs.size(), w_resample);
+
+        // ---- forest akCs4PF emulation (doForestCSJets, pseudoJets.h) ----
+        // Same-event: seeded as the forest seeds this event, so these are the
+        // forest's akCs4PF jets. Mixed-event: a fresh seed per resample, and
+        // only the first forestCS_nMixedResamples resamples (cost).
+        const int nCSPasses = doEventMixing ? std::min(forestCS_nMixedResamples, N_fastJetResamples) : 1;
+        if(doForestCSJets && fjResample < nCSPasses){
+          const double w_cs = w / nCSPasses;
+          std::vector<fastjet::PseudoJet> csInputs = csJet::makeInputs(csIn);
+          std::uniform_int_distribution<int> seedDist(1, 2000000000);
+          const int s0 = seedDist(rng), s1 = seedDist(rng);
+          if(doEventMixing) csJet::setSeed(s0, s1);
+          else              csJet::setForestSeed(em->runNumber, (unsigned int)em->evtNumber);
+          CSRhoMap csRho = csJet::computeRho(csInputs);
+          if(doEventMixing) csJet::setSeed(s0, s1);
+          else              csJet::setForestSeed(em->runNumber, (unsigned int)em->evtNumber);
+          std::vector<CSJet> csJets = csJet::clusterCS(csInputs, csRho, forestCS_ptUnsubMin);
+          for(const CSJet &cj : csJets){
+            if(TMath::Abs(cj.eta) > 1.6) continue;
+            JEC_PF.SetJetPT(cj.pt);
+            JEC_PF.SetJetEta(cj.eta);
+            JEC_PF.SetJetPhi(cj.phi);
+            const double csPt_JEC = JEC_PF.GetCorrectedPT();
+            if(doJetTrkMaxFilter){
+              // as the forest's trackMax: the hardest charged candidate within
+              // R of the jet axis, at its unsubtracted pT -- not only the jet's
+              // own constituents
+              double csTrkMax = 0.;
+              for(const CSJetInput &c : csIn)
+                if((c.id == 1 || c.id == 2 || c.id == 3) && c.pt > csTrkMax
+                   && getDr(c.eta, c.phi, cj.eta, cj.phi) < dR_max_pfcand) csTrkMax = c.pt;
+              if(!passesJetTrkMaxFilter(csTrkMax, csPt_JEC)) continue;
+            }
+            h_csJetPt[0]->Fill(cj.pt, w_cs);
+            h_csJetPt[CentralityIndex]->Fill(cj.pt, w_cs);
+            h_csJetPt_JEC[0]->Fill(csPt_JEC, w_cs);
+            h_csJetPt_JEC[CentralityIndex]->Fill(csPt_JEC, w_cs);
+            if(!evtTriggerDecision) continue;
+            int csMu = -1;
+            for(const CSJetConstituent &c : cj.constituents){
+              const CSJetInput &o = csIn[c.index];
+              if(o.id == 3 && o.pt > muPtCut && (csMu < 0 || o.pt > csIn[csMu].pt)) csMu = c.index;
+            }
+            if(csMu < 0) continue;
+            const CSJetInput &mu = csIn[csMu];
+            const double csMuPtRel = getPtRel(mu.pt, mu.eta, mu.phi, csPt_JEC, cj.eta, cj.phi);
+            const double csMuDR    = getDr(mu.eta, mu.phi, cj.eta, cj.phi);
+            h_csJetMuonPtRel_csJetPt[0]->Fill(csMuPtRel, csPt_JEC, w_cs);
+            h_csJetMuonPtRel_csJetPt[CentralityIndex]->Fill(csMuPtRel, csPt_JEC, w_cs);
+            h_csJetMuonDR_csJetPt[0]->Fill(csMuDR, csPt_JEC, w_cs);
+            h_csJetMuonDR_csJetPt[CentralityIndex]->Fill(csMuDR, csPt_JEC, w_cs);
+          }
+        }
 
         fastjet::JetDefinition jetDef(fastjet::antikt_algorithm, dR_max_pfcand);
         fastjet::ClusterSequence cs(fjInputs, jetDef);
@@ -2642,6 +2735,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
       h_pseudoJetPt[i]->Write();
       h_pseudoJetPt_geoCorr[i]->Write();
       h_fastJetPt_PF[i]->Write();
+      h_csJetPt[i]->Write();
+      h_csJetPt_JEC[i]->Write();
+      h_csJetMuonPtRel_csJetPt[i]->Write();
+      h_csJetMuonDR_csJetPt[i]->Write();
       h_fastJetPt_PF_JEC[i]->Write();
       h_fastJetPt_PFCs[i]->Write();
       h_fastJetPt_PFCs_JEC[i]->Write();
@@ -2711,7 +2808,11 @@ void PbPb_pfCandAnalyzer(int group = 1){
     // Record the code version and configuration this file was produced with, so
     // a consumer never has to infer the generation from which histograms happen
     // to be present. See headers/functions/writeProvenance.h.
-    writeProvenance(wf);
+    std::string csProv = Form("doForestCSJets              : %d\n"
+                              "forestCS_ptUnsubMin         : %.2f GeV\n"
+                              "forestCS_nMixedResamples    : %d\n",
+                              (int)doForestCSJets, forestCS_ptUnsubMin, forestCS_nMixedResamples);
+    writeProvenance(wf, csProv.c_str());
 
     wf->Close();
     g_pfCandScanCompletedOK = true;   // the only place this is set

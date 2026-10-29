@@ -212,6 +212,42 @@ inline std::string bkgMapTag()
 
 double subleadingPFCandPt_min = 15.0;
 
+// ---- forest akCs4PF emulation -----------------------------------------------
+// doForestCSJets clusters every event the FastJet block sees -- the event's own
+// candidates in a same-event scan, each mixed event in a mixed-event scan --
+// with an exact emulation of the forest's akCs4PFJets
+// (headers/functions/csJetEmulation.h): per-event rho / rhom from kt jets,
+// anti-kT with explicit ghosts, constituent subtraction. It replaces the
+// random-cone map: the background is the event's own, subtracted particle by
+// particle as the forest does, and the jet axis is the subtracted one.
+//
+// Same-event, the forest's own seed is used, so the jets ARE the forest's
+// akCs4PF jets (validated event by event on the MinBias forest,
+// src/plots/csJets/validateCSJets.C). Mixed-event, each resample gets its own
+// seed; what survives is the combinatorial (fake) rate of akCs4PF jets.
+//
+// Inputs are ALL PF candidates with their masses, independent of
+// caloConstituentsOnly and pseudoJetCandPt_min: the forest clusters every
+// candidate. Needs pfM in the pfcandAnalyzer tree (the scan stops otherwise).
+//
+// Fills h_csJetPt*_C<i> and the muon-tagged h_csJetMuon*_csJetPt_C<i>; booked
+// unconditionally, empty when off. The output name carries _forestCS.
+//
+// forestCS_ptUnsubMin: jets whose UNSUBTRACTED pT is below this skip the
+// subtraction. CS only removes pT, so every jet with subtracted pT above it is
+// exact; below it the spectra are incomplete. In GeV, raw.
+//
+// forestCS_nMixedResamples: mixed-event only. Each CS pass is two clusterings
+// with ~16 000 ghosts plus the subtraction, far slower than the plain
+// clustering the N_fastJetMixedEventResamples loop repeats, so only the first
+// forestCS_nMixedResamples resamples run it, each filled at w / that count
+// (per-event normalization unchanged, as for N_fastJetMixedEventResamples).
+bool   doForestCSJets           = false;
+double forestCS_ptUnsubMin      = 10.0;
+int    forestCS_nMixedResamples = 5;
+
+inline std::string forestCSTag(){ return doForestCSJets ? "_forestCS" : ""; }
+
 // Same-event random cone restricted to events that contain a reco jet clearing
 // signalJetPtCut -- Olga's multiplicity-matching proposal (2026-08-13): throw
 // cones in the literal signal-selected events instead of a separate reference

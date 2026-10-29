@@ -13,6 +13,12 @@ ROOTLIBS   := $(shell root-config --libs)
 FJCFLAGS   := $(shell fastjet-config --cxxflags)
 FJLIBS     := $(shell fastjet-config --libs)
 FJPREFIX   := $(shell fastjet-config --prefix)
+# fjcontrib (ConstituentSubtractor, for the forest akCs4PF emulation in
+# headers/functions/csJetEmulation.h). Defaults to the FastJet prefix, which is
+# where the LCG view puts it; override with FJCONTRIB=<prefix>. The forest used
+# fjcontrib 1.033 -- validate a different version with
+# src/plots/csJets/validateCSJets.C before trusting exact agreement.
+FJCONTRIB  ?= $(FJPREFIX)
 
 ifeq ($(strip $(FJCFLAGS)),)
   $(error fastjet-config not found in PATH -- source the LCG view first)
@@ -23,12 +29,14 @@ endif
 
 # -Wno-* only silences the pre-existing warnings in the analysis headers so real
 # problems stay visible.
-CXXFLAGS := -O2 -DDO_FASTJET $(ROOTCFLAGS) $(FJCFLAGS) \
+CXXFLAGS := -O2 -DDO_FASTJET $(ROOTCFLAGS) $(FJCFLAGS) -I$(FJCONTRIB)/include \
             -Wno-sign-compare -Wno-empty-body -Wno-ignored-qualifiers
 
 # rpath so the binary finds the standalone libfastjet without relying on
 # LD_LIBRARY_PATH being identical on the worker node.
-LDFLAGS := $(ROOTLIBS) $(FJLIBS) -Wl,-rpath,$(FJPREFIX)/lib
+# fjcontrib first: it needs libfastjettools, so that has to follow it.
+LDFLAGS := $(ROOTLIBS) -L$(FJCONTRIB)/lib -lfastjetcontribfragile -Wl,-rpath,$(FJCONTRIB)/lib \
+           $(FJLIBS) -lfastjettools -Wl,-rpath,$(FJPREFIX)/lib
 
 SRC     := main_pfCandAnalyzer.cc
 DEPFILE := $(TARGET).d

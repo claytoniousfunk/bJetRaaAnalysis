@@ -23,6 +23,13 @@
 set -u
 
 ROOT_BIN="${ROOT_BIN:-$HOME/Programs/root/bin}"
+# FastJet 3.3.0 + fjcontrib 1.033 (the forest's versions) when installed: the
+# pfCand scan includes fastjet/contrib/ConstituentSubtractor.hh
+# (headers/functions/csJetEmulation.h), which a configure-only FastJet tree
+# does not have.
+if [ -z "${FASTJET_INC:-}" ] && [ -d "$HOME/Programs/fastjet330/include/fastjet/contrib" ]; then
+  FASTJET_INC="$HOME/Programs/fastjet330/include"
+fi
 FASTJET_INC="${FASTJET_INC:-$HOME/Programs/fastjet-3.4.3/include}"
 
 export PATH="$ROOT_BIN:$PATH"

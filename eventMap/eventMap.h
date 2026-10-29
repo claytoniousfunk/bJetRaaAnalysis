@@ -114,6 +114,10 @@ public :
   // pfCandidate info
   std::vector<int> *pfId=0;
   std::vector<double> *pfPt=0, *pfEta=0, *pfPhi=0;
+  // pfM only when the tree has it (hasPFMass); the forest CS emulation
+  // (headers/functions/csJetEmulation.h) needs the candidate masses
+  std::vector<double> *pfM=0;
+  bool hasPFMass = false;
   int nPFpart = 0;
 
   std::vector<int> *pfCsId=0;
@@ -358,6 +362,8 @@ void eventMap::loadParticleFlowAnalyzer(const char* name){
   evtTree->SetBranchAddress("pfPt",&pfPt);
   evtTree->SetBranchAddress("pfEta",&pfEta);
   evtTree->SetBranchAddress("pfPhi",&pfPhi);
+  hasPFMass = (pfTree->GetBranch("pfM") != nullptr);
+  if(hasPFMass) evtTree->SetBranchAddress("pfM",&pfM);
 }
 
 void eventMap::loadParticleFlowAnalyzer_PFCs(const char* name){

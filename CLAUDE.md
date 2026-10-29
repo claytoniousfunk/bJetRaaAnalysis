@@ -134,6 +134,13 @@ tar xzf fastjet-3.4.3.tar.gz && cd fastjet-3.4.3
 The script generates a driver adding `using namespace std;`, because ROOT's
 interpreter has it in effect and `eventMap.h` relies on that (bare
 `vector<Float_t>`). Without it g++ reports dozens of spurious errors.
+The pfCand scan also needs fjcontrib (ConstituentSubtractor, for the forest
+akCs4PF emulation in `headers/functions/csJetEmulation.h`). `syntaxCheck.sh`
+uses `~/Programs/fastjet330` (FastJet 3.3.0 + fjcontrib 1.033, the forest's
+versions) when it exists; the scan's Makefile and ACLiC drivers link
+`-lfastjetcontribfragile` from `FJCONTRIB` / `FJCONTRIB_HOME`, default the
+FastJet prefix.
+
 
 Jet collection is chosen at load time and swaps the *tree*, not the histograms:
 

@@ -19,6 +19,14 @@ void run_pfCandAnalyzer(int group = 1){
     }
   }
 
+  // fjcontrib (ConstituentSubtractor, csJetEmulation.h): FJCONTRIB_HOME, else
+  // the FastJet prefix
+  TString fjcHome = gSystem->Getenv("FJCONTRIB_HOME") ? TString(gSystem->Getenv("FJCONTRIB_HOME"))
+                  : gSystem->GetFromPipe("fastjet-config --prefix 2>/dev/null");
+  if(fjcHome.Length() == 0 && gSystem->Getenv("FASTJET_HOME")) fjcHome = gSystem->Getenv("FASTJET_HOME");
+  gSystem->AddIncludePath(Form("-I%s/include", fjcHome.Data()));
+  gSystem->AddLinkedLibs(Form("-L%s/lib -lfastjetcontribfragile -lfastjettools -lfastjet", fjcHome.Data()));
+
   gROOT->LoadMacro("PbPb_pfCandAnalyzer.C+");
   gROOT->ProcessLine(Form("PbPb_pfCandAnalyzer(%d)", group));
 }

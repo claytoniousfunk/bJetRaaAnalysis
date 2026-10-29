@@ -70,6 +70,16 @@ void run_pfCandAnalyzer_condor(int group = 1){
     }
   }
 
+  // --- fjcontrib (ConstituentSubtractor, csJetEmulation.h) ---------------
+  // FJCONTRIB_HOME, else the FastJet prefix (where the LCG view puts it)
+  TString fjcHome = gSystem->Getenv("FJCONTRIB_HOME") ? TString(gSystem->Getenv("FJCONTRIB_HOME"))
+                                                      : TString(fjLibDir(0, fjLibDir.Length() - 4));  // strip "/lib"
+  gSystem->AddIncludePath(Form("-I%s/include", fjcHome.Data()));
+  // fastjettools after it: fjcontrib depends on it
+  gSystem->AddLinkedLibs(Form("-L%s/lib -lfastjetcontribfragile -Wl,-rpath,%s/lib -L%s -lfastjettools -lfastjet",
+                              fjcHome.Data(), fjcHome.Data(), fjLibDir.Data()));
+  printf("fjcontrib from: %s\n", fjcHome.Data());
+
   // --- preload the real libfastjet ----------------------------------------
   // Delphes bundles its own copy of the FastJet sources and its rootmap claims
   // the fastjet:: namespace. Loading the compiled macro triggers ROOT class
