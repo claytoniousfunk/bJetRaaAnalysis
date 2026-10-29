@@ -98,8 +98,15 @@ auto_submit = False
 
 ```bash
 python3 condor_PbPb_pfCandAnalyzer.py
-condor_submit PbPb_pfCandAnalyzer_mixedEvent_fastJet/condor_submit.cfg
+condor_submit PbPb_pfCandAnalyzer_<mode>_<timestamp>/condor_submit.cfg
 ```
+
+Each run of the script makes its own job directory,
+`PbPb_pfCandAnalyzer_<sameEvent|mixedEvent>[_forestCS]_<YYYYmmdd_HHMMSS>/` (mode
+read from `pseudoJets.h`), and copies the freshly built binary into it; the
+jobs run that frozen copy. So you can rebuild for another configuration and
+submit it while earlier jobs are still idle -- they keep the binary and scripts
+they were generated with. The script prints the directory; use it below.
 
 The script builds the binary first and refuses to generate jobs if the build
 fails, so a compile error surfaces here rather than on every worker.
@@ -127,7 +134,7 @@ an empty `log/` directory mid-run is normal, not a failure.
 Useful checks in the `.log`:
 
 ```bash
-grep -c "Job executing" PbPb_pfCandAnalyzer_mixedEvent_fastJet/log/job_*.log
+grep -c "Job executing" <jobdir>/log/job_*.log
 ```
 
 A count above 1 means the job was evicted and restarted. There is no
@@ -137,7 +144,7 @@ than its runtime will never finish while appearing to run for hours.
 When jobs finish:
 
 ```bash
-grep "Number of events" PbPb_pfCandAnalyzer_mixedEvent_fastJet/log/job_*.out
+grep "Number of events" <jobdir>/log/job_*.out
 ```
 
 Input files vary in size, so per-job runtimes vary with them.

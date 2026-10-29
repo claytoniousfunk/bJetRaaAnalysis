@@ -15,13 +15,20 @@ Run from src/scanning/PbPb/ (the analyzer resolves its input list relative to
 that directory).
 """
 
+import datetime
 import math
 import os
+import re
+import shutil
 
 # ---------------------------------------------------------------------------
 # configuration
 # ---------------------------------------------------------------------------
 
+# Base name of the job directory. Each submission gets its OWN directory,
+# <jobname>_<mode>_<timestamp>, with a frozen copy of the binary in it (see
+# below), so a second submission -- e.g. mixed-event right after same-event --
+# can rebuild and regenerate without touching jobs that are still queued.
 jobname = 'PbPb_pfCandAnalyzer'
 
 # input list -- must be the same one PbPb_pfCandAnalyzer.C selects via its
@@ -79,6 +86,21 @@ njobs_max = None              # e.g. 1 for a trial run; None = all files
 
 here = os.path.dirname(os.path.abspath(__file__))
 
+# Scan mode, read from the header the binary is built from, for the job
+# directory name only (the analyzer's own output name is set in the C++).
+def header_bool(path, name):
+    with open(path) as f:
+        m = re.search(r'^\s*bool\s+' + name + r'\s*=\s*(true|false)\s*;', f.read(), re.M)
+    if not m:
+        raise SystemExit(f'ERROR: could not read {name} from {path}')
+    return m.group(1) == 'true'
+
+pseudo_jets_h = os.path.join(here, '../../../headers/AnalysisSetup/pseudoJets.h')
+mode = 'mixedEvent' if header_bool(pseudo_jets_h, 'doEventMixing') else 'sameEvent'
+if header_bool(pseudo_jets_h, 'doForestCSJets'):
+    mode += '_forestCS'
+stamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+
 dblist_path = dblist if os.path.isabs(dblist) else os.path.join(here, dblist)
 if not os.path.isfile(dblist_path):
     raise SystemExit(f'ERROR: input list not found: {dblist_path}')
@@ -103,8 +125,17 @@ njobs = int(math.ceil(float(nfiles) / nsplit))
 if njobs_max is not None:
     njobs = min(njobs, njobs_max)
 
-jobdir = os.path.join(here, jobname)
+jobdir = os.path.join(here, f'{jobname}_{mode}_{stamp}')
 os.makedirs(os.path.join(jobdir, 'log'), exist_ok=True)
+
+# Freeze the binary: jobs run this copy, not the one in src/scanning/PbPb,
+# which the next `make` overwrites. Without it, a job still idle when you
+# rebuild for another configuration runs THAT configuration -- and the old
+# shared job directory had its scripts overwritten by the next submission too.
+# (Shared libraries are found by the rpath recorded at link time, so the copy
+# needs nothing else.)
+if use_standalone_binary:
+    shutil.copy2(os.path.join(here, binary), os.path.join(jobdir, binary))
 
 # one script per job
 for i in range(njobs):
@@ -117,7 +148,7 @@ for i in range(njobs):
     lines += [f'cd {here}', '']
     for idx in range(start, end + 1):
         if use_standalone_binary:
-            lines.append(f'./{binary} {idx}')
+            lines.append(f'{jobdir}/{binary} {idx}')
         else:
             lines.append(f"root -l -b -q '{exe}({idx})'")
     lines.append('')
@@ -147,6 +178,7 @@ sub_path = os.path.join(jobdir, 'condor_submit.cfg')
 with open(sub_path, 'w') as f:
     f.write(sub)
 
+print(f'Job directory: {jobdir}' + (f' (binary frozen there)' if use_standalone_binary else ''))
 print(f'Generated {njobs} jobs for {nfiles} input files (nsplit={nsplit})')
 if njobs_max is not None:
     print(f'NOTE: njobs_max={njobs_max} -- only the first {njobs} of '

@@ -25,3 +25,9 @@ a.out
 *_cc.d
 *_cc.so
 src/plots/**/plotJetsByCollection
+
+# pfCand condor submissions: per-submission job directories (with a frozen
+# copy of the binary) and the binary itself
+src/scanning/PbPb/PbPb_pfCandAnalyzer_*/
+src/scanning/PbPb/pfCandAnalyzer_PbPb
+src/scanning/PbPb/pfCandAnalyzer_PbPb.d
