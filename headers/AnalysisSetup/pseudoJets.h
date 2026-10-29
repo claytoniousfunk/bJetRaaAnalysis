@@ -13,8 +13,9 @@
 //
 // 2026-09-29 same-event scan (tower map in hand); 2026-09-30 back to
 // mixed-event for the fake-jet rate of the tower-subtracted calo jets.
-// 2026-10-29: same-event, for the forest akCs4PF emulation (doForestCSJets).
-bool doEventMixing = false;
+// 2026-10-29: same-event, for the forest akCs4PF emulation (doForestCSJets);
+// then mixed-event, for the combinatorial rate of those jets.
+bool doEventMixing = true;
 
 bool doFastJetClustering = true;      // true = run anti-kT R=0.4 on PF candidates via FastJet (requires -DDO_FASTJET at compile time)
 
