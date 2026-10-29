@@ -241,7 +241,12 @@ void PYTHIA_scan_response(int group = 1){
 
   TString outputDatasetName = "";
 
-  
+  // muon pT window of the jet-branch muon tag (2026-10-29): as PYTHIA_scan.C. Before this the response
+  // scan always used common.h's 15 GeV with no upper edge, whatever fillMu5 / fillMu7 said.
+  if(fillMu5){ muPtCut = 7.0; muPtMaxCut = 15.0; }
+  else if(fillMu7){ muPtCut = 9.0; muPtMaxCut = 15.0; }
+  else if(fillMu12){ muPtCut = 15.0; muPtMaxCut = 999.0; }
+
   outputDatasetName = configureOutputDatasetName(generator,
 						 doDiJetSample,
 						 pthatcut,
@@ -280,6 +285,9 @@ void PYTHIA_scan_response(int group = 1){
 						 onlyMuTaggedJets,
 						 requireCaloJetMatch,
 						 doLeadMuTagEventReweight);
+  // the name builder always writes _mu12_pTmu-<cut>_tight; name the mu5 / mu7 window instead (the tag is the
+  // jet-branch muon, no muon ID)
+  if(!fillMu12) outputDatasetName.ReplaceAll(Form("_mu12_pTmu-%2.0f_tight",muPtCut), Form("_%s_pTmu-%.0fto%.0f", fillMu5 ? "mu5" : "mu7", muPtCut, muPtMaxCut));
 
   //outputDatasetName.Append("_noNeutrinoInfo");
   TString outputDir = Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data());
@@ -734,7 +742,7 @@ void PYTHIA_scan_response(int group = 1){
       for(int i = 0; i < em->njet; i++){
 	if(failsCaloJetMatch(i)) continue;
 	if(fabs(em->jeteta[i]) > 1.6) continue;
-	if(!(em->mupt[i] > muPtCut && fabs(em->mueta[i]) < 2.)) continue;
+	if(!(em->mupt[i] > muPtCut && em->mupt[i] < muPtMaxCut && fabs(em->mueta[i]) < 2.)) continue;
 	JEC.SetJetPT(em->rawpt[i]);
 	JEC.SetJetEta(em->jeteta[i]);
 	JEC.SetJetPhi(em->jetphi[i]);
@@ -847,7 +855,7 @@ void PYTHIA_scan_response(int group = 1){
       for(int j = 0; j < em->gpptp->size(); j++){
 
 	if(TMath::Abs(em->gppdgIDp->at(j)) != 13) continue; // skip if not a muon
-	if(em->gpptp->at(j) < muPtCut) continue;
+	if(em->gpptp->at(j) < muPtCut || em->gpptp->at(j) > muPtMaxCut) continue;
 	if(getDr(y,z,em->gpetap->at(j),em->gpphip->at(j)) < epsilon_mm) hasGenMuonMatch = true;
 
       }
@@ -878,7 +886,7 @@ void PYTHIA_scan_response(int group = 1){
 
 	    // assigned, not latched: a closer jet found later replaces this match,
 	    // so its muon status must replace this one's too
-	    hasRecoJetMuon = (em->mupt[k] > muPtCut && fabs(em->mueta[k]) < 2.);
+	    hasRecoJetMuon = (em->mupt[k] > muPtCut && em->mupt[k] < muPtMaxCut && fabs(em->mueta[k]) < 2.);
 	    //if(em->mupt[k] > 7.0 && em->mupt[k] < 14.0) hasRecoJetMuon = true;
 
 	    JEC.SetJetPT(em->rawpt[k]);

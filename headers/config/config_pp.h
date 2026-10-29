@@ -25,6 +25,10 @@ bool applyAntiMu5Jet60Trigger = false;
 bool fillMu5 = true;
 bool fillMu7 = false;
 bool fillMu12 = false;
+// mu5 only: weight every trigger-gated fill (h_vz_triggerOn included) by the event's
+// HLT_HIL3Mu5_NHitQ10_v1 prescale (3 or 5 in the 2017 pp run), so the mu5 spectra are
+// luminosity-normalized. Adds _mu5PrescaleWeighted to the output name. 2026-10-29.
+bool weightMu5Prescale = true;
 // spectra alterations
 bool applyMu12TriggerEfficiencyCorrection = false; // mu12 HLT efficiency; off for the mu5 scan
 bool doJESCorrection = false;

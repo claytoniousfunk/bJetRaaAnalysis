@@ -316,6 +316,7 @@ void pp_scan(int group = 1){
     applyMu12TriggerEfficiencyCorrection,doJetTrkMaxFilter,doEtaPhiMask,doWDecayFilter,
     doJESCorrection,doBJetNeutrinoEnergyShift,doJERCorrection,
 							 apply_JER_smear,apply_JEU_shift_up,apply_JEU_shift_down,muPtCut,muPtMaxCut,fillMu5,fillMu7,fillMu12, useCaloJetsOverride, useManualJEC, skipCaloL2L3Residual, requireCaloJetMatch);
+  if(fillMu5 && weightMu5Prescale) outputDatasetName.Insert(outputDatasetName.Last('_'), "_mu5PrescaleWeighted");   // before the date
   TString outputDir = Form("%s%s",outputBaseDir.Data(),outputDatasetName.Data());
 
   if(group == 0){ // query mode for condor submit scripts
@@ -416,6 +417,7 @@ void pp_scan(TString inputFile, TString outputFile){
 						   useManualJEC,
 						   skipCaloL2L3Residual,
 						   requireCaloJetMatch);
+    if(fillMu5 && weightMu5Prescale) outputDatasetName.Insert(outputDatasetName.Last('_'), "_mu5PrescaleWeighted");   // before the date
 
     TString output = outputFile;
 
@@ -794,12 +796,16 @@ void pp_scan(TString inputFile, TString outputFile){
       int triggerDecision_mu12 = em->HLT_HIL3Mu12_v1;
       int triggerDecision_mu12_Prescl = em->HLT_HIL3Mu12_v1_Prescl;
 
+      // Mu5 prescale weight (config_pp.h: weightMu5Prescale): every trigger-gated fill, h_vz_triggerOn
+      // included, counts a fired event as its HLT prescale (3 or 5), so the triggered sample stands
+      // for the full luminosity. Untriggered histograms (h_vz, inclusive jets) are not weighted.
+      const double w_prescale = (fillMu5 && weightMu5Prescale && triggerDecision_mu5_Prescl > 0) ? (double) triggerDecision_mu5_Prescl : 1.;
 
       if(fillMu5){
 	if(triggerIsOn(triggerDecision_mu5,triggerDecision_mu5_Prescl)){
 	  evtTriggerDecision = true;
-	  h_vz_triggerOn->Fill(em->vz,w);
-	  h_hiBin_triggerOn->Fill(em->hiBin,w);
+	  h_vz_triggerOn->Fill(em->vz,w*w_prescale);
+	  h_hiBin_triggerOn->Fill(em->hiBin,w*w_prescale);
 	}
       }
       else if(fillMu7){
@@ -930,7 +936,7 @@ void pp_scan(TString inputFile, TString outputFile){
       // }
       // else{ continue ;}
  
-      double w_trig = w;
+      double w_trig = w*w_prescale;
    
       bool eventHasGoodJet = false;
       bool eventHasInclRecoMuonTag = false;
@@ -1028,7 +1034,7 @@ void pp_scan(TString inputFile, TString outputFile){
 	                                          muPtRel, muPt, muEta, muPhi, muJetDr, &muIdx);
      
 	if(applyMu12TriggerEfficiencyCorrection){
-	  w_trig = w / fitFxn_pp_HLT->Eval(muPt);
+	  w_trig = w*w_prescale / fitFxn_pp_HLT->Eval(muPt);
 	}
 
       
