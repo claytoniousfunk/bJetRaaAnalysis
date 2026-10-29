@@ -306,7 +306,7 @@ void HYDJET_scan(int group = 1){
 
   if(fillMu5){
     muPtCut = 7.0;
-    muPtMaxCut = 9.0;
+    muPtMaxCut = 15.0;
   }
   else if(fillMu7){
     muPtCut = 9.0;

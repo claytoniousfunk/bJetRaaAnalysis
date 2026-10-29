@@ -85,9 +85,9 @@ bool applyMu12TriggerEfficiencyCorrection = false;
 bool applyMu5Jet30Trigger = false;
 bool applyMu5Jet40Trigger = false;
 bool applyMu5Jet60Trigger = false;
-bool fillMu5 = false;
+bool fillMu5 = true;
 bool fillMu7 = false;
-bool fillMu12 = true;
+bool fillMu12 = false;
 // jet mods
 bool useCaloJetsOverride = false;
 bool useManualJEC = true;

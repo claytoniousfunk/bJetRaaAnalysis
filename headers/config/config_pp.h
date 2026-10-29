@@ -22,11 +22,11 @@ bool applyJet100Trigger = false;
 bool applyAntiMu5Jet30Trigger = false;
 bool applyAntiMu5Jet40Trigger = false;
 bool applyAntiMu5Jet60Trigger = false;
-bool fillMu5 = false;
+bool fillMu5 = true;
 bool fillMu7 = false;
-bool fillMu12 = true;
+bool fillMu12 = false;
 // spectra alterations
-bool applyMu12TriggerEfficiencyCorrection = true;
+bool applyMu12TriggerEfficiencyCorrection = false; // mu12 HLT efficiency; off for the mu5 scan
 bool doJESCorrection = false;
 bool doBJetNeutrinoEnergyShift = false;
 bool doJERCorrection = false;
