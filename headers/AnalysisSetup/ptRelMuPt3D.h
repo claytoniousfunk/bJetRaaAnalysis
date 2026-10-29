@@ -12,13 +12,20 @@
 // Name: h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[_<flavor>][_C<i>],
 // x = ptRel [GeV], y = muon pT [GeV], z = reco jet pT [GeV]; same selection and
 // weight as h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn in each scan.
+// muPtLow (2026-10-29): the muon scans pass muPtCut. Below 15 GeV the y axis
+// gains 2 GeV edges from muPtLow up (mu5: 7, 9, 11, 13; mu7: 9, 11, 13), which
+// the mu5 / mu7 windows would otherwise put entirely in underflow. At the
+// default 15 (mu12, and the track scans, whose track-pT axis is divided bin by
+// bin by the muon one) the binning is unchanged.
 #include "TH3D.h"
 #include <vector>
 
-inline TH3D* bookPtRelMuPt3D(const char *name, const char *title)
+inline TH3D* bookPtRelMuPt3D(const char *name, const char *title, double muPtLow = 15.)
 {
   std::vector<double> x; for(int i = 0; i <= 50; i++) x.push_back(0.1*i);   // 0-5 GeV, the fit domain; overflow above
-  const std::vector<double> y = {15, 17.5, 20, 22.5, 25, 27.5, 30, 32.5, 35, 40, 45, 50, 60, 70, 80, 100, 150};
+  std::vector<double> y;
+  for(double e : {7., 9., 11., 13.}) if(e >= muPtLow - 1e-6) y.push_back(e);
+  for(double e : {15., 17.5, 20., 22.5, 25., 27.5, 30., 32.5, 35., 40., 45., 50., 60., 70., 80., 100., 150.}) y.push_back(e);
   const std::vector<double> z = {20, 30, 40, 50, 60, 70, 80, 100, 120, 150, 200, 300, 500};
   TH3D *h = new TH3D(name, Form("%s;muon #it{p}_{T}^{rel} [GeV];muon #it{p}_{T} [GeV];jet #it{p}_{T} [GeV]", title),
                      (int)x.size() - 1, x.data(), (int)y.size() - 1, y.data(), (int)z.size() - 1, z.data());

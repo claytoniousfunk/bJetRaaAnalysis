@@ -624,7 +624,7 @@ void pp_scan(TString inputFile, TString outputFile){
     h_inclMuPt->Sumw2();
 
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
-    h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn = bookPtRelMuPt3D("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn", "muon p_{T}^{rel} x muon p_{T} x jet p_{T}");
+    h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn = bookPtRelMuPt3D("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn", "muon p_{T}^{rel} x muon p_{T} x jet p_{T}", muPtCut);
     if(doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = bookPtRelJetPtCSVv2_3D("h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn", "muon p_{T}^{rel} x jet p_{T} x CSVv2");
     if(doMuonIP3DMaps){ h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = bookMuIP3DMap("h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn", "muon IP3D, muon-tagged jets"); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn = bookMuPtRelIP3DMap("h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn", "muon ptRel x IP3D, muon-tagged jets"); }
     if(doSystem8Maps){ h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = bookS8Map("h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn", "System8 n: muon jets with an away jet", "CSVv2"); h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = bookS8Map("h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn", "System8 p: away jet b-tagged", "CSVv2"); }

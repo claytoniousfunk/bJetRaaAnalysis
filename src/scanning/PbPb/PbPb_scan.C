@@ -731,7 +731,7 @@ void PbPb_scan(int group = 1){
       h_mupt_jetpt[i]->Sumw2();
       h_muptrel_jetpt[i]->Sumw2();
       h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i]->Sumw2();
-      h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i] = bookPtRelMuPt3D(Form("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i), Form("muon p_{T}^{rel} x muon p_{T} x jet p_{T}, centrality index %i",i));
+      h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i] = bookPtRelMuPt3D(Form("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i), Form("muon p_{T}^{rel} x muon p_{T} x jet p_{T}, centrality index %i",i), muPtCut);
       if(doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i] = bookPtRelJetPtCSVv2_3D(Form("h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_C%i",i), Form("muon p_{T}^{rel} x jet p_{T} x CSVv2, centrality index %i",i));
       if(doMuonIP3DMaps){ h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i] = bookMuIP3DMap(Form("h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_C%i",i), Form("muon IP3D, centrality index %i",i)); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[i] = bookMuPtRelIP3DMap(Form("h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i), Form("muon ptRel x IP3D, centrality index %i",i)); }
       if(doSystem8Maps){ h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i] = bookS8Map(Form("h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_C%i",i), Form("System8 n, centrality index %i",i), "CSVv2"); h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i] = bookS8Map(Form("h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_C%i",i), Form("System8 p, centrality index %i",i), "CSVv2"); }
