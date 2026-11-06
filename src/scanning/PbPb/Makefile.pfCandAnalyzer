@@ -14,11 +14,15 @@ FJCFLAGS   := $(shell fastjet-config --cxxflags)
 FJLIBS     := $(shell fastjet-config --libs)
 FJPREFIX   := $(shell fastjet-config --prefix)
 # fjcontrib (ConstituentSubtractor, for the forest akCs4PF emulation in
-# headers/functions/csJetEmulation.h). Defaults to the FastJet prefix, which is
-# where the LCG view puts it; override with FJCONTRIB=<prefix>. The forest used
-# fjcontrib 1.033 -- validate a different version with
-# src/plots/csJets/validateCSJets.C before trusting exact agreement.
-FJCONTRIB  ?= $(FJPREFIX)
+# headers/functions/csJetEmulation.h). The forest used fjcontrib 1.033, and
+# csJetEmulation.h is written against its API: LCG_106's bundled fjcontrib is newer
+# and does not compile (set_do_mass_subtraction takes no argument there).
+# Default: $HOME/fjcontrib1033 when it exists -- on lxplus that is fjcontrib 1.033
+# (ConstituentSubtractor only) built against the LCG_106 FastJet 3.4.1, the build of
+# the 2026-10-29 MinBias forest-CS scans -- else the FastJet prefix. Override with
+# FJCONTRIB=<prefix>. Validate another version with src/plots/csJets/validateCSJets.C.
+FJCONTRIB_DEFAULT := $(if $(wildcard $(HOME)/fjcontrib1033/lib/libfastjetcontribfragile.so),$(HOME)/fjcontrib1033,$(FJPREFIX))
+FJCONTRIB  ?= $(FJCONTRIB_DEFAULT)
 
 ifeq ($(strip $(FJCFLAGS)),)
   $(error fastjet-config not found in PATH -- source the LCG view first)
