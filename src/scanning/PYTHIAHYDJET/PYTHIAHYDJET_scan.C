@@ -338,7 +338,15 @@ TH1D *h_inclMuPt;
 // would change the jobs still in the queue.
 //   sample:   0 = config flags, 1 = DiJet, 2 = MuJet, 3 = BJet
 //   pThatMin: < 0 = pthatcut from common.h
-void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
+// parity (2026-11-06): -1 = onlyEvenEvents / onlyOddEvents from the config; 0 = even-indexed events
+// only, 1 = odd only, overriding it. The two halves are statistically independent template and
+// pseudo-data samples for the b-purity closure; _evenEvents / _oddEvents in the output name.
+void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1., int parity = -1){
+
+  if(parity == 0){ onlyEvenEvents = true;  onlyOddEvents = false; }
+  else if(parity == 1){ onlyEvenEvents = false; onlyOddEvents = true; }
+  else if(parity != -1){ std::cout << "\033[1;31m parity must be -1 (config), 0 (even) or 1 (odd) \033[0m" << std::endl; return; }
+  if(onlyEvenEvents && onlyOddEvents){ std::cout << "\033[1;31m onlyEvenEvents and onlyOddEvents are both set \033[0m" << std::endl; return; }
 
   if(sample > 0){
     doDiJetSample = (sample == 1);
@@ -1196,6 +1204,8 @@ void PYTHIAHYDJET_scan(int group = 1, int sample = 0, double pThatMin = -1.){
     for(int evi = 0; evi < NEvents; evi++){
 
       if(evi == 0) cout << "Processing events..." << endl;
+      if(onlyEvenEvents && evi % 2 == 1) continue;   // event parity, see PYTHIAHYDJET_scan(..., parity)
+      if(onlyOddEvents  && evi % 2 == 0) continue;
 
       em->getEvent(evi); // load event info from eventMap
       if(g_pfTree) g_pfTree->GetEntry(evi);

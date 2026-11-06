@@ -318,7 +318,15 @@ inline int caloJetBHadronNumber(int idx, eventMap *em)
 void PYTHIA_scan(TString inputFile, TString outputFile); // forward declaration
 
 // standalone entry point: PYTHIA_scan(N) reads forest N from the list and writes to EOS
-void PYTHIA_scan(int group = 1){
+// parity (2026-11-06): -1 = onlyEvenEvents / onlyOddEvents from the config; 0 = even-indexed events
+// only, 1 = odd only, overriding it. The two halves are statistically independent template and
+// pseudo-data samples for the b-purity closure; _evenEvents / _oddEvents in the output name.
+void PYTHIA_scan(int group = 1, int parity = -1){
+
+  if(parity == 0){ onlyEvenEvents = true;  onlyOddEvents = false; }
+  else if(parity == 1){ onlyEvenEvents = false; onlyOddEvents = true; }
+  else if(parity != -1){ std::cout << "\033[1;31m parity must be -1 (config), 0 (even) or 1 (odd) \033[0m" << std::endl; return; }
+  if(onlyEvenEvents && onlyOddEvents){ std::cout << "\033[1;31m onlyEvenEvents and onlyOddEvents are both set \033[0m" << std::endl; return; }
 
   // full HiForest, not the skims -- the same list PYTHIA_skim_simple.C read from
   std::string inputFileList = "../../../fileNames/fileNames_PYTHIA_DiJet_withGS.txt";
@@ -876,6 +884,8 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
   for(int evi = 0; evi < NEvents ; evi++){
     
     if(evi==0) cout << "Processing events..." << endl;
+    if(onlyEvenEvents && evi % 2 == 1) continue;   // event parity, see PYTHIA_scan(int, int)
+    if(onlyOddEvents  && evi % 2 == 0) continue;
     
     em->getEvent(evi);
     if(g_pfTree) g_pfTree->GetEntry(evi);

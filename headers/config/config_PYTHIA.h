@@ -85,9 +85,9 @@ bool applyMu12TriggerEfficiencyCorrection = false;
 bool applyMu5Jet30Trigger = false;
 bool applyMu5Jet40Trigger = false;
 bool applyMu5Jet60Trigger = false;
-bool fillMu5 = true;
+bool fillMu5 = false;
 bool fillMu7 = false;
-bool fillMu12 = false;
+bool fillMu12 = true;    // 2026-11-06: back to mu12 (the nominal templates) for the even / odd template scans
 // jet mods
 bool useCaloJetsOverride = false;
 bool useManualJEC = true;
@@ -102,8 +102,9 @@ bool requireCaloJetMatch = false;
 // src/calculateBJetsPerZ/reverseUnfoldReweight_PF_pp.C). Adds
 // _leadMuTagEventReweight to the response file name.
 bool doLeadMuTagEventReweight = false;   // off: template and ptRel x muon pT scans must not carry it; the reverse unfolding (nominal since late 2026-10-09) is done offline
-// for the response scan: keep only even- or odd-indexed events, giving the two
-// statistically independent halves unfoldClosureTest.C trains and tests on
+// keep only even- or odd-indexed events, giving two statistically independent halves:
+// the response scan (unfoldClosureTest.C) and, since 2026-11-06, PYTHIA_scan.C (b-purity
+// closure; set per job by PYTHIA_scan's parity argument, condor_PYTHIA_scan.py even|odd)
 bool onlyEvenEvents = false;
 bool onlyOddEvents = false;
 // response scan: fill only jets whose jet-branch muon (mupt/mueta, no

@@ -122,7 +122,8 @@ bool useManualJEC = true;
 bool requireCaloJetMatch = false;
 // for response scan. The PbPb b-jet unfolding needs BOTH halves (even + odd
 // summed for the nominal response, split for the closure test): run once with
-// onlyEvenEvents, then again with onlyOddEvents.
+// onlyEvenEvents, then again with onlyOddEvents. Since 2026-11-06 also PYTHIAHYDJET_scan.C (b-purity
+// closure; set per job by its parity argument, condor_PYTHIAHYDJET_scan_pThat30_series.py even|odd).
 bool onlyEvenEvents = false;
 bool onlyOddEvents = false;
 // response scan: fill only jets whose jet-branch muon (mupt/mueta, no

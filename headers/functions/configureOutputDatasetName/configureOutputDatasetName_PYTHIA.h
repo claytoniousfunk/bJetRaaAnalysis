@@ -67,6 +67,10 @@ TString configureOutputDatasetName(TString generator,
   // jet pT from the JEC text files rather than the forest jtpt
   if(useManualJEC) result.Append("_manualJEC");
   if(requireCaloJetMatch) result.Append("_caloJetMatched");
+  // event parity (2026-11-06): even- / odd-indexed events only, for statistically independent
+  // template / pseudo-data halves (b-purity closure); onlyEvenEvents / onlyOddEvents
+  if(onlyEvenEvents) result.Append("_evenEvents");
+  if(onlyOddEvents) result.Append("_oddEvents");
   if(doPThatWeight) result.Append(Form("_pThat-%2.0f",pThat));
   else result.Append("_pThat-unweighted");
 
