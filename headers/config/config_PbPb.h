@@ -33,8 +33,8 @@ bool apply_JER_smear = false;
 bool apply_JEU_shift_up = false;
 bool apply_JEU_shift_down = false;
 // select dataset
-bool doSingleMuonSample = false;
-bool doMinBiasSample_Part1 = true;   // 2026-10-29: PbPb_pfCandAnalyzer same-event forest-CS scan
+bool doSingleMuonSample = true;     // 2026-11-06: PbPb_pfCandAnalyzer mixed-event forest-CS scan on SingleMuon (uncorrelated muon-jet pairs)
+bool doMinBiasSample_Part1 = false;  // 2026-10-29: PbPb_pfCandAnalyzer same- and mixed-event forest-CS MinBias scans
 bool doMinBiasSample_Part2 = false;
 bool doMinBiasSample_Part3 = false;
 bool doMinBiasSample_Part4 = false;

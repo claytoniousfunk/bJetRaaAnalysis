@@ -15,6 +15,8 @@
 // mixed-event for the fake-jet rate of the tower-subtracted calo jets.
 // 2026-10-29: same-event, for the forest akCs4PF emulation (doForestCSJets);
 // then mixed-event, for the combinatorial rate of those jets.
+// 2026-11-06: mixed-event on SingleMuon (doSingleMuonSample), for the uncorrelated
+// muon-jet pairs: h_csJetMuon{PtRel,DR}_csJetPt_C<i>, trigger-gated (divide by h_vz_triggerOn).
 bool doEventMixing = true;
 
 bool doFastJetClustering = true;      // true = run anti-kT R=0.4 on PF candidates via FastJet (requires -DDO_FASTJET at compile time)

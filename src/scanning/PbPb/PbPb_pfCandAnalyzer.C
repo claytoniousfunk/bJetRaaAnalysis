@@ -387,7 +387,10 @@ void PbPb_pfCandAnalyzer(int group = 1){
   }
 
   std::string inputFileList = "";
-  if(doSingleMuonSample) inputFileList = "../../../fileNames/fileNames_HISingleMuon_withPFCandidates_partial.txt";
+  // 2026-11-06: SingleMuon reads the September withCaloAndFlowJets_withPFAndTowers_fresh
+  // production (CRAB 260926, 1971 files, the full dataset), the SingleMuon twin of the MinBias
+  // forest above; it carries pfM for doForestCSJets. The August withPFCandidates list was partial.
+  if(doSingleMuonSample) inputFileList = "../../../fileNames/fileNames_HISingleMuon_withCaloAndFlowJets_withPFAndTowers_fresh.txt";
   else if(doMinBiasSample_Part1) inputFileList = "../../../fileNames/fileNames_HIMinimumBias0_Part1_withCaloAndFlowJets_withPFAndTowers_fresh.txt";
   else if(doHardProbesSample) {
     inputFileList = "";
