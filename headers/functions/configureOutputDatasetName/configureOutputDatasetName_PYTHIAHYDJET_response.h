@@ -61,8 +61,9 @@ TString configureOutputDatasetName(TString generator,
   TString result = "output";
   result.Append(Form("_%s_response",generator.Data()));
 
-  TString datasetIndicator = "";
-  datasetIndicator = "_DiJet";
+  TString datasetIndicator = "_DiJet";
+  if(doMuJetSample) datasetIndicator = "_MuJet";
+  else if(doBJetSample) datasetIndicator = "_BJet";
   result.Append(datasetIndicator);
 
   if(useCaloJetsOverride) result.Append("_caloJets");

@@ -208,12 +208,27 @@ double distTiltWeight(double genPt, double expo){
 // 0 = even events only, 1 = odd only, overriding the config. Lets the two halves
 // for a closure test be queued from one checkout
 // (condor_PYTHIAHYDJET_response.py even|odd, which passes it via macro_args).
-void PYTHIAHYDJET_scan_response(int group = 1, int parity = -1){
+// sample (2026-11-11): 0 = the config's doDiJetSample / doMuJetSample / doBJetSample;
+// 1 = DiJet, 2 = MuJet, 3 = BJet, overriding it (same numbering as PYTHIAHYDJET_scan.C).
+// The MuJet / BJet responses add muon-tagged b jets to the DiJet one; each sample keeps
+// its own forest pThat weight, so they are combined offline (per gen column), not hadded.
+void PYTHIAHYDJET_scan_response(int group = 1, int parity = -1, int sample = 0){
 
   if(parity == 0){ onlyEvenEvents = true;  onlyOddEvents = false; }
   else if(parity == 1){ onlyEvenEvents = false; onlyOddEvents = true; }
   else if(parity != -1){ std::cout << "\033[1;31m parity must be -1 (config), 0 (even) or 1 (odd) \033[0m" << std::endl; return; }
   if(onlyEvenEvents && onlyOddEvents){ std::cout << "\033[1;31m onlyEvenEvents and onlyOddEvents are both set \033[0m" << std::endl; return; }
+
+  if(sample < 0 || sample > 3){ std::cout << "\033[1;31m sample must be 0 (config), 1 (DiJet), 2 (MuJet) or 3 (BJet) \033[0m" << std::endl; return; }
+  if(sample > 0){
+    doDiJetSample = (sample == 1);
+    doMuJetSample = (sample == 2);
+    doBJetSample  = (sample == 3);
+  }
+  if((int)doDiJetSample + (int)doMuJetSample + (int)doBJetSample != 1){
+    std::cout << "\033[1;31m exactly one of doDiJetSample / doMuJetSample / doBJetSample must be set \033[0m" << std::endl;
+    return;
+  }
 
   std::cout << "setting pthat cut to 15...\n";
   pthatcut = 15.;
@@ -233,8 +248,12 @@ void PYTHIAHYDJET_scan_response(int group = 1, int parity = -1){
   // inputFileName = "PYTHIAHYDJET_DiJet_skim_output";
   // TString input = Form("%s%s_%i.root",inputDataset.Data(),inputFileName.Data(),group);
 
+  // the 2026-09-21 fix2 forests, one production for all three samples (calo + flow
+  // jet trees, gen particles), the lists PYTHIAHYDJET_scan.C reads
   std::string inputFileList = "";
-  inputFileList = "../../../fileNames/fileNames_PH_DiJet_withCaloAndFlowJets_fix2.txt";
+  if(doDiJetSample)      inputFileList = "../../../fileNames/fileNames_PH_DiJet_withCaloAndFlowJets_fix2.txt";
+  else if(doMuJetSample) inputFileList = "../../../fileNames/fileNames_PH_MuJet_withCaloAndFlowJets_fix2.txt";
+  else if(doBJetSample)  inputFileList = "../../../fileNames/fileNames_PH_BJet_withCaloAndFlowJets_fix2.txt";
 
   TString outputBaseDir = "/eos/cms/store/group/phys_heavyions/cbennett/scanningOutput/";
 
