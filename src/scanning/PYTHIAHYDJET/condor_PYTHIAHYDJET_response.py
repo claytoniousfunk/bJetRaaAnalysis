@@ -46,7 +46,7 @@ def submit(macro_args, jobname):
         time_flavour = 'workday',  # 8h
         nsplit = 5,                # input files per condor job
         njobs_max = None,          # e.g. 1 for a trial run
-        auto_submit = False,       # trial-run script_0.sh first; this scan books ~4x more histograms under ultraFine
+        auto_submit = True,        # submits on run; set False to trial-run script_0.sh first (this scan books ~4x more histograms under ultraFine)
         macro_args = macro_args
     )
 
