@@ -38,7 +38,8 @@ TString configureOutputDatasetName(TString generator,
 				   bool onlyOddEvents,
 				   bool onlyMuTaggedJets,
 				   bool requireCaloJetMatch = false,
-				   bool doLeadMuTagEventReweight = false)
+				   bool doLeadMuTagEventReweight = false,
+				   bool useAnalysisMuonTag = false)
 {
 
   TString result = "output";
@@ -58,6 +59,9 @@ TString configureOutputDatasetName(TString generator,
   if(requireCaloJetMatch) result.Append("_caloJetMatched");
   // response filled from muon-tagged jets only
   if(onlyMuTaggedJets) result.Append("_muTaggedJets");
+  // muon tag = the analysis reco-muon tag (muon tree, tight, W veto, one jet per
+  // muon), not the jet branch's own muon (as the PYTHIAHYDJET response name)
+  if(useAnalysisMuonTag) result.Append("_anaMuTag");
   // half-sample outputs for the closure test
   if(onlyEvenEvents) result.Append("_evenEvents");
   if(onlyOddEvents)  result.Append("_oddEvents");

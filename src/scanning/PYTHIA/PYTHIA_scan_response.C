@@ -105,6 +105,20 @@ TF1 *fitFxn_hiBin, *fitFxn_vz, *fitFxn_jetPt, *fitFxn_PYTHIA_JESb, *fitFxn_PYTHI
 // calo-jet match jet ID for PF jets (config_PYTHIA.h: requireCaloJetMatch)
 #include "../scan_calo_jet_match.h"
 
+// ---- muon tag (2026-11-11, user; the pp side of PYTHIAHYDJET_scan_response.C's 2026-10-04 switch) ----------
+// true: a jet is muon-tagged with the ANALYSIS reco-muon tag of PYTHIA_scan.C and pp_scan.C -- a muon-tree muon
+// passing passesRecoMuonCuts (tight ID for mu12, hybridSoft for mu5 / mu7; muPtCut < pT < muPtMaxCut; |eta| < 2),
+// not a W-decay muon (doWDecayFilter, muon pT / jet pT > 0.75), within epsilon_mm of the reco jet axis, each muon
+// used by one jet only (matchFlagR), the jets taken in forest order after PYTHIA_scan.C's reco selection (calo-match
+// ID, jetTrkMax filter, eta-phi mask, |eta| < etaMax, pT > jetPtCut). That is the tag of the data and the templates.
+// false: the jet branch's own muon (mupt / mueta of the jet tree), with no ID, no W veto and no one-muon-per-jet rule
+// -- what every pp response before 2026-11-11 used, including the 2026-02-18 one the PF chain reads. The MC closure
+// of the chain (src/calculateBJetsPerZ/mcClosureBJetFraction_PF.C) showed that tag gives a response truth and tag
+// frequency 3.5-7% larger than the analysis-tagged population, so the b fraction came out low by that much.
+// Tagged _anaMuTag in the output name.
+bool   useAnalysisMuonTag    = true;
+#include "../scan_mc_muon_tag.h"
+
 
 // Flavor for calo jets, identical to PYTHIA_scan.C. ak4CaloJetAnalyzer/t has no
 // jtPartonFlavor, jtHadronFlavor or bHadronNumber, so calo jets fall back to
@@ -194,7 +208,14 @@ double distTiltWeight(double genPt, double expo){
   return TMath::Power(x/kDistTiltPtRef, expo);
 }
 
-void PYTHIA_scan_response(int group = 1){
+// parity (2026-11-11, as PYTHIAHYDJET_scan_response.C): -1 = onlyEvenEvents / onlyOddEvents from config_PYTHIA.h;
+// 0 = even events only, 1 = odd only, overriding the config. Lets the two halves for a closure test be queued from
+// one checkout (condor_PYTHIA_response.py even|odd, which passes it via macro_args).
+void PYTHIA_scan_response(int group = 1, int parity = -1){
+
+  if(parity == 0){ onlyEvenEvents = true;  onlyOddEvents = false; }
+  else if(parity == 1){ onlyEvenEvents = false; onlyOddEvents = true; }
+  else if(parity != -1){ std::cout << "\033[1;31m parity must be -1 (config), 0 (even) or 1 (odd) \033[0m" << std::endl; return; }
 
   std::cout << "setting pthat cut to 15...\n";
   pthatcut = 15.;
@@ -284,9 +305,10 @@ void PYTHIA_scan_response(int group = 1){
 						 onlyOddEvents,
 						 onlyMuTaggedJets,
 						 requireCaloJetMatch,
-						 doLeadMuTagEventReweight);
-  // the name builder always writes _mu12_pTmu-<cut>_tight; name the mu5 / mu7 window instead (the tag is the
-  // jet-branch muon, no muon ID)
+						 doLeadMuTagEventReweight,
+						 useAnalysisMuonTag);
+  // the name builder always writes _mu12_pTmu-<cut>_tight; name the mu5 / mu7 window instead (with the jet-branch
+  // muon there is no muon ID; with useAnalysisMuonTag the mu5 / mu7 ID is hybridSoft, as PYTHIA_scan.C)
   if(!fillMu12) outputDatasetName.ReplaceAll(Form("_mu12_pTmu-%2.0f_tight",muPtCut), Form("_%s_pTmu-%.0fto%.0f", fillMu5 ? "mu5" : "mu7", muPtCut, muPtMaxCut));
 
   //outputDatasetName.Append("_noNeutrinoInfo");
@@ -606,6 +628,7 @@ void PYTHIA_scan_response(int group = 1){
   };
   cout << "	Loading muon..." << endl;
   em->loadMuon("ggHiNtuplizerGED/EventTree");
+  cout << "	muon tag: " << (useAnalysisMuonTag ? "ANALYSIS reco muon (muon tree, ID, W veto, one jet per muon)" : "jet-branch muon (no ID)") << endl;
   cout << "	Loading muon triggers..." << endl;
   em->loadHLT("hltanalysis/HltTree");
   cout << "	Loading gen particles..." << endl;
@@ -729,10 +752,39 @@ void PYTHIA_scan_response(int group = 1){
 
 
 
+    // ANALYSIS MUON TAG PRE-PASS (useAnalysisMuonTag): every reco jet in forest order with PYTHIA_scan.C's reco
+    // selection ahead of its muon loop, so the muons are consumed by the same jets there and here. recoTag_v is
+    // read by the event weight below and by the gen-jet loop's matched reco jet; a jet outside the selection is
+    // never tagged (the data never see it), though it can still be the matched reco jet of a gen jet.
+    std::vector<int>  matchFlagR(useAnalysisMuonTag && em->nMu > 0 ? em->nMu : 1, 0);
+    std::vector<char> recoTag_v(em->njet > 0 ? em->njet : 1, 0);
+    if(useAnalysisMuonTag){
+      for(int i = 0; i < em->njet; i++){
+	if(failsCaloJetMatch(i)) continue;
+	JEC.SetJetPT(em->rawpt[i]);
+	JEC.SetJetEta(em->jeteta[i]);
+	JEC.SetJetPhi(em->jetphi[i]);
+	double pt_i = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[i];
+	const double eta_i = em->jeteta[i], phi_i = em->jetphi[i];
+	if(doJetTrkMaxFilter && !passesJetTrkMaxFilter(em->jetTrkMax[i], pt_i)) continue;
+	if(doEtaPhiMask && etaPhiMask(eta_i, phi_i)) continue;
+	if(doJESCorrection) pt_i = pt_i * fxn_JES_Corr->Eval(pt_i);
+	if(TMath::Abs(eta_i) > etaMax || pt_i < jetPtCut) continue;
+	for(int m = 0; m < em->nMu; m++){
+	  if(!passesRecoMuonCuts(em, m, matchFlagR.data())) continue;
+	  if(doWDecayFilter && isWDecayMuon(em->muPt->at(m), pt_i)) continue;
+	  if(getDr(em->muEta->at(m), em->muPhi->at(m), eta_i, phi_i) < epsilon_mm){ matchFlagR[m] = 1; recoTag_v[i] = 1; }
+	}
+      }
+    }
+    auto jetIsMuTagged = [&](int k){
+      return useAnalysisMuonTag ? (bool) recoTag_v[k] : (em->mupt[k] > muPtCut && em->mupt[k] < muPtMaxCut && fabs(em->mueta[k]) < 2.);
+    };
+
     // "reverse unfolding" EVENT weight (doLeadMuTagEventReweight): the pp b-jet
     // data / PYTHIA reco ratio at the leading muon-tagged reco jet's pT
     // (headers/fitParameters/leadMuTagEventWeight_PYTHIA_PF.h). Muon tag = the
-    // jet-branch muon of the response fills below (hasRecoJetMuon); reco jets as
+    // muon tag of the response fills below (jetIsMuTagged); reco jets as
     // the reco loop below sees them (calo-match ID, |eta| < 1.6) plus pT > jetPtCut.
     // Fakes count too, since the data cannot tell them apart. Computed ahead of
     // every fill, so all histograms of the event carry it; events with no tagged
@@ -742,7 +794,7 @@ void PYTHIA_scan_response(int group = 1){
       for(int i = 0; i < em->njet; i++){
 	if(failsCaloJetMatch(i)) continue;
 	if(fabs(em->jeteta[i]) > 1.6) continue;
-	if(!(em->mupt[i] > muPtCut && em->mupt[i] < muPtMaxCut && fabs(em->mueta[i]) < 2.)) continue;
+	if(!jetIsMuTagged(i)) continue;
 	JEC.SetJetPT(em->rawpt[i]);
 	JEC.SetJetEta(em->jeteta[i]);
 	JEC.SetJetPhi(em->jetphi[i]);
@@ -886,7 +938,7 @@ void PYTHIA_scan_response(int group = 1){
 
 	    // assigned, not latched: a closer jet found later replaces this match,
 	    // so its muon status must replace this one's too
-	    hasRecoJetMuon = (em->mupt[k] > muPtCut && em->mupt[k] < muPtMaxCut && fabs(em->mueta[k]) < 2.);
+	    hasRecoJetMuon = jetIsMuTagged(k);
 	    //if(em->mupt[k] > 7.0 && em->mupt[k] < 14.0) hasRecoJetMuon = true;
 
 	    JEC.SetJetPT(em->rawpt[k]);
