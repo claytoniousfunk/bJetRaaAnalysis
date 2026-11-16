@@ -46,6 +46,12 @@ bool doWithRhoModificationSample = false;
 // akCs4PF / akPu4Calo). Additive: no existing histogram changes, so the output name is unchanged.
 // ~0.84 MB per map in memory, NCentralityIndices maps (~16 MB ultraFine). 2026-10-24.
 bool doCSVv2Map = true;
+// The same map with the DeepCSV discriminant (discr_deepCSV, eventMap::loadDeepCSV), a cross-check of the CSVv2 purity
+// fits (2026-11-16, user). Booked NEXT TO the CSVv2 map, same jets, weights and axes (first z bin [-2, 0) = jets the tagger
+// did not evaluate, stored as -1), names h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[_<flavor>]_C<i>. Additive: the
+// output name is unchanged. ~16 MB ultraFine. If the forest has no discr_deepCSV branch the scan prints so and every jet
+// lands in the underflow (-99).
+bool doDeepCSVMap = true;
 // System8 maps for a data measurement of the CSVv2 b-tag efficiency (headers/AnalysisSetup/system8.h:
 // away jet = leading other jet, |eta| < 1.6, pT > 30 GeV, |dphi| > 2.5, tagged if CSVv2 > 0.84; maps in CSVv2
 // working-point categories). Additive: no existing histogram changes, output name unchanged. 2026-10-26.

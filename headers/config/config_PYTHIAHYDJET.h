@@ -60,6 +60,12 @@ bool doTrackPtRelHists = false;
 // NCentralityIndices x kNJetFlavors maps (~140 MB with the ultraFine scheme).
 // CSVv2 replaced DeepCSV on 2026-10-24 (the tagger of the CMS b-jet shapes analyses).
 bool doCSVv2Map = true;
+// The same map with the DeepCSV discriminant (discr_deepCSV, eventMap::loadDeepCSV), a cross-check of the CSVv2 purity
+// fits (2026-11-16, user). Booked NEXT TO the CSVv2 map, same jets, weights and axes (first z bin [-2, 0) = jets the tagger
+// did not evaluate, stored as -1), names h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[_<flavor>]_C<i>. Additive: the
+// output name is unchanged. ~140 MB more with the ultraFine scheme: check the condor memory request. If the forest has no discr_deepCSV branch the scan prints so and every jet
+// lands in the underflow (-99).
+bool doDeepCSVMap = true;
 // System8 maps for a data measurement of the CSVv2 b-tag efficiency (headers/AnalysisSetup/system8.h:
 // away jet = leading other jet, |eta| < 1.6, pT > 30 GeV, |dphi| > 2.5, tagged if CSVv2 > 0.84; maps in CSVv2
 // working-point categories). Additive: no existing histogram changes, output name unchanged. 2026-10-26.
