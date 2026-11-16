@@ -60,7 +60,10 @@ const char *h2 = "h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn";
 const int NW = 5;
 const double wLo[NW] = {80., 100., 120., 150., 200.}, wHi[NW] = {100., 120., 150., 200., 300.};
 const int NPR = 10;                    // ptRel 0.5 GeV over 0-5 GeV
-const int KMAX = 8;
+#ifndef P2D_KMAX
+#define P2D_KMAX 8                     // array size only; fitPtRelCSVv2_fineSurface_ppPbPb_PF.C raises it before including this file
+#endif
+const int KMAX = P2D_KMAX;
 int K = 4;
 double catUp[KMAX];                    // upper CSVv2 edge of each category (category 0 also holds "not evaluated")
 const int NF = 3;                      // b, c, light
