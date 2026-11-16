@@ -916,6 +916,10 @@ void PbPb_scan(int group = 1){
       if(CentralityIndex < 0) continue;
 
       // apply min-bias trigger if activated in config
+      // WARNING (2026-11-09): in the 2018 PbPb DATA forests the SinglePixelTrack_NpixBypass paths
+      // are not in the menu (-1 in every event), so this gate rejects nothing there; the real
+      // MinBias paths are HLT_HIMinimumBias_part0..19_v1 (not loaded by eventMap). Off in every
+      // config; harmless only because every MinBias-PD event fired one of those paths.
       if(applyMinBiasTrigger){
 	if(em->HLT_HIMinimumBias_SinglePixelTrack_NpixBypass_part1_v1 == 0 &&
 	   em->HLT_HIMinimumBias_SinglePixelTrack_NpixBypass_part2_v1 == 0 &&
@@ -1001,13 +1005,13 @@ void PbPb_scan(int group = 1){
     
       // apply jet-trigger if activated in config
       if(applyJet60Trigger){
-	if(em->HLT_HICsAK4PFJet60Eta1p5_v1 == 0) continue;
+	if(em->HLT_HICsAK4PFJet60Eta1p5_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
       }
       if(applyJet80Trigger){
-	if(em->HLT_HICsAK4PFJet80Eta1p5_v1 == 0) continue;
+	if(em->HLT_HICsAK4PFJet80Eta1p5_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
       }
       if(applyJet100Trigger){
-	if(em->HLT_HICsAK4PFJet100Eta1p5_v1 == 0) continue;
+	if(em->HLT_HICsAK4PFJet100Eta1p5_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
       }
 
       // MUON TRIGGER EFFICIENCY: after every event-level cut, before any jet
@@ -1335,11 +1339,11 @@ void PbPb_scan(int group = 1){
 	    h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[0]->Fill(muPtRel,muPt,x,w_trig);
 	    h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muPtRel,muPt,x,w_trig);
 	    if(doCSVv2Map){ h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[0]->Fill(muPtRel,x,em->disc_csvV2[i],w_trig); h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muPtRel,x,em->disc_csvV2[i],w_trig); }
+	    if(doDeepCSVMap){ h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[0]->Fill(muPtRel,x,em->disc_deepCSV[i],w_trig); h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muPtRel,x,em->disc_deepCSV[i],w_trig); }
 	    if(doSystem8Maps){ const int s8 = s8AwayState(em, i); for(int ci : {0, CentralityIndex}){ if(s8 > 0) h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[ci]->Fill(muPtRel,x,em->disc_csvV2[i],w_trig); if(s8 > 1) h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[ci]->Fill(muPtRel,x,em->disc_csvV2[i],w_trig); } }
 	    if(doMuonIP3DMaps){ const double lip = muLnIP3D(em, muIdx); for(int ci : {0, CentralityIndex}){ h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[ci]->Fill(lip,x,em->disc_csvV2[i],w_trig); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[ci]->Fill(muPtRel,lip,x,w_trig); } }
 	    h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muPt,x,w_trig);
 	    h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muEta,x,w_trig);
-	    if(doDeepCSVMap){ h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[0]->Fill(muPtRel,x,em->disc_deepCSV[i],w_trig); h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muPtRel,x,em->disc_deepCSV[i],w_trig); }
 	    h_muphi_recoJetPt_inclRecoMuonTag_triggerOn[CentralityIndex]->Fill(muPhi,x,w_trig);
 	    h_muJetDr_recoJetPt[CentralityIndex]->Fill(muJetDr,x,w_trig);
 
@@ -1689,11 +1693,11 @@ void PbPb_scan(int group = 1){
       h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
       h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
       if(doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i]->Write();
+      if(doDeepCSVMap) h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[i]->Write();
       if(doSystem8Maps){ h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i]->Write(); h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i]->Write(); }
       if(doMuonIP3DMaps){ h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i]->Write(); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write(); }
       h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
       h_mueta_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
-      if(doDeepCSVMap) h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[i]->Write();
       h_muphi_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
       h_muJetDr_recoJetPt[i]->Write();
       h_Jet60HLT[i]->Write();

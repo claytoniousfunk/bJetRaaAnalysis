@@ -1373,6 +1373,10 @@ void PbPb_caloTowerAnalyzer(int group = 1,
       if(CentralityIndex < 0) continue;
 
       // apply min-bias trigger if activated in config
+      // WARNING (2026-11-09): in the 2018 PbPb DATA forests the SinglePixelTrack_NpixBypass paths
+      // are not in the menu (-1 in every event), so this gate rejects nothing there; the real
+      // MinBias paths are HLT_HIMinimumBias_part0..19_v1 (not loaded by eventMap). Off in every
+      // config; harmless only because every MinBias-PD event fired one of those paths.
       if(applyMinBiasTrigger){
 	if(em->HLT_HIMinimumBias_SinglePixelTrack_NpixBypass_part1_v1 == 0 &&
 	   em->HLT_HIMinimumBias_SinglePixelTrack_NpixBypass_part2_v1 == 0 &&
@@ -1498,13 +1502,13 @@ void PbPb_caloTowerAnalyzer(int group = 1,
     
       // apply jet-trigger if activated in config
       if(applyJet60Trigger){
-	if(em->HLT_HICsAK4PFJet60Eta1p5_v1 == 0) continue;
+	if(em->HLT_HICsAK4PFJet60Eta1p5_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
       }
       if(applyJet80Trigger){
-	if(em->HLT_HICsAK4PFJet80Eta1p5_v1 == 0) continue;
+	if(em->HLT_HICsAK4PFJet80Eta1p5_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
       }
       if(applyJet100Trigger){
-	if(em->HLT_HICsAK4PFJet100Eta1p5_v1 == 0) continue;
+	if(em->HLT_HICsAK4PFJet100Eta1p5_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
       }
 
  

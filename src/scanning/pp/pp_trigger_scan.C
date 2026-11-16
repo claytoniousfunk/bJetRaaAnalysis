@@ -423,7 +423,7 @@ void pp_trigger_scan(int group = 1){
     if(fabs(em->vz) > 15.0 || em->hiBin > 180) continue;
     if(em->checkEventFilter()) continue;
     // apply jet60
-    if(em->HLT_HIAK4PFJet60_v1 == 0) continue;        
+    if(em->HLT_HIAK4PFJet60_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu        
     
 
     // int triggerDecision = em->HLT_HIL3Mu5_NHitQ10_v1;

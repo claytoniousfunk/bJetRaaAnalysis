@@ -401,9 +401,9 @@ void PYTHIA_jetTrkMax_scan(int group = 1){
     if(em->checkEventFilter()) continue;
     //cout << "Event #" << evi << " passed the global cuts!" << endl;
 
-    //if(em->HLT_HIAK4PFJet60_v1 == 0) continue;
-    //if(em->HLT_HIAK4PFJet80_v1 == 0) continue;
-    //if(em->HLT_HIAK4PFJet100_v1 == 0) continue;
+    //if(em->HLT_HIAK4PFJet60_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
+    //if(em->HLT_HIAK4PFJet80_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
+    //if(em->HLT_HIAK4PFJet100_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
     
     double w_reweight_vz = 1.0;
     if(doVzReweight){

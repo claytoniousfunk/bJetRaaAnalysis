@@ -797,11 +797,11 @@ void PYTHIAHYDJET_scan_response(int group = 1, int parity = -1, int sample = 0){
       //cout << "Event #" << evi << " passed the global cuts!" << endl;
 
       if(applyJet60Trigger){
-	if(em->HLT_HICsAK4PFJet60Eta1p5_v1 == 0) continue;
+	if(em->HLT_HICsAK4PFJet60Eta1p5_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
       }
       if(applyJet80Trigger){
 	//std::cout << "jet80 (event "<< evi << ") = " << em->HLT_HICsAK4PFJet80Eta1p5_v1 << std::endl;
-	if(em->HLT_HICsAK4PFJet80Eta1p5_v1 == 0) continue;
+	if(em->HLT_HICsAK4PFJet80Eta1p5_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
       }
 
       // apply HLT

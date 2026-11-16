@@ -1469,10 +1469,10 @@ void HYDJET_pfCandAnalyzer(int group = 1){
 
       
       if(applyJet60Trigger){
-	if(em->HLT_HICsAK4PFJet60Eta1p5_v1 == 0) continue;
+	if(em->HLT_HICsAK4PFJet60Eta1p5_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
       }
       if(applyJet80Trigger){
-	if(em->HLT_HICsAK4PFJet80Eta1p5_v1 == 0) continue;
+	if(em->HLT_HICsAK4PFJet80Eta1p5_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
       }
 
       // calculate event weight

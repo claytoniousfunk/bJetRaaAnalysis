@@ -202,9 +202,9 @@ void pp_jetTrkMax_scan(int group = 1){
 
     // event filters
 
-    if(em->HLT_HIAK4PFJet60_v1 == 0) continue;
-    //if(em->HLT_HIAK4PFJet80_v1 == 0) continue;
-    //if(em->HLT_HIAK4PFJet100_v1 == 0) continue;
+    if(em->HLT_HIAK4PFJet60_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
+    //if(em->HLT_HIAK4PFJet80_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
+    //if(em->HLT_HIAK4PFJet100_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
 
     // In data, event weight = 1
     double w = 1.0;

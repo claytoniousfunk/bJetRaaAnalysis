@@ -830,50 +830,50 @@ void pp_scan(TString inputFile, TString outputFile){
       // apply trigger if activated in config
       if(applyJet15Trigger){
 	if(useCaloJetsOverride){
-	  if(em->HLT_HIAK4CaloJet15_v1 == 0) continue;
+	  if(em->HLT_HIAK4CaloJet15_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
 	}
 	else{
-	  if(em->HLT_HIAK4PFJet15_v1 == 0) continue;
+	  if(em->HLT_HIAK4PFJet15_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
 	}
       }
       if(applyJet30Trigger){
 	if(useCaloJetsOverride){
-	  if(em->HLT_HIAK4CaloJet30_v1 == 0) continue;
+	  if(em->HLT_HIAK4CaloJet30_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
 	}
 	else{
-	  if(em->HLT_HIAK4PFJet30_v1 == 0) continue;
+	  if(em->HLT_HIAK4PFJet30_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
 	}
       }
       if(applyJet40Trigger){
 	if(useCaloJetsOverride){
-	  if(em->HLT_HIAK4CaloJet40_v1 == 0) continue;
+	  if(em->HLT_HIAK4CaloJet40_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
 	}
 	else{
-	  if(em->HLT_HIAK4PFJet40_v1 == 0) continue;
+	  if(em->HLT_HIAK4PFJet40_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
 	}
       }
       if(applyJet60Trigger){
 	if(useCaloJetsOverride){
-	  if(em->HLT_HIAK4CaloJet60_v1 == 0) continue;
+	  if(em->HLT_HIAK4CaloJet60_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
 	}
 	else{
-	  if(em->HLT_HIAK4PFJet60_v1 == 0) continue;
+	  if(em->HLT_HIAK4PFJet60_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
 	}
       }
       if(applyJet80Trigger){
 	if(useCaloJetsOverride){
-	  if(em->HLT_HIAK4CaloJet80_v1 == 0) continue;
+	  if(em->HLT_HIAK4CaloJet80_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
 	}
 	else{
-	  if(em->HLT_HIAK4PFJet80_v1 == 0) continue;
+	  if(em->HLT_HIAK4PFJet80_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
 	}
       }
       if(applyJet100Trigger){
 	if(useCaloJetsOverride){
-	  if(em->HLT_HIAK4CaloJet100_v1 == 0) continue;
+	  if(em->HLT_HIAK4CaloJet100_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
 	}
 	else{
-	  if(em->HLT_HIAK4PFJet100_v1 == 0) continue;
+	  if(em->HLT_HIAK4PFJet100_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
 	}
       }
       if(applyAntiMu5Jet30Trigger){

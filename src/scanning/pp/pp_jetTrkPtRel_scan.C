@@ -144,7 +144,7 @@ void pp_jetTrkPtRel_scan(int group = 1){
     em->getEvent(evi);
     if(fabs(em->vz) > 15.0) continue;
     if(em->checkEventFilter()) continue;
-    if(em->HLT_HIAK4PFJet60_v1 == 0) continue;
+    if(em->HLT_HIAK4PFJet60_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
     nEvt++;
 
     const double w = 1.0;   // data

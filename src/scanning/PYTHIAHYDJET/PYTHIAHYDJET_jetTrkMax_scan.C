@@ -418,10 +418,10 @@ void PYTHIAHYDJET_jetTrkMax_scan(int group = 1){
     if(em->hiHF > 6000) continue;
     
     // apply HLT
-    // if(em->HLT_HICsAK4PFJet60Eta1p5_v1 == 0) continue;
+    // if(em->HLT_HICsAK4PFJet60Eta1p5_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
     // if(em->HLT_HICsAK4PFJet60Eta1p5_v1_Prescl < 0) continue;
 
-    // if(em->HLT_HICsAK4PFJet80Eta1p5_v1 == 0) continue;
+    // if(em->HLT_HICsAK4PFJet80Eta1p5_v1 != 1) continue; // != 1, not == 0: hltanalysis writes -1 for a path not in the menu
     // if(em->HLT_HICsAK4PFJet80Eta1p5_v1_Prescl < 0) continue;
 
     
