@@ -232,6 +232,8 @@ TH2D *h_muptrel_recoJetPt_unmatchedRecoMuonTag_triggerOn[NTemplateIndices][kNJet
 TH2D *h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[NTemplateIndices][kNJetFlavors];
 TH3D *h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[kNJetFlavors];   // ptRelMuPt3D.h, nominal jet pT only
 TH3D *h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[kNJetFlavors] = {nullptr};   // ptRelDeepCSV3D.h, nominal jet pT only, doCSVv2Map
+TH3D *h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_var[NTemplateIndices][kNJetFlavors] = {{nullptr}};   // same map at the T1 (JER) / T2, T3 (JES) jet pT, doCSVv2JetVarMaps (2026-11-17)
+TH3D *h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_even[2][kNJetFlavors] = {{nullptr}};   // T0 and T1 maps of the even-indexed events only, doCSVv2EvenOdd (2026-11-17)
 TH3D *h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[kNJetFlavors] = {nullptr};   // ptRelDeepCSV3D.h, doDeepCSVMap (2026-11-16)
 TH3D *h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[kNJetFlavors] = {nullptr}, *h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[kNJetFlavors] = {nullptr};   // system8.h, nominal jet pT, doSystem8Maps
 TH3D *h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[kNJetFlavors] = {nullptr}, *h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[kNJetFlavors] = {nullptr};   // muonIP3D.h, nominal jet pT, doMuonIP3DMaps
@@ -636,6 +638,8 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[t][f]->Sumw2();
     if(t == 0) h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[f] = bookPtRelMuPt3D(Form("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn_%s",kFlavorNames[f]), Form("muon p_{T}^{rel} x muon p_{T} x jet p_{T}, %s",kFlavorNames[f]), muPtCut);
     if(t == 0 && doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[f] = bookPtRelJetPtCSVv2_3D(Form("h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_%s",kFlavorNames[f]), Form("muon p_{T}^{rel} x jet p_{T} x CSVv2, %s",kFlavorNames[f]));
+    if(t > 0 && doCSVv2JetVarMaps) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_var[t][f] = bookPtRelJetPtCSVv2_3D(Form("h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_%s_T%i",kFlavorNames[f],t), Form("muon p_{T}^{rel} x jet p_{T} x CSVv2, %s,%s",kFlavorNames[f],templateIndexNames[t].c_str()));
+    if(t < 2 && doCSVv2EvenOdd) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_even[t][f] = bookPtRelJetPtCSVv2_3D(Form("h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_%s_T%i_even",kFlavorNames[f],t), Form("muon p_{T}^{rel} x jet p_{T} x CSVv2, %s,%s, even events",kFlavorNames[f],templateIndexNames[t].c_str()));
     if(t == 0 && doDeepCSVMap) h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[f] = bookPtRelJetPtDeepCSV3D(Form("h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn_%s",kFlavorNames[f]), Form("muon p_{T}^{rel} x jet p_{T} x DeepCSV, %s",kFlavorNames[f]));
     if(t == 0 && doMuonIP3DMaps){ h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[f] = bookMuIP3DMap(Form("h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_%s",kFlavorNames[f]), Form("muon IP3D, %s",kFlavorNames[f])); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[f] = bookMuPtRelIP3DMap(Form("h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn_%s",kFlavorNames[f]), Form("muon ptRel x IP3D, %s",kFlavorNames[f])); }
     if(t == 0 && doSystem8Maps){ h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[f] = bookS8Map(Form("h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_%s",kFlavorNames[f]), Form("System8 n, %s",kFlavorNames[f]), "CSVv2"); h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[f] = bookS8Map(Form("h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_%s",kFlavorNames[f]), Form("System8 p, %s",kFlavorNames[f]), "CSVv2"); }
@@ -1762,6 +1766,8 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 	    h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[t][kAllJets]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 	    if(t == 0) h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[kAllJets]->Fill(muPtRel_i,muPt_i,jetPtArray[t],w_jet);
 	    if(t == 0 && doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[kAllJets]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet);
+	    if(t > 0 && doCSVv2JetVarMaps) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_var[t][kAllJets]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet);
+	    if(t < 2 && doCSVv2EvenOdd && evi % 2 == 0) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_even[t][kAllJets]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet);
 	    if(t == 0 && doDeepCSVMap) h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[kAllJets]->Fill(muPtRel_i,jetPtArray[t],em->disc_deepCSV[i],w_jet);
 	    if(t == 0 && doSystem8Maps){ const int s8 = s8AwayState(em, i); if(s8 > 0) h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[kAllJets]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); if(s8 > 1) h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[kAllJets]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); }
 	    if(t == 0 && doMuonIP3DMaps){ const double lip = muLnIP3D(em, muIdx_i); h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[kAllJets]->Fill(lip,jetPtArray[t],em->disc_csvV2[i],w_jet); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[kAllJets]->Fill(muPtRel_i,lip,jetPtArray[t],w_jet); }
@@ -1777,6 +1783,8 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
 	      h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[t][fi]->Fill(muPtRel_i,jetPtArray[t],w_jet);
 	      if(t == 0) h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[fi]->Fill(muPtRel_i,muPt_i,jetPtArray[t],w_jet);
 	      if(t == 0 && doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[fi]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet);
+	      if(t > 0 && doCSVv2JetVarMaps) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_var[t][fi]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet);
+	      if(t < 2 && doCSVv2EvenOdd && evi % 2 == 0) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_even[t][fi]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet);
 	      if(t == 0 && doDeepCSVMap) h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[fi]->Fill(muPtRel_i,jetPtArray[t],em->disc_deepCSV[i],w_jet);
 	      if(t == 0 && doSystem8Maps){ const int s8 = s8AwayState(em, i); if(s8 > 0) h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[fi]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); if(s8 > 1) h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[fi]->Fill(muPtRel_i,jetPtArray[t],em->disc_csvV2[i],w_jet); }
 	      if(t == 0 && doMuonIP3DMaps){ const double lip = muLnIP3D(em, muIdx_i); h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[fi]->Fill(lip,jetPtArray[t],em->disc_csvV2[i],w_jet); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[fi]->Fill(muPtRel_i,lip,jetPtArray[t],w_jet); }
@@ -2208,6 +2216,8 @@ void PYTHIA_scan(TString inputFile, TString outputFile){
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[t][f]->Write();
     if(t == 0) h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[f]->Write();
     if(t == 0 && doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[f]->Write();
+    if(t > 0 && doCSVv2JetVarMaps) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_var[t][f]->Write();
+    if(t < 2 && doCSVv2EvenOdd) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_even[t][f]->Write();
     if(t == 0 && doDeepCSVMap) h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[f]->Write();
     if(t == 0 && doSystem8Maps){ h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[f]->Write(); h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[f]->Write(); }
     if(t == 0 && doMuonIP3DMaps){ h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[f]->Write(); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[f]->Write(); }

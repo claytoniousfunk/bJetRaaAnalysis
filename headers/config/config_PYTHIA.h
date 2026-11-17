@@ -69,6 +69,15 @@ const double axisSmearSigma[NAxisSmear] = {0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.
 // jet tree). Additive: no existing histogram changes, so the output name is unchanged.
 // CSVv2 replaced DeepCSV on 2026-10-22 (the tagger of the CMS b-jet shapes analyses).
 bool doCSVv2Map = true;
+// The same ptRel x jet pT x CSVv2 map for the b-purity JES / JER systematics of the 2D fit (2026-11-17, user: "JER for the purity
+// should only change which jets fill the templates in MC"): filled with the T1 (JER-smeared), T2 (JES up), T3 (JES down) jet pT
+// of the 1D templates, so the systematic is a refit with templates from the varied jets instead of the 1D ratio T_var / T0
+// applied to the 2D templates. Names ..._csvV2_inclRecoMuonTag_triggerOn_<flavor>[_C<i>]_T<t>. Additive, output name unchanged.
+bool doCSVv2JetVarMaps = true;
+// Even-indexed events only (evi % 2 == 0) of the T0 and T1 CSVv2 maps, names ..._T0_even, ..._T1_even; the odd half is the
+// full map minus the even one. Statistical test of the JER refit: T1 - T0 between independent halves against within one.
+// ~0.7 MB per map, 9 flavors: ~19 MB for the three T maps, ~13 MB for the two even maps.
+bool doCSVv2EvenOdd = true;
 // The same map with the DeepCSV discriminant (discr_deepCSV, eventMap::loadDeepCSV), a cross-check of the CSVv2 purity
 // fits, booked NEXT TO the CSVv2 map so pp and PbPb carry both taggers in one scan generation (2026-11-16, user; the
 // 2026-10-22 scans had DeepCSV instead of CSVv2). Same jets, weights and axes (first z bin [-2, 0) = jets the tagger did
