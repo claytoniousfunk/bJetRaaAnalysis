@@ -18,6 +18,7 @@
 #include <fstream>
 #include "TMath.h"
 #include "TH2F.h"
+#include "TH3D.h"
 #include "TH2D.h"
 #include "TMath.h"
 #include <TNtuple.h>
@@ -425,6 +426,13 @@ void PYTHIAHYDJET_scan_response(int group = 1, int parity = -1, int sample = 0){
     // gen jets promoted upward by the underlying event (small dR, genPt << recoPt).
     TH2D *h_recoPt_dRnearestGen[NCentralityIndices];
     TH2D *h_recoPt_nearestGenPt[NCentralityIndices];
+    // Response entries with the dR between the reco jet and its forest reference gen jet
+    // (2026-11-16): the same jets, weight and (reco pT, refpt) as
+    // h_matchedRecoJetPt_genJetPt_allJets, in 10 GeV bins, so the low-gen tail of the central
+    // response (reco 80-90 GeV: half from gen < 40 GeV in 0-10%) can be cut on dR and gen pT
+    // together. z = dR in [0, 0.6): real dR capped at 0.5499; the last bin [0.55, 0.6) =
+    // reference gen jet not found in the gen collection (refpt != any genjetpt).
+    TH3D *h_matchedRecoJetPt_genJetPt_dRref[NCentralityIndices];
     TH1D *h_unmatchedGenJetPt[NCentralityIndices];
 
     // distorted-truth response + misses for unfoldClosureTest.C's "tilt" mode --
@@ -473,6 +481,7 @@ void PYTHIAHYDJET_scan_response(int group = 1, int parity = -1, int sample = 0){
 	h_recoJetPt_unmatchedDr[i] = new TH1D(Form("h_recoJetPt_unmatchedDr_C%i",i),Form("reco jets with no gen jet within dR, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax);
 	h_recoPt_dRnearestGen[i]   = new TH2D(Form("h_recoPt_dRnearestGen_C%i",i),Form("dR to nearest gen jet vs reco p_{T}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,100,0,1.0);
 	h_recoPt_nearestGenPt[i]   = new TH2D(Form("h_recoPt_nearestGenPt_C%i",i),Form("nearest gen jet p_{T} vs reco p_{T}, hiBin %i - %i",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt_dRref[i] = new TH3D(Form("h_matchedRecoJetPt_genJetPt_dRref_C%i",i),Form("response entries vs dR(reco, reference gen jet), hiBin %i - %i; reco p_{T} [GeV]; gen p_{T} [GeV]; #DeltaR",centEdges[0],centEdges[NCentralityIndices-1]),NPtBins/2,ptMin,ptMax,NPtBins/2,ptMin,ptMax,12,0.,0.6);
 	h_matchedRecoJetPt_genJetPt[i][0] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_allJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, allJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
 	h_matchedRecoJetPt_genJetPt[i][1] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_bJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, bJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
 	h_matchedRecoJetPt_genJetPt[i][2] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_cJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, cJets, hiBin %i - %i", centEdges[0]-10,centEdges[NCentralityIndices-1]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
@@ -499,6 +508,7 @@ void PYTHIAHYDJET_scan_response(int group = 1, int parity = -1, int sample = 0){
 	h_recoJetPt_unmatchedDr[i] = new TH1D(Form("h_recoJetPt_unmatchedDr_C%i",i),Form("reco jets with no gen jet within dR, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax);
 	h_recoPt_dRnearestGen[i]   = new TH2D(Form("h_recoPt_dRnearestGen_C%i",i),Form("dR to nearest gen jet vs reco p_{T}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,100,0,1.0);
 	h_recoPt_nearestGenPt[i]   = new TH2D(Form("h_recoPt_nearestGenPt_C%i",i),Form("nearest gen jet p_{T} vs reco p_{T}, hiBin %i - %i",centEdges[i-1],centEdges[i]),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
+	h_matchedRecoJetPt_genJetPt_dRref[i] = new TH3D(Form("h_matchedRecoJetPt_genJetPt_dRref_C%i",i),Form("response entries vs dR(reco, reference gen jet), hiBin %i - %i; reco p_{T} [GeV]; gen p_{T} [GeV]; #DeltaR",centEdges[i-1],centEdges[i]),NPtBins/2,ptMin,ptMax,NPtBins/2,ptMin,ptMax,12,0.,0.6);
 	h_matchedRecoJetPt_genJetPt[i][0] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_allJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, allJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
 	h_matchedRecoJetPt_genJetPt[i][1] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_bJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, bJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
 	h_matchedRecoJetPt_genJetPt[i][2] = new TH2D(Form("h_matchedRecoJetPt_genJetPt_cJets_C%i",i),Form("genJetPt vs. matchedRecoJetPt, cJets, hiBin %i - %i", centEdges[i-1]-10,centEdges[i]-10),NPtBins,ptMin,ptMax,NPtBins,ptMin,ptMax);
@@ -533,6 +543,7 @@ void PYTHIAHYDJET_scan_response(int group = 1, int parity = -1, int sample = 0){
       h_caloJetRawPt_recoJetPt[i]->Sumw2();
       h_recoPt_dRnearestGen[i]->Sumw2();
       h_recoPt_nearestGenPt[i]->Sumw2();
+      h_matchedRecoJetPt_genJetPt_dRref[i]->Sumw2();
       h_matchedRecoJetPt_genJetPt[i][0]->Sumw2();
       h_matchedRecoJetPt_genJetPt[i][1]->Sumw2();
       h_matchedRecoJetPt_genJetPt[i][2]->Sumw2();
@@ -1092,6 +1103,11 @@ double leadingMatchedRecoJetPt = -999.0;
 	
 	  h_matchedRecoJetPt_genJetPt[0][0]->Fill(matchedRecoJetPt,x,w_jet);
 	  h_matchedRecoJetPt_genJetPt[CentralityIndex][0]->Fill(matchedRecoJetPt,x,w_jet);
+	  {
+	    const double dRref = (refGen_i >= 0) ? TMath::Min(getDr(recoJetEta_i, recoJetPhi_i, em->genjeteta[refGen_i], em->genjetphi[refGen_i]), 0.5499) : 0.575;
+	    h_matchedRecoJetPt_genJetPt_dRref[0]->Fill(matchedRecoJetPt,x,dRref,w_jet);
+	    h_matchedRecoJetPt_genJetPt_dRref[CentralityIndex]->Fill(matchedRecoJetPt,x,dRref,w_jet);
+	  }
 	  for(int t = 0; t < kNDistTilt; t++){
 	    double wd = w_jet*distTiltWeight(x,kDistTiltExpo[t]);
 	    h_matchedRecoJetPt_genJetPt_distTilt[0][0][0][t]->Fill(matchedRecoJetPt,x,wd);
@@ -1327,6 +1343,7 @@ double leadingMatchedRecoJetPt = -999.0;
       h_caloJetRawPt_recoJetPt[j]->Write();
       h_recoPt_dRnearestGen[j]->Write();
       h_recoPt_nearestGenPt[j]->Write();
+      h_matchedRecoJetPt_genJetPt_dRref[j]->Write();
       // h_unmatchedRecoJetPt[j][1]->Write();
       // h_unmatchedRecoJetPt[j][2]->Write();
       // h_unmatchedRecoJetPt[j][3]->Write();
