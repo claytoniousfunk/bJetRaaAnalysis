@@ -17,6 +17,9 @@ PbPb-over-pp ratio, which should not happen.
 | `rootFiles/scanningOuput/` | scan outputs — **note the typo, "Ouput" not "Output"** |
 | `figures/` | output figures (gitignored) |
 
+**Before writing a macro for a measurement, read the reuse rules and the
+measurement → macro index:** @MACROS.md
+
 Presentations live outside the repo: `~/Documents/nuclear/GroupMeeting/2026/`
 with figures in `../figures/<date>/`.
 
@@ -91,6 +94,44 @@ uses that marker to refuse mismatched pairs.
 **`scanningOuput`** is misspelled in the repo. Paths will fail silently if you
 "correct" it.
 
+## Z normalization
+
+Since 2026-11-09 the nominal N_Z is the **published** CMS Z yield converted with
+the luminosity, not our own Z->mumu count: PbPb from PRL 127 (2021) 102002,
+pp from the 5.02 TeV total cross section times the |y_Z| < 2.1 fraction
+(0.763, Pythia 8). Everything is in `headers/publishedData/CMS_ZYield_5p02TeV.h`.
+`BJET_NZ_SOURCE=own` restores our count (outputs `_ownNZ`). N_Z cancels in the
+double ratio R_Z(b)/R_Z(incl). `calculateJetsPerZ.cc` and the legacy calo chains
+still use our own count.
+
+## ptRel fit binning
+
+Since 2026-11-12 the CSVv2-cut ptRel fits (`fitPtRelCSVv2_2D_pp_PF.C` and everything
+that includes it) use **0.2 GeV ptRel bins** by default; 0.5 GeV before. Untagged
+outputs written before that date are 0.5 GeV. `BJET_PTREL_BIN=0.5` reproduces the
+old fits under a `_bin0p5` suffix.
+
+## Nominal b purity
+
+Since 2026-11-12 the nominal b purity is the **2D muon ptRel x CSVv2 fit** (4 CSVv2
+categories, HistFactory, MC tagger shapes), with its own purity systematics from
+`src/systematics/systematics_CSVv2_2D_PF.C` and **no working-point and no fit-range source** (fitRangeHigh
+zeroed 2026-11-16; the AN uses this nominal since then). Tag
+`_csvV2_2D`, chain variant `BJET_PURITY_VARIANT=csvV2__2D` (double underscore). The
+CSVv2-loose cut fit (`_csvV2loose`, nominal 2026-10-28 to 11-12) is untouched; several
+results macros still default to its tag, so pass `_csvV2_2D` explicitly. The 2D model
+is rejected by the data in pp and central 80-120 GeV. Recipe in MACROS.md.
+
+## Nominal b-jet binning
+
+Since 2026-11-16 (user: "make 7 bins nominal") the b-jet results are reported in **7 jet-pT bins**,
+80 90 100 110 120 135 150 200 GeV, with the re-tuned N (pp 2; PbPb 1, 2, 3, 3 from 50-80% to 0-10%).
+Results tag `_csvV2_2D7bins_nIterOpt`; the AN uses it. The **code default is still 4 bins**: every
+7-bin chain step needs `root -l -b -q -e '#define BJET_PT_7BINS 1' ...` with
+`BJET_PURITY_VARIANT=csvV2__2D7bins BJET_NITER=opt` (the chain refuses a tag without "7bins"),
+and the purity-study macros follow the same define (`ptBinTag()` gives their outputs `_7bins`).
+The 4-bin `_csvV2_2D` files remain as the previous nominal. Recipe in MACROS.md.
+
 ## Key constants (`headers/AnalysisSetup/common.h`)
 
 `etaMax = 1.6` · `jetPtCut = 20` · `muPtCut = 15` · `muPtMaxCut = 999` ·
@@ -131,9 +172,6 @@ tar xzf fastjet-3.4.3.tar.gz && cd fastjet-3.4.3
 ./configure --prefix=$HOME/Programs/fastjet
 ```
 
-The script generates a driver adding `using namespace std;`, because ROOT's
-interpreter has it in effect and `eventMap.h` relies on that (bare
-`vector<Float_t>`). Without it g++ reports dozens of spurious errors.
 The pfCand scan also needs fjcontrib (ConstituentSubtractor, for the forest
 akCs4PF emulation in `headers/functions/csJetEmulation.h`). `syntaxCheck.sh`
 uses `~/Programs/fastjet330` (FastJet 3.3.0 + fjcontrib 1.033, the forest's
@@ -141,6 +179,9 @@ versions) when it exists; the scan's Makefile and ACLiC drivers link
 `-lfastjetcontribfragile` from `FJCONTRIB` / `FJCONTRIB_HOME`, default the
 FastJet prefix.
 
+The script generates a driver adding `using namespace std;`, because ROOT's
+interpreter has it in effect and `eventMap.h` relies on that (bare
+`vector<Float_t>`). Without it g++ reports dozens of spurious errors.
 
 Jet collection is chosen at load time and swaps the *tree*, not the histograms:
 

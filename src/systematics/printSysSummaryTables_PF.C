@@ -122,10 +122,13 @@ void printSysSummaryTables_PF(TString inclTag = "", TString bTag = ""){
   }
   // ---- muon-tagged b jets per Z and R_Z(b)
   const std::vector<Src> bSrc = {
-    {"JEU", "jet energy scale"}, {"JER", "jet energy resolution"}, {"bPurity", "$b$ purity, uncorr."}, {"bPurity_bGS", "$b$ purity: $g\\to b\\bar{b}$ (corr.)"}, {"bPurity_cMult", surfVariantLabels() ? "$b$ purity: light yield (corr.)" : "$b$ purity: $c$ fraction (corr.)"}, {"bTagWP", "$b$-tag working point"},
-    {"responseStat", "response MC stat."}, {"iterations", "unfolding iterations"}, {"prior", "unfolding prior"}, {"belowFloorWeight", "below-floor weight"},
-    {"unfoldingBias", "unfolding non-closure"}, {"muonTagFreq", "muon-tag frequency"},
-    {"muonEff", "muon efficiency"}, {"NZstat", "$N_\\text{Z}$ stat."},
+    // logical order (2026-11-16, user), the same as the figures (sysStyle.h): jet energy, b purity,
+    // unfolding, muon tagging, inclusive-side sources, normalization
+    {"JEU", "jet energy scale"}, {"JER", "jet energy resolution"},
+    {"bPurity_bGS", "$b$ purity: $g\\to b\\bar{b}$ (corr.)"}, {"bPurity_cMult", surfVariantLabels() ? "$b$ purity: light yield (corr.)" : "$b$ purity: $c$ fraction (corr.)"}, {"bPurity", "$b$ purity, other (uncorr.)"}, {"bTagWP", "$b$-tag working point"},
+    {"iterations", "unfolding iterations"}, {"unfoldingBias", "unfolding non-closure"}, {"responseStat", "response MC stat."}, {"prior", "unfolding prior"}, {"belowFloorWeight", "below-floor weight"},
+    {"muonEff", "muon efficiency"}, {"muonTagFreq", "muon-tag frequency"},
+    {"NZstat", "$N_\\text{Z}$ stat."},
     {"massWindow", "$Z$ mass window"}, {"incl_fakeJets", "combinatorial jets"},
     {"incl_stitchWindow", "trigger stitch window"}, {"incl_stitchNormStat", "trigger stitch norm.\\ stat."},
     {"incl_recoFloor", "reco floor"}, {"pubZYield", "published $Z$ yield"}, {"pubZAcc", "pp $|y_\\text{Z}| < 2.1$ fraction"}, {"total", "total"}};

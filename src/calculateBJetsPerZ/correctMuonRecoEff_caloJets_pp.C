@@ -69,10 +69,8 @@ const double tnpMethodSys     = 0.0030;   // integrated "all": background-method
 const double tnpIntegrated    = 0.9638;   // integrated "all", for reference only
 const double effMC            = 0.9708;   // analysis MC muon efficiency, tight | gen (SF denominator)
 
-const char *inPath  = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/CorrectedBJetSpectra/Data/unfoldedBJetSpectrum_caloJets_pp.root";
-const char *outRoot = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/CorrectedBJetSpectra/Data/bJetSpectrum_muRecoCorr_caloJets_pp.root";
-const char *outFig  = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/bJetSpectra/bJetSpectrum_muRecoCorr_caloJets_pp.pdf";
-const char *outFigS = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/systematics/bJetSpectrum_muRecoCorr_sysBreakdown_caloJets_pp.pdf";
+// paths follow the jet collection (collTag() in the names, set in the macro)
+const char *inPath = nullptr, *outRoot = nullptr, *outFig = nullptr, *outFigS = nullptr;
 
 bool reported(int i){ return ptEdges[i-1] >= ptReportMin - 1e-6; }
 
@@ -82,9 +80,17 @@ TH1D* bookRel(const char *name, const char *title)
   h->SetDirectory(nullptr); return h;
 }
 
-void correctMuonRecoEff_caloJets_pp()
+// coll: jet collection (jetCollectionInputs.h; "" = BJET_JETCOLL env or caloJets)
+void correctMuonRecoEff_caloJets_pp(const char *coll = "")
 {
   initPlotStyle();
+  setJetCollection(coll);
+  if(!ptBinGuard(purVar())) return;   // 7-bin jet-pT axis variant (caloJetBPurityFitCore.h)
+  const char *base = "/home/clayton/Analysis/code/bJetRaaAnalysis";
+  inPath  = strdup(Form("%s/rootFiles/CorrectedBJetSpectra/Data/unfoldedBJetSpectrum_%s_pp%s.root", base, collTag(), purVar()));
+  outRoot = strdup(Form("%s/rootFiles/CorrectedBJetSpectra/Data/bJetSpectrum_muRecoCorr_%s_pp%s.root", base, collTag(), purVar()));
+  outFig  = strdup(Form("%s/figures/bJetSpectra/bJetSpectrum_muRecoCorr_%s_pp%s.pdf", base, collTag(), purVar()));
+  outFigS = strdup(Form("%s/figures/systematics/bJetSpectrum_muRecoCorr_sysBreakdown_%s_pp%s.pdf", base, collTag(), purVar()));
   gSystem->mkdir(gSystem->DirName(outRoot), kTRUE);
   gSystem->mkdir(gSystem->DirName(outFig), kTRUE);
   gSystem->mkdir(gSystem->DirName(outFigS), kTRUE);
@@ -95,12 +101,15 @@ void correctMuonRecoEff_caloJets_pp()
   const double effAvg = sum/NTnP;
   double spread = 0.; for(int b = 0; b < NTnP; b++) spread = TMath::Max(spread, fabs(tnpEff[b] - effAvg));
   const double relSpread = spread/effAvg, relStat = sqrt(s2)/NTnP/effAvg, relMethod = tnpMethodSys/effAvg;
-  const double relEff = sqrt(relSpread*relSpread + relStat*relStat + relMethod*relMethod);
+  double relEff = sqrt(relSpread*relSpread + relStat*relStat + relMethod*relMethod);   // set to 0 below for mu5
   printf("\nmuon reco+ID efficiency (tag-and-probe, average of %d probe-pT bins): %.4f\n", NTnP, effAvg);
   printf("  uncertainty: pT dependence %.2f%%, stat %.2f%%, method %.2f%%  ->  %.2f%%\n",
          100*relSpread, 100*relStat, 100*relMethod, 100*relEff);
   printf("  (integrated value %.4f, for reference)\n", tnpIntegrated);
-  const double sf = effAvg/effMC;
+  // mu5 (BJET_MU5=1): no tag and probe for 7-15 GeV hybridSoft muons, so the scale factor is 1 (MC
+  // efficiency only, carried in the tag frequency) and its uncertainty is not assigned
+  const double sf = mu5On() ? 1. : effAvg/effMC;
+  if(mu5On()){ printf("MU5: muon data/MC scale factor set to 1 (no 7-15 GeV hybridSoft tag and probe), uncertainty 0\n"); relEff = 0.; }
   printf("data/MC scale factor: %.4f / %.4f = %.4f\n", effAvg, effMC, sf);
 
   // ---- inputs -----------------------------------------------------------------
@@ -192,7 +201,7 @@ void correctMuonRecoEff_caloJets_pp()
     leg->AddEntry(lb, "total systematic", "f");
     leg->Draw();
     TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.046);
-    la.DrawLatex(0.21, 0.84, "pp 5.02 TeV, calo jets: b jets");
+    la.DrawLatex(0.21, 0.84, Form("pp 5.02 TeV, %s: b jets", collLabel()));
     la.SetTextSize(0.034);
     la.DrawLatex(0.21, 0.785, "unfolded, corrected for muon reco efficiency");
     la.DrawLatex(0.21, 0.74, Form("(data/MC SF = %.3f / %.3f = %.3f)", effAvg, effMC, sf));
@@ -245,7 +254,7 @@ void correctMuonRecoEff_caloJets_pp()
     leg->AddEntry(lT, "total (quadrature)", "l");
     leg->Draw();
     TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.038);
-    la.DrawLatex(0.17, 0.885, "pp 5.02 TeV, calo jets: corrected b-jet spectrum systematics");
+    la.DrawLatex(0.17, 0.885, Form("pp 5.02 TeV, %s: corrected b-jet spectrum systematics", collLabel()));
     savePdfTight(c, outFigS);
     delete c;
   }

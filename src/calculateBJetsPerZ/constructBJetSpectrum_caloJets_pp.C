@@ -85,19 +85,30 @@
 #include "../../headers/functions/divideByBinwidth.h"
 #include "../../headers/functions/caloJetBPurityFit_pp.h"   // dataPath, ptEdges, ptReportMin, underflow helpers
 
-const char *sysTotalPath = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/systematics/bPuritySys_total_caloJets_pp.root";
-const char *jeuSpecPath  = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/JEU/unfold_PYTHIA_caloJets_JEUShift.root";
+// Paths follow the jet collection (set in the macro, collTag() in the names):
+//   sysTotalPath  rootFiles/systematics/bPuritySys_total_<coll>_pp.root
+//   purityPath    rootFiles/bPurityResults/bPurity_<coll>_pp.root  (plotBPurity_caloJets_pp.C)
+//   jeuSpecPath   rootFiles/JEU/unfold_PYTHIA_<coll>_JEUShift.root
+// Without the systematics file the nominal purity (2 templates, bGS + 0.175) is
+// read from purityPath and every purity systematic is zero; without the JEU
+// file the spectrum JEU is zero. Both are reported.
+const char *sysTotalPath = nullptr, *purityPath = nullptr, *jeuSpecPath = nullptr;
 const int   jeuIter      = 2;   // unfoldPYTHIAJetPt_JEUShift.C's nominal number of iterations
-const char *outRoot      = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/MuTagMuTrigBJetSpectra/Data/bJetSpectrum_caloJets_pp.root";
-const char *outFig       = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/bJetSpectra/bJetSpectrum_caloJets_pp.pdf";
-const char *outFigSys    = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/systematics/bJetSpectrum_sysBreakdown_caloJets_pp.pdf";
+const char *outRoot = nullptr, *outFig = nullptr, *outFigSys = nullptr;
 
 const char *specName = "h_inclRecoJetPt_inclRecoMuonTag_triggerOn";
 const char *specNameMC = "h_inclRecoJetPt_inclRecoMuonTag_triggerOn_flavor";   // in mcPath, all flavours
-const double turnOnLo = 70., turnOnHi = 80.;            // 5 GeV bins corrected
-const double plateauHi[3] = {90., 100., 120.};          // nominal, variations; plateau starts at turnOnHi
-const int NSrc = 6;
-const char *srcKey[NSrc] = {"bGS", "cMult", "fitRangeLow", "fitRangeHigh", "JEU", "JER"};
+// TURN-ON per collection. 5 GeV bins in [turnOnLo, turnOnHi) are corrected;
+// the plateau the shapes are normalised on starts at turnOnHi and ends at
+// plateauHi[0] (nominal) or [1], [2] (systematic variations).
+//   caloJets       70-80 GeV, plateau 80-90 (100, 120): the calo forest threshold
+//   caloMatchedPF  50-125 GeV, plateau 125-150 (175, 200): the calo partner of a
+//                  muon-tagged PF jet carries ~0.7 of its pT, so the forest's
+//                  calo threshold reaches ~125 GeV in PF pT (jetCollectionInputs.h)
+double turnOnLo = 70., turnOnHi = 80.;
+double plateauHi[3] = {90., 100., 120.};
+const int NSrc = 6;   // + tplStat (template MC statistics, 2026-10-08)
+const char *srcKey[NSrc] = {"bGS", "cMult", "fitRangeHigh", "JEU", "JER", "tplStat"};
 
 TH1D* bookRel(const char *name, const char *title)
 {
@@ -111,32 +122,58 @@ double windowSum(TH1D *h, int i)
   return h->Integral(h->FindBin(ptEdges[i] + 1e-6), h->FindBin(ptEdges[i+1] - 1e-6));
 }
 
-void constructBJetSpectrum_caloJets_pp()
+// coll: jet collection (jetCollectionInputs.h; "" = BJET_JETCOLL env or caloJets)
+void constructBJetSpectrum_caloJets_pp(const char *coll = "")
 {
   initPlotStyle();
+  setJetCollection(coll);
+  if(!ptBinGuard(purVar())) return;   // 7-bin jet-pT axis variant (caloJetBPurityFitCore.h)
+  if(!dataPath[0] || !mcPath[0]){ printf("ERROR: the %s collection has no pp data / template scan yet\n", collTag()); return; }
+  const char *base = "/home/clayton/Analysis/code/bJetRaaAnalysis";
+  sysTotalPath = strdup(Form("%s/rootFiles/systematics/bPuritySys_total_%s_pp%s.root", base, collTag(), purVar()));
+  purityPath   = strdup(Form("%s/rootFiles/bPurityResults/bPurity_%s_pp%s.root", base, collTag(), purVar()));
+  jeuSpecPath  = strdup(Form("%s/rootFiles/JEU/unfold_PYTHIA_%s_JEUShift.root", base, collTag()));
+  outRoot      = strdup(Form("%s/rootFiles/MuTagMuTrigBJetSpectra/Data/bJetSpectrum_%s_pp%s.root", base, collTag(), purVar()));
+  outFig       = strdup(Form("%s/figures/bJetSpectra/bJetSpectrum_%s_pp%s.pdf", base, collTag(), purVar()));
+  outFigSys    = strdup(Form("%s/figures/systematics/bJetSpectrum_sysBreakdown_%s_pp%s.pdf", base, collTag(), purVar()));
+  if(jetColl == kCaloMatchedPF){ turnOnLo = 50.; turnOnHi = 125.; plateauHi[0] = 150.; plateauHi[1] = 175.; plateauHi[2] = 200.; }
+  if(jetColl == kPFJets){ turnOnLo = 50.; turnOnHi = 50.; plateauHi[0] = 100.; plateauHi[1] = 120.; plateauHi[2] = 150.; }   // no turn-on: nothing corrected
   gSystem->mkdir(gSystem->DirName(outRoot), kTRUE);
   gSystem->mkdir(gSystem->DirName(outFig), kTRUE);
   gSystem->mkdir(gSystem->DirName(outFigSys), kTRUE);
 
-  TFile *fD = TFile::Open(dataPath), *fS = TFile::Open(sysTotalPath), *fJ = TFile::Open(jeuSpecPath);
+  TFile *fD = TFile::Open(dataPath);
   if(!fD || fD->IsZombie()){ printf("ERROR: cannot open data %s\n", dataPath); return; }
-  if(!fS || fS->IsZombie()){ printf("ERROR: cannot open %s -- run systematics_total_caloJets_pp.C first\n", sysTotalPath); return; }
-  if(!fJ || fJ->IsZombie()){ printf("ERROR: cannot open %s -- run src/unfoldTest/unfoldPYTHIAJetPt_JEUShift.C first\n", jeuSpecPath); return; }
+  const bool haveSys = !gSystem->AccessPathName(sysTotalPath), haveJEU = !gSystem->AccessPathName(jeuSpecPath);
 
   TH1D *hSpecIn = nullptr, *hPur = nullptr, *hSysPur = nullptr, *hSysSrc[NSrc];
   fD->GetObject(specName, hSpecIn);
-  fS->GetObject("h_bPurity_nominal", hPur);
-  fS->GetObject("h_sysRel_total", hSysPur);
-  if(!hSpecIn || !hPur || !hSysPur){ printf("ERROR: missing input histogram\n"); return; }
-  for(int s = 0; s < NSrc; s++){
-    fS->GetObject(Form("h_sysRel_%s", srcKey[s]), hSysSrc[s]);
-    if(!hSysSrc[s]){ printf("ERROR: missing h_sysRel_%s\n", srcKey[s]); return; }
+  if(haveSys){
+    TFile *fS = TFile::Open(sysTotalPath);
+    fS->GetObject("h_bPurity_nominal", hPur);
+    fS->GetObject("h_sysRel_total", hSysPur);
+    for(int s = 0; s < NSrc; s++){
+      fS->GetObject(Form("h_sysRel_%s", srcKey[s]), hSysSrc[s]);
+      if(!hSysSrc[s]){ printf("ERROR: missing h_sysRel_%s\n", srcKey[s]); return; }
+    }
+  } else {
+    printf("NOTE: no purity systematics file %s -- nominal purity from %s, purity systematics set to ZERO\n", sysTotalPath, purityPath);
+    TFile *fP = TFile::Open(purityPath);
+    if(!fP || fP->IsZombie()){ printf("ERROR: cannot open %s -- run plotBPurity_caloJets_pp.C first\n", purityPath); return; }
+    fP->GetObject("h_bPurity_2tpl_GSplus0p175", hPur);
+    if(!hPur){ printf("ERROR: h_bPurity_2tpl_GSplus0p175 missing in %s\n", purityPath); return; }
+    hSysPur = (TH1D*) hPur->Clone("h_sysRel_total"); hSysPur->SetDirectory(nullptr); hSysPur->Reset();
+    for(int s = 0; s < NSrc; s++){ hSysSrc[s] = (TH1D*) hSysPur->Clone(Form("h_sysRel_%s", srcKey[s])); hSysSrc[s]->SetDirectory(nullptr); }
   }
+  if(!hSpecIn || !hPur || !hSysPur){ printf("ERROR: missing input histogram\n"); return; }
   TH1D *gNom = nullptr, *gUp = nullptr, *gDown = nullptr;
-  fJ->GetObject(Form("gen_nominal_N%d", jeuIter), gNom);
-  fJ->GetObject(Form("gen_up_N%d", jeuIter), gUp);
-  fJ->GetObject(Form("gen_down_N%d", jeuIter), gDown);
-  if(!gNom || !gUp || !gDown){ printf("ERROR: gen_{nominal,up,down}_N%d missing in %s\n", jeuIter, jeuSpecPath); return; }
+  if(haveJEU){
+    TFile *fJ = TFile::Open(jeuSpecPath);
+    fJ->GetObject(Form("gen_nominal_N%d", jeuIter), gNom);
+    fJ->GetObject(Form("gen_up_N%d", jeuIter), gUp);
+    fJ->GetObject(Form("gen_down_N%d", jeuIter), gDown);
+    if(!gNom || !gUp || !gDown){ printf("ERROR: gen_{nominal,up,down}_N%d missing in %s\n", jeuIter, jeuSpecPath); return; }
+  } else printf("NOTE: no spectrum-JEU file %s -- spectrum JEU set to ZERO\n", jeuSpecPath);
 
   // the purity file must be in exactly the bins used here
   if(hPur->GetNbinsX() != NPt){ printf("ERROR: purity has %d bins, expected %d\n", hPur->GetNbinsX(), NPt); return; }
@@ -151,9 +188,10 @@ void constructBJetSpectrum_caloJets_pp()
   if(!hMC2){ printf("ERROR: %s missing in %s\n", specNameMC, mcPath); return; }
   TH1D *hMCt = hMC2->ProjectionX("hMCtagged", 0, hMC2->GetNbinsY()+1); hMCt->SetDirectory(nullptr);
   const int kLo = hSpecIn->FindBin(turnOnLo + 1e-6), kHi = hSpecIn->FindBin(turnOnHi - 1e-6);
-  const int nK = kHi - kLo + 1;
-  TH1D *hEff = new TH1D("h_turnOnEff", "calo-jet turn-on efficiency (data / PYTHIA muon-tagged shape, plateau 80-90 GeV);#it{p}_{T}^{jet} [GeV];efficiency",
-                        nK, hSpecIn->GetBinLowEdge(kLo), hSpecIn->GetBinLowEdge(kHi+1));
+  const int nK = TMath::Max(kHi - kLo + 1, 0);   // 0: no turn-on correction for this collection
+  if(nK == 0) printf("no turn-on correction (turnOnLo = turnOnHi = %.0f GeV)\n", turnOnLo);
+  TH1D *hEff = new TH1D("h_turnOnEff", Form("turn-on efficiency (data / PYTHIA muon-tagged shape, plateau %.0f-%.0f GeV)%s;#it{p}_{T}^{jet} [GeV];efficiency", turnOnHi, plateauHi[0], nK ? "" : " -- none applied"),
+                        TMath::Max(nK, 1), hSpecIn->GetBinLowEdge(kLo), hSpecIn->GetBinLowEdge(kLo + TMath::Max(nK, 1)));
   hEff->SetDirectory(nullptr);
   std::vector<std::vector<double>> effV(3, std::vector<double>(nK, 1.));
   for(int v = 0; v < 3; v++){
@@ -178,8 +216,9 @@ void constructBJetSpectrum_caloJets_pp()
     int b = kLo + k;
     hSpecCorr->SetBinContent(b, hSpecIn->GetBinContent(b)/effV[0][k]); hSpecCorr->SetBinError(b, hSpecIn->GetBinError(b)/effV[0][k]);
     for(int v = 0; v < 2; v++) hSpecVar[v]->SetBinContent(b, hSpecIn->GetBinContent(b)/effV[v+1][k]);
-    printf("turn-on %3.0f-%-3.0f GeV: eff %.4f +/- %.4f (plateau 80-90), %.4f (80-100), %.4f (80-120)\n",
-           hSpecIn->GetBinLowEdge(b), hSpecIn->GetBinLowEdge(b+1), effV[0][k], hEff->GetBinError(k+1), effV[1][k], effV[2][k]);
+    printf("turn-on %3.0f-%-3.0f GeV: eff %.4f +/- %.4f (plateau %.0f-%.0f), %.4f (%.0f-%.0f), %.4f (%.0f-%.0f)\n",
+           hSpecIn->GetBinLowEdge(b), hSpecIn->GetBinLowEdge(b+1), effV[0][k], hEff->GetBinError(k+1), turnOnHi, plateauHi[0],
+           effV[1][k], turnOnHi, plateauHi[1], effV[2][k], turnOnHi, plateauHi[2]);
   }
   TH1D *hCountsRaw = rebinTo(hSpecIn, NPt, ptEdges, "h_muTagJetPt_counts_noTurnOnCorr");
   hCountsRaw->SetTitle("muon-tagged jets, no turn-on correction (counts);#it{p}_{T}^{jet} [GeV];jets per bin");
@@ -225,7 +264,7 @@ void constructBJetSpectrum_caloJets_pp()
     double n = hCounts->GetBinContent(i), p = hP->GetBinContent(i), b = hB->GetBinContent(i);
     double rc = n > 0. ? hCounts->GetBinError(i)/n : 0., rp = p > 0. ? hP->GetBinError(i)/p : 0.;
     double rpur = hSysPur->GetBinContent(i);
-    double gn = windowSum(gNom, i-1);
+    double gn = gNom ? windowSum(gNom, i-1) : 0.;
     double ju = gn > 0. ? windowSum(gUp, i-1)/gn - 1. : 0., jd = gn > 0. ? windowSum(gDown, i-1)/gn - 1. : 0.;
     double rj = TMath::Max(fabs(ju), fabs(jd));
     double rt = 0.;
@@ -245,9 +284,13 @@ void constructBJetSpectrum_caloJets_pp()
            ptEdges[i] <= ptReportMin + 1e-6 ? "   (underflow)" : "");
   }
 
+  if(!haveSys || !haveJEU) printf("NOTE: systematics incomplete (purity %s, spectrum JEU %s)\n", haveSys ? "yes" : "ZERO", haveJEU ? "yes" : "ZERO");
+
   TFile *fo = TFile::Open(outRoot, "recreate");
   hCounts->Write(); hSpec->Write(); hP->Write(); hB->Write(); hBsys->Write();
   hCountsRaw->Write(); hEff->Write(); hRelT->Write();
+  TNamed collN("jetCollection", collTag()); collN.Write();
+  TNamed sysN("systematics", Form("purity systematics: %s; spectrum JEU: %s", haveSys ? sysTotalPath : "NONE (zero)", haveJEU ? jeuSpecPath : "NONE (zero)")); sysN.Write();
   hRelC->Write(); hRelP->Write(); hRelS->Write(); hRelPur->Write(); hRelJ->Write(); hRelJu->Write(); hRelJd->Write();
   for(int s = 0; s < NSrc; s++) hRelSrc[s]->Write();
   TNamed info("info", Form("pp calo jets: b-jet dN/dpT = muon-tagged dN/dpT (%s) x b purity. Stat via TH1::Multiply "
@@ -297,7 +340,7 @@ void constructBJetSpectrum_caloJets_pp()
     leg->AddEntry(lb, "total systematic", "f");
     leg->Draw();
     TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.046);
-    la.DrawLatex(0.21, 0.84, "pp 5.02 TeV, calo jets");
+    la.DrawLatex(0.21, 0.84, Form("pp 5.02 TeV, %s", collLabel()));
     la.SetTextSize(0.036);
     la.DrawLatex(0.21, 0.78, "no efficiency correction, not unfolded");
 
@@ -356,7 +399,7 @@ void constructBJetSpectrum_caloJets_pp()
     leg->AddEntry(lT, "total (quadrature)", "l");
     leg->Draw();
     TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.038);
-    la.DrawLatex(0.17, 0.875, "pp 5.02 TeV, calo jets: b-jet spectrum systematics");
+    la.DrawLatex(0.17, 0.875, Form("pp 5.02 TeV, %s: b-jet spectrum systematics", collLabel()));
     savePdfTight(c, outFigSys);
     delete c;
   }

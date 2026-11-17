@@ -37,7 +37,7 @@
 //                  pT, a shift the unfolding already corrects.
 //
 //   "responseRecoTag"  (cross-check; was the stopgap before the rescan) from the calo response
-//                  scans (PF flavour, even + odd, 2026-10-01): the gen projection
+//                  scans (PF flavor, even + odd, 2026-10-01): the gen projection
 //                  of h_matchedRecoJetPt_genJetPt_bJets_muTagged over that of
 //                  h_matchedRecoJetPt_genJetPt_bJets, i.e. the fraction of
 //                  matched gen b jets with a RECO muon tag (tight, pT > 15 GeV,
@@ -60,13 +60,14 @@
 // Input   rootFiles/CorrectedBJetSpectra/Data/bJetSpectrum_muRecoCorr_caloJets_pp.root
 // Output  rootFiles/CorrectedBJetSpectra/Data/bJetSpectrum_inclusive_caloJets_pp.root
 //           h_muTagFrequency           f vs gen jet pT (MC stat error)
-//           h_muTagFrequency_FC/_GS    f for flavour-creation / gluon-splitting b jets
+//           h_muTagFrequency_FC/_GS    f for flavor-creation / gluon-splitting b jets
 //           h_muTagFrequency_GSshift   f with the tagged bGS share + 0.175 (not used)
 //           h_bJetPt_inclusive         corrected / f, stat error
 //           h_bJetPt_inclusive_sysAbs  same, error = total systematic
 //           h_incl_statRel, h_incl_sysRel, h_incl_sysRel_<source>
 //         figures/bJetSpectra/muonTagFrequency_caloJets_pp.pdf
 //         figures/bJetSpectra/bJetSpectrum_inclusive_caloJets_pp.pdf
+//         ... and *_simple.pdf versions of both figures for talks
 //         figures/systematics/bJetSpectrum_inclusive_sysBreakdown_caloJets_pp.pdf
 //
 // Usage: root -l -b -q correctMuonTagFrequency_caloJets_pp.C
@@ -86,36 +87,46 @@
 #include "../../headers/plotting/ratioPanel.h"
 #include "../../headers/functions/caloJetBPurityFit_pp.h"   // ptEdges, NPt, ptReportMin, mcPath
 
-const char *inPath  = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/CorrectedBJetSpectra/Data/bJetSpectrum_muRecoCorr_caloJets_pp.root";
-const char *outRoot = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/CorrectedBJetSpectra/Data/bJetSpectrum_inclusive_caloJets_pp.root";
-const char *outFigF = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/bJetSpectra/muonTagFrequency_caloJets_pp.pdf";
-const char *outFig  = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/bJetSpectra/bJetSpectrum_inclusive_caloJets_pp.pdf";
-const char *outFigS = "/home/clayton/Analysis/code/bJetRaaAnalysis/figures/systematics/bJetSpectrum_inclusive_sysBreakdown_caloJets_pp.pdf";
+// paths follow the jet collection (collTag() in the names, set in the macro)
+const char *inPath = nullptr, *outRoot = nullptr, *outFigF = nullptr, *outFig = nullptr, *outFigS = nullptr;
 
 const double gsShift = 0.175;   // the purity fit's tagged-bGS shift, for the comparison only
 
-// see the header: "responseRecoTag" (provisional) until the scans are rerun
-const TString fSource = "scanRecoTag";
+// see the header: "responseRecoTag" (provisional) until the scans are rerun.
+// PFJets: "responseTagOverGen" (set in the macro), see RESPONSE-CONSISTENT f below.
+TString fSource = "scanRecoTag";
+// RESPONSE-CONSISTENT f (PFJets, 2026-10-07). f = [gen projection of the muon-
+// tagged b response, h_matchedRecoJetPt_genJetPt_bJets of the plain-PF
+// muTaggedJetsNoTrigger scan] / [all gen b jets, h_inclGenJetPt_flavor |flavor|
+// 5,17, SAME file]: the unfolding returns exactly the matched muon-tagged gen b
+// jets, so dividing by this f closes by construction (same events, weights and
+// tag definition). The scanRecoTag f of the calo-matched PYTHIA scan does NOT:
+// its gen-jet tag histograms count only gen jets whose reco jet passes the calo
+// match, which loses most low-pT muon-tagged b jets (measureCaloMatchEff.C), so
+// that f was 0.009 / 0.041 / 0.064 at 60-70 / 80-100 / 100-120 GeV against
+// 0.048 / 0.067 / 0.081 here, and the pp b fraction came out 6.6% at 80-100 GeV
+// against PYTHIA's 3.5% (MC closure of unfold / f: 1.70 at 80-100). Reco-muon
+// tag (MC efficiency inside), as scanRecoTag: pairs with the data/MC scale
+// factor of correctMuonRecoEff_caloJets_pp.C. FC and GS are not separable in
+// the response (b merged), so f_FC / f_GS stay empty.
 const double  effMuMC = 0.9708;   // MC muon efficiency, tight | gen (responseRecoTag only)
-const char *respDirF  = "/home/clayton/Analysis/code/bJetRaaAnalysis/rootFiles/scanningOuput/PYTHIA/";
-const char *respEvenF = "PYTHIA_DiJet_response_caloJets_PFflavor_manualJEC_evenEvents_pThat-15_mu12_pTmu-15_tight_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-10-1.root";
-const char *respOddF  = "PYTHIA_DiJet_response_caloJets_PFflavor_manualJEC_oddEvents_pThat-15_mu12_pTmu-15_tight_jetTrkMaxFilter_doPThatCorrelationFilterTight_2026-10-1.root";
+// response scans: ppRespDir / ppRespFiles (jetCollectionInputs.h), summed
 
 const int NIn = 6;
 const char *inKey[NIn]   = {"bPurity", "spectrumJEU", "iterations", "responseStat", "turnOn", "muonRecoEff"};
-const char *inLabel[NIn] = {"b purity (propagated through unfolding)", "spectrum JEU (gen level)", "iterations",
-                            "response-matrix MC stat.", "70-80 GeV turn-on correction", "muon data/MC scale factor"};
+const char *inLabel[NIn] = {"b purity", "jet energy scale", "iterations",
+                            "response-matrix MC stat.", "70-80 GeV turn-on correction", "muon efficiency"};
 const char *inHex[NIn]   = {"#009E73", "#0072B2", "#E69F00", "#999999", "#56B4E9", "#CC79A7"};
 const int   inStyle[NIn] = {2, 3, 7, 5, 6, 9};
 
 bool reported(int i){ return ptEdges[i-1] >= ptReportMin - 1e-6; }
 
-// gen jet pT projection of a (pT, flavor) map for the listed flavours, in ptEdges
+// gen jet pT projection of a (pT, flavor) map for the listed flavors, in ptEdges
 TH1D* flavorPt(TH2D *H, std::vector<int> flavors, const char *name)
 {
   TH1D *o = nullptr;
   for(int fl : flavors){
-    int b = H->GetYaxis()->FindBin(fl + 0.1);   // flavour bins are [v, v+1)
+    int b = H->GetYaxis()->FindBin(fl + 0.1);   // flavor bins are [v, v+1)
     TH1D *p = H->ProjectionX(Form("%s_f%d", name, fl), b, b); p->SetDirectory(nullptr);
     if(!o){ o = p; o->SetName(Form("%s_raw", name)); } else { o->Add(p); delete p; }
   }
@@ -124,15 +135,16 @@ TH1D* flavorPt(TH2D *H, std::vector<int> flavors, const char *name)
   return r;
 }
 
-// gen projection of a (reco, gen) response, even + odd halves, in ptEdges
+// gen projection of a (reco, gen) response, summed over ppRespFiles, in ptEdges
 TH1D* respGen(const char *hname, const char *name)
 {
-  TFile *e = TFile::Open(Form("%s%s", respDirF, respEvenF)), *o = TFile::Open(Form("%s%s", respDirF, respOddF));
-  TH2D *he = nullptr, *ho = nullptr;
-  if(e) e->GetObject(hname, he);
-  if(o) o->GetObject(hname, ho);
-  if(!he || !ho){ printf("ERROR: %s missing in the response files\n", hname); return nullptr; }
-  TH2D *h = (TH2D*) he->Clone(Form("%s_2d", name)); h->SetDirectory(nullptr); h->Add(ho);
+  TH2D *h = nullptr;
+  for(const std::string &fn : ppRespFiles){
+    TFile *f = TFile::Open(Form("%s%s", ppRespDir, fn.c_str())); TH2D *r = nullptr;
+    if(f && !f->IsZombie()) f->GetObject(hname, r);
+    if(!r){ printf("ERROR: %s missing in %s\n", hname, fn.c_str()); return nullptr; }
+    if(!h){ h = (TH2D*) r->Clone(Form("%s_2d", name)); h->SetDirectory(nullptr); } else h->Add(r);
+  }
   TH1D *p = h->ProjectionY(Form("%s_raw", name), 0, h->GetNbinsX()+1); p->SetDirectory(nullptr);
   TH1D *r = rebinTo(p, NPt, ptEdges, name);
   delete p; delete h;
@@ -146,22 +158,33 @@ TH1D* ratioB(TH1D *num, TH1D *den, const char *name)
   return r;
 }
 
-void correctMuonTagFrequency_caloJets_pp()
+// coll: jet collection (jetCollectionInputs.h; "" = BJET_JETCOLL env or caloJets)
+void correctMuonTagFrequency_caloJets_pp(const char *coll = "")
 {
   initPlotStyle();
+  setJetCollection(coll);
+  if(!ptBinGuard(purVar())) return;   // 7-bin jet-pT axis variant (caloJetBPurityFitCore.h)
+  const char *base = "/home/clayton/Analysis/code/bJetRaaAnalysis";
+  inPath  = strdup(Form("%s/rootFiles/CorrectedBJetSpectra/Data/bJetSpectrum_muRecoCorr_%s_pp%s.root", base, collTag(), purVar()));
+  outRoot = strdup(Form("%s/rootFiles/CorrectedBJetSpectra/Data/bJetSpectrum_inclusive_%s_pp%s.root", base, collTag(), purVar()));
+  outFigF = strdup(Form("%s/figures/bJetSpectra/muonTagFrequency_%s_pp%s.pdf", base, collTag(), purVar()));
+  outFig  = strdup(Form("%s/figures/bJetSpectra/bJetSpectrum_inclusive_%s_pp%s.pdf", base, collTag(), purVar()));
+  outFigS = strdup(Form("%s/figures/systematics/bJetSpectrum_inclusive_sysBreakdown_%s_pp%s.pdf", base, collTag(), purVar()));
   for(const char *p : {outRoot, outFigF, outFigS}) gSystem->mkdir(gSystem->DirName(p), kTRUE);
 
+  if(jetColl == kPFJets) fSource = "responseTagOverGen";
   // ---- f ---------------------------------------------------------------------
   TH1D *allFC = nullptr, *allGS = nullptr, *tagFC = nullptr, *tagGS = nullptr;
   TH1D *fGenTag = nullptr;   // gen-muon-tag fraction, for comparison
   if(fSource == "scanGenTag" || fSource == "scanRecoTag"){
-    TFile *fM = TFile::Open(mcPath);
-    if(!fM || fM->IsZombie()){ printf("ERROR: cannot open %s\n", mcPath); return; }
+    TFile *fM = TFile::Open(ppTagFreqPath);   // the template scan, except PFJets (jetCollectionInputs.h)
+    if(!fM || fM->IsZombie()){ printf("ERROR: cannot open %s\n", ppTagFreqPath); return; }
+    printf("tag-frequency scan: %s\n", gSystem->BaseName(ppTagFreqPath));
     TH2D *Hall = nullptr, *Htag = nullptr, *Hgen = nullptr;
     fM->GetObject("h_inclGenJetPt_flavor", Hall);
     fM->GetObject(fSource == "scanRecoTag" ? "h_inclGenJetPt_inclRecoMuonTag_flavor" : "h_inclGenJetPt_inclGenMuonTag_flavor", Htag);
     fM->GetObject("h_inclGenJetPt_inclGenMuonTag_flavor", Hgen);
-    if(!Hall || !Htag || !Hgen){ printf("ERROR: gen-jet flavour histograms missing in %s\n", mcPath); return; }
+    if(!Hall || !Htag || !Hgen){ printf("ERROR: gen-jet flavor histograms missing in %s\n", ppTagFreqPath); return; }
     allFC = flavorPt(Hall, {-5, 5}, "allFC"); allGS = flavorPt(Hall, {17}, "allGS");
     tagFC = flavorPt(Htag, {-5, 5}, "tagFC"); tagGS = flavorPt(Htag, {17}, "tagGS");
     TH1D *gB = flavorPt(Hgen, {-5, 5, 17}, "genTagB"), *aB = flavorPt(Hall, {-5, 5, 17}, "allBforGen");
@@ -169,7 +192,7 @@ void correctMuonTagFrequency_caloJets_pp()
     fGenTag->SetTitle("fraction of gen b jets with a GEN muon tag (comparison);gen #it{p}_{T}^{jet} [GeV];#it{f}_{#mu-tag}");
   }
   else if(fSource == "responseRecoTag"){
-    // the response scans book b (flavour creation + splitting together) only;
+    // the response scans book b (flavor creation + splitting together) only;
     // FC and GS are not separable there, so f_FC / f_GS / f_shift are left empty
     TH1D *tagB0 = respGen("h_matchedRecoJetPt_genJetPt_bJets_muTagged", "tagB0");
     TH1D *allB0 = respGen("h_matchedRecoJetPt_genJetPt_bJets", "allB0");
@@ -178,6 +201,46 @@ void correctMuonTagFrequency_caloJets_pp()
     allFC = allB0; tagFC = tagB0;
     allGS = (TH1D*) allB0->Clone("allGS"); allGS->Reset();
     tagGS = (TH1D*) tagB0->Clone("tagGS"); tagGS->Reset();
+  }
+  else if(fSource == "responseTagOverGen"){
+    TH1D *tagB0 = respGen(ppRespName, "tagB0");
+    // DENOMINATOR. February muTaggedJetsNoTrigger scan (one file, muon-tagged jets only): all gen b
+    // jets, h_inclGenJetPt_flavor |flavor| 5, 17. 2026-11-12 anaMuTag rescan (ppRespName ends in
+    // _muTagged; even + odd summed): ALL MATCHED gen b jets, the gen projection of the untagged
+    // h_matchedRecoJetPt_genJetPt_bJets (2026-11-11). Its h_inclGenJetPt_flavor is filled for every
+    // gen jet and the pThat-correlation filter acts on the leading RECO jet only, so low-pThat events
+    // with a mis-reconstructed high-pT gen jet (no reco partner) leave single entries carrying 6-32%
+    // of a 20 GeV bin (effective entries 6-138 at 140-250 GeV, against 20-40k elsewhere; the February
+    // scan's removeHYDJETjet0p35CutOnGen removed them): f fell 23% at 150-200 GeV. In the clean bins
+    // matched b / all gen b = 0.992-1.000 (1.000 above 120 GeV), so the matched denominator differs
+    // from all gen b by < 1% and carries none of the outliers; the unfolding returns matched gen b.
+    const TString nm = ppRespName;
+    const bool matchedDen = nm.EndsWith("_muTagged");
+    TH1D *allB0 = nullptr;
+    if(matchedDen){
+      const TString denName = TString(nm(0, nm.Length() - 9));   // strip "_muTagged" (copy: TSubString::Data() is not terminated)
+      allB0 = respGen(denName.Data(), "allB0");
+      printf("muon-tag frequency denominator: all matched gen b jets (%s)\n", denName.Data());
+    } else {
+      TH2D *G = nullptr;
+      for(const std::string &fn : ppRespFiles){
+        TFile *fR = TFile::Open(Form("%s%s", ppRespDir, fn.c_str())); TH2D *g = nullptr;
+        if(fR && !fR->IsZombie()) fR->GetObject("h_inclGenJetPt_flavor", g);
+        if(!g){ printf("ERROR: h_inclGenJetPt_flavor missing in %s\n", fn.c_str()); return; }
+        if(!G){ G = (TH2D*) g->Clone("G_inclGenFlavor"); G->SetDirectory(nullptr); } else G->Add(g);
+      }
+      if(G) allB0 = flavorPt(G, {-5, 5, 17}, "allB0");
+      printf("muon-tag frequency denominator: all gen b jets (h_inclGenJetPt_flavor)\n");
+    }
+    if(!tagB0 || !allB0){ printf("ERROR: responseTagOverGen inputs missing (%s and its denominator)\n", ppRespName); return; }
+    allFC = allB0; tagFC = tagB0;
+    allGS = (TH1D*) allB0->Clone("allGS"); allGS->Reset();
+    tagGS = (TH1D*) tagB0->Clone("tagGS"); tagGS->Reset();
+    // the old scan f, for comparison only (h_muTagFrequency_genTag slot)
+    TFile *fM = TFile::Open(ppTagFreqPath); TH2D *Hall = nullptr, *Htag = nullptr;
+    if(fM && !fM->IsZombie()){ fM->GetObject("h_inclGenJetPt_flavor", Hall); fM->GetObject("h_inclGenJetPt_inclRecoMuonTag_flavor", Htag); }
+    if(Hall && Htag){ fGenTag = ratioB(flavorPt(Htag, {-5, 5, 17}, "oTag"), flavorPt(Hall, {-5, 5, 17}, "oAll"), "h_muTagFrequency_genTag");
+      fGenTag->SetTitle("scanRecoTag f of the calo-matched scan (comparison; biased by the calo match);gen #it{p}_{T}^{jet} [GeV];#it{f}_{#mu-tag}"); }
   }
   else { printf("ERROR: unknown fSource %s\n", fSource.Data()); return; }
   printf("\nmuon-tag frequency source: %s%s\n", fSource.Data(),
@@ -190,7 +253,7 @@ void correctMuonTagFrequency_caloJets_pp()
   TH1D *fFC = ratioB(tagFC, allFC, "h_muTagFrequency_FC");
   TH1D *fGS = ratioB(tagGS, allGS, "h_muTagFrequency_GS");
   fB->SetTitle("fraction of gen b jets with a muon tag;gen #it{p}_{T}^{jet} [GeV];#it{f}_{#mu-tag}");
-  fFC->SetTitle("flavour-creation b jets;gen #it{p}_{T}^{jet} [GeV];#it{f}_{#mu-tag}");
+  fFC->SetTitle("flavor-creation b jets;gen #it{p}_{T}^{jet} [GeV];#it{f}_{#mu-tag}");
   fGS->SetTitle("gluon-splitting b jets;gen #it{p}_{T}^{jet} [GeV];#it{f}_{#mu-tag}");
   const bool haveFCGS = fSource.BeginsWith("scan");
 
@@ -288,22 +351,41 @@ void correctMuonTagFrequency_caloJets_pp()
     TLegend *leg = haveFCGS ? makeLegend(0.42, 0.18, 0.95, dGT ? 0.445 : 0.40, 0.034) : makeLegend(0.55, 0.18, 0.95, 0.25, 0.034);   // lower right is empty: f rises with pT
     leg->AddEntry(dB, "all b jets (used)", "lp");
     if(haveFCGS){
-      leg->AddEntry(dF, "flavour creation", "lp");
+      leg->AddEntry(dF, "flavor creation", "lp");
       leg->AddEntry(dG, "gluon splitting", "lp");
       leg->AddEntry(dS, Form("tagged g#rightarrowb#bar{b} share + %.3f (not used)", gsShift), "p");
     }
-    if(dGT) leg->AddEntry(dGT, "all b, gen-muon tag (comparison)", "l");
+    if(dGT) leg->AddEntry(dGT, fSource == "responseTagOverGen" ? "calo-matched scan (comp.)" : "all b, gen-muon tag (comparison)", "l");
     leg->Draw();
     TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.038);
     la.DrawLatex(0.18, 0.88, "PYTHIA, pp 5.02 TeV");
     la.SetTextSize(0.030);
     if(fSource == "scanRecoTag") la.DrawLatex(0.18, 0.83, "reco tight muon #it{p}_{T} > 15 GeV, |#eta| < 2, #DeltaR < 0.4 (gen jets)");
     else if(haveFCGS) la.DrawLatex(0.18, 0.83, "gen muon #it{p}_{T} > 15 GeV, #DeltaR < 0.4");
+    else if(fSource == "responseTagOverGen") la.DrawLatex(0.18, 0.83, "muon-tagged / all b jets of the unfolding response");
     else {
       la.DrawLatex(0.18, 0.83, Form("PROVISIONAL: reco-#mu-tagged / all matched b jets, #div %.4f", effMuMC));
       la.DrawLatex(0.18, 0.79, "(gen-muon tag needs the fixed-scan rerun)");
     }
     savePdfTight(c, outFigF);
+    delete c;
+  }
+  // the same for talks: all b jets only, reported range, no band
+  {
+    TCanvas *c = new TCanvas("cFs", "", 700, 800);   // the shape of the two spectrum figures it sits between
+    c->SetLeftMargin(0.17); c->SetBottomMargin(0.12); c->SetRightMargin(0.04); c->SetTopMargin(0.05);
+    double ymax = 0.;
+    for(int i = 1; i <= NPt; i++) if(reported(i)) ymax = TMath::Max(ymax, fB->GetBinContent(i) + fB->GetBinError(i));
+    TH1F *fr = c->DrawFrame(ptReportMin, 0., ptEdges[NPt], 1.5*ymax);
+    fr->GetXaxis()->SetTitle("gen #it{p}_{T}^{jet} [GeV]"); fr->GetYaxis()->SetTitle("fraction of #it{b} jets with a muon tag");
+    fr->GetXaxis()->SetTitleSize(0.050); fr->GetYaxis()->SetTitleSize(0.050);
+    fr->GetXaxis()->SetLabelSize(0.042); fr->GetYaxis()->SetLabelSize(0.042); fr->GetYaxis()->SetTitleOffset(1.6);
+    TH1D *dB = (TH1D*) fB->Clone("dBs");
+    for(int i = 1; i <= NPt; i++) if(!reported(i)){ dB->SetBinContent(i, -999.); dB->SetBinError(i, 0.); }
+    styleH(dB, "#000000", markFilledCircle, 1.4); dB->Draw("E1 X0 same");
+    TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.046);
+    la.DrawLatex(0.18, 0.88, "PYTHIA, pp");
+    savePdfTight(c, TString(outFigF).ReplaceAll(".pdf", "_simple.pdf"));
     delete c;
   }
 
@@ -335,10 +417,10 @@ void correctMuonTagFrequency_caloJets_pp()
     leg->AddEntry(lb, "total systematic", "f");
     leg->Draw();
     TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.046);
-    la.DrawLatex(0.21, 0.84, "pp 5.02 TeV, calo jets: inclusive b jets");
+    la.DrawLatex(0.21, 0.84, Form("pp 5.02 TeV, %s: inclusive b jets", collLabel()));
     la.SetTextSize(0.034);
     la.DrawLatex(0.21, 0.785, "unfolded; muon reco and muon-tag frequency corrected");
-    if(!haveFCGS){ la.SetTextColor(kRed+1); la.DrawLatex(0.21, 0.74, "tag frequency PROVISIONAL (reco-#mu tag / MC #varepsilon_{#mu})"); la.SetTextColor(kBlack); }
+    if(fSource == "responseRecoTag"){ la.SetTextColor(kRed+1); la.DrawLatex(0.21, 0.74, "tag frequency PROVISIONAL (reco-#mu tag / MC #varepsilon_{#mu})"); la.SetTextColor(kBlack); }
 
     pBot->cd();
     TH1D *rS = (TH1D*) iTot->Clone("rSI"), *rT = (TH1D*) iStat->Clone("rTI");
@@ -355,7 +437,49 @@ void correctMuonTagFrequency_caloJets_pp()
     legB->SetNColumns(2);
     legB->AddEntry(rS, "total syst.", "l"); legB->AddEntry(rT, "stat.", "l");
     legB->Draw();
-    c->SaveAs(outFig);
+    savePdfTight(c, outFig);
+    delete c;
+  }
+  // the same for talks: spectrum with its band, shorter text
+  {
+    TCanvas *c = new TCanvas("cIs", "", 700, 800);
+    TPad *pTop, *pBot; splitPads(pTop, pBot);
+    pTop->cd(); pTop->SetLogy();
+    TH1D *fr = (TH1D*) hI->Clone("frIs"); fr->Reset(); fr->SetTitle("");
+    double ymax = 0., ymin = 1e30;
+    for(int i = 1; i <= NPt; i++) if(reported(i)){ ymax = TMath::Max(ymax, hI->GetBinContent(i)); ymin = TMath::Min(ymin, hI->GetBinContent(i)); }
+    fr->SetMinimum(0.3*ymin); fr->SetMaximum(30.*ymax);
+    fr->GetXaxis()->SetRangeUser(ptReportMin, ptEdges[NPt]); fr->GetXaxis()->SetLabelSize(0);
+    fr->GetYaxis()->SetTitle("d#it{N}/d#it{p}_{T} [GeV^{-1}]"); fr->GetYaxis()->SetTitleSize(0.055);
+    fr->GetYaxis()->SetTitleOffset(1.35); fr->GetYaxis()->SetLabelSize(0.045);
+    fr->Draw("AXIS");
+    for(int i = 1; i <= NPt; i++){
+      double v = hI->GetBinContent(i); if(v <= 0. || !reported(i)) continue;
+      TBox *bx = new TBox(ptEdges[i-1], v - hIsys->GetBinError(i), ptEdges[i], v + hIsys->GetBinError(i));
+      bx->SetFillColorAlpha(colSys, 0.30); bx->SetLineColor(colSys); bx->Draw();
+    }
+    TH1D *d = (TH1D*) hI->Clone("dIs");
+    for(int i = 1; i <= NPt; i++) if(!reported(i)){ d->SetBinContent(i, -999.); d->SetBinError(i, 0.); }
+    styleH(d, "#000000", markFilledCircle, 1.3); d->Draw("E1 X0 same");
+    TLegend *leg = makeLegend(0.25, 0.08, 0.60, 0.24, 0.045);
+    leg->AddEntry(d, "stat.", "lp");
+    TBox *lb = new TBox(); lb->SetFillColorAlpha(colSys, 0.30); lb->SetLineColor(colSys);
+    leg->AddEntry(lb, "total syst.", "f"); leg->Draw();
+    TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.050);
+    la.DrawLatex(0.21, 0.84, Form("pp, #it{b} jets, %s", collLabel()));
+    pBot->cd();
+    TH1D *rS = (TH1D*) iTot->Clone("rSIs"), *rT = (TH1D*) iStat->Clone("rTIs");
+    for(TH1D *h : {rS, rT}){ h->Scale(100.); for(int i = 0; i <= NPt+1; i++) h->SetBinError(i, 0.); h->GetXaxis()->SetRangeUser(ptReportMin, ptEdges[NPt]); }
+    styleLine(rS, "#D55E00", 3); styleLine(rT, "#0072B2", 3); rT->SetLineStyle(2);
+    double m = 0.; for(int i = 1; i <= NPt; i++) if(reported(i)) m = TMath::Max(m, TMath::Max(rS->GetBinContent(i), rT->GetBinContent(i)));
+    TH1D *rF = (TH1D*) rS->Clone("rFIs"); rF->Reset();
+    rF->SetMinimum(0.); rF->SetMaximum(1.7*m);
+    rF->GetXaxis()->SetRangeUser(ptReportMin, ptEdges[NPt]);
+    styleRatioAxes(rF, "#it{p}_{T}^{jet} [GeV]", "rel. unc. [%]");
+    rF->Draw("AXIS"); rS->Draw("HIST same"); rT->Draw("HIST same");
+    TLegend *legB = makeLegend(0.19, 0.78, 0.95, 0.97, 0.075); legB->SetNColumns(2);
+    legB->AddEntry(rS, "total syst.", "l"); legB->AddEntry(rT, "stat.", "l"); legB->Draw();
+    savePdfTight(c, TString(outFig).ReplaceAll(".pdf", "_simple.pdf"));
     delete c;
   }
 
@@ -374,12 +498,13 @@ void correctMuonTagFrequency_caloJets_pp()
     fr->GetXaxis()->SetTitleSize(0.048); fr->GetYaxis()->SetTitleSize(0.048);
     fr->GetXaxis()->SetLabelSize(0.040); fr->GetYaxis()->SetLabelSize(0.040);
     TLegend *leg = makeLegend(0.40, 0.55, 0.95, 0.86, 0.030);
-    for(int k = 0; k < NIn; k++){ styleLine(lS[k], inHex[k], 3); lS[k]->SetLineStyle(inStyle[k]); lS[k]->Draw("HIST same"); leg->AddEntry(lS[k], inLabel[k], "l"); }
-    styleLine(lF, "#56B4E9", 3); lF->SetLineStyle(10); lF->Draw("HIST same"); leg->AddEntry(lF, "muon-tag frequency (MC stat.)", "l");
-    styleLine(lT, "#000000", 4); lT->Draw("HIST same"); leg->AddEntry(lT, "total (quadrature)", "l");
+    // the 70-80 GeV turn-on correction stays in the total but is too small to earn a line
+    for(int k = 0; k < NIn; k++){ if(TString(inKey[k]) == "turnOn") continue; styleLine(lS[k], inHex[k], 3); lS[k]->SetLineStyle(inStyle[k]); lS[k]->Draw("HIST same"); leg->AddEntry(lS[k], inLabel[k], "l"); }
+    styleLine(lF, "#56B4E9", 3); lF->SetLineStyle(10); lF->Draw("HIST same"); leg->AddEntry(lF, "muon-tag frequency", "l");
+    styleLine(lT, "#000000", 4); lT->Draw("HIST same"); leg->AddEntry(lT, "total", "l");
     leg->Draw();
     TLatex la; la.SetNDC(); la.SetTextFont(42); la.SetTextSize(0.038);
-    la.DrawLatex(0.17, 0.885, "pp 5.02 TeV, calo jets: inclusive b-jet spectrum systematics");
+    la.DrawLatex(0.17, 0.885, Form("pp 5.02 TeV, %s: inclusive b-jet spectrum systematics", collLabel()));
     savePdfTight(c, outFigS);
     delete c;
   }

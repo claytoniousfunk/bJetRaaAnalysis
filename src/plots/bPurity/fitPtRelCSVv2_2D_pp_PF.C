@@ -9,7 +9,7 @@
 // ptRelDeepCSV3D.h; first z bin [-11, 0) = not evaluated, the forest stores -10). Same jets and
 // weights as the 2026-10-22 DeepCSV scans. Each jet-pT window (80-300 GeV) is fitted on its own.
 //
-// Binning: ptRel 0.5 GeV over 0-fitMax (the model is defined over 0-5 GeV), CSVv2 in K categories
+// Binning: ptRel 0.2 GeV since 2026-11-12, 0.5 GeV before (BJET_PTREL_BIN, see nPR below) over 0-fitMax (the model is defined over 0-5 GeV), CSVv2 in K categories
 //   "4cat": [not evaluated, 0.54), [0.54, 0.84), [0.84, 0.96), [0.96, 1]  (~ the CMS loose / medium /
 //           tight working points 0.5426 / 0.8484 / 0.9535 on the scan's 0.02 grid)
 //   "8cat": edges 0.10, 0.30, 0.54, 0.70, 0.84, 0.90, 0.96
@@ -17,7 +17,7 @@
 //
 // Model, per window, bin (k = CSVv2 category, j = ptRel bin):
 //   mu_kj = N sum_F f_F w_Fk T_F,kj        F = b (flavor creation + g->bb, natural share), c, light
-//   T_F,kj   PYTHIA counts / flavor total, axis-smeared by the nominal per-window pp PF sigma
+//   T_F,kj   PYTHIA counts / flavor total; with ppAxisSmear (off since 2026-11-02) axis-smeared by the per-window pp PF sigma
 //            (axisSigmaPPPFFor), applied as the smeared / unsmeared ptRel ratio of the scan's
 //            axisSmear grid, the same in every CSVv2 category
 //   f_b      b fraction of all tagged jets over 0-5 GeV = the PURITY (free)
@@ -34,6 +34,39 @@
 // (ii) with the tagger mis-modelled: b in the top category x 0.85 (graded below), light and c in
 // every category above the lowest x 1.5 and x 1.2; fitted with every model against the truth.
 //
+// FIT ENGINE (2026-11-09, user): the ptRel-only model (the one every CSVv2-cut purity uses) can be
+// fitted with RooFit instead of the hand-written likelihood above. Environment BJET_PTREL_FIT, or
+// p2d::fitEngine in a driver (0 / 1 / 2):
+//   minuit      (default) the likelihood above, Minuit2 Migrad + Hesse, Barlow-Beeston lite profiled
+//               analytically per bin
+//   roofit      RooRealSumPdf of the b, c, light RooParamHistFunc templates (same counts, same
+//               normalization over 0-5 GeV, c share fixed at PYTHIA's), one shared gamma per ptRel bin
+//               with a Gaussian constraint of width = the templates' relative MC error in that bin
+//               (HistFactory-style Barlow-Beeston lite; the width is evaluated at the fitted f_b, two
+//               passes), binned likelihood fitTo, Hesse error
+//   roofitNoBB  the same with the gammas fixed at 1 (no template MC statistics in the fit)
+// Every output file and figure of fitPtRelCSVv2_2D_pp_PF.C, fitPtRelCSVv2Cut_pp_PF.C,
+// fitPtRelCSVv2Cut_PF_PbPb.C, fitPtRelCSVv2Cut_lowPt_PF.C and systematics_CSVv2Cut_PF.C then carries
+// fitEngineTag() ("_roofit", "_roofitNoBB"), so the nominal files are never overwritten. The
+// deviance / ndf printed is the minuit likelihood's deviance at the RooFit f_b, for comparability.
+// The 2D models (tagger shapes) have no RooFit version: they always use minuit, with a warning.
+//
+// LIGHT FIXED AT MC (2026-11-11, user: "try instead fixing light fraction to that of MC and letting b and c
+// float"): environment BJET_PTREL_LIGHT=mc, or p2d::lightFixMC = 1 in a driver. The light fraction is held
+// at the MC value of the window, f_l = T_light / (T_b + T_c + T_light) (template totals = the MC flavor
+// yields, natural g->bb share; tagged jets only for the CSVv2-cut fits), and c takes the rest:
+//   f_b free in [0, 1 - f_l],  f_c = 1 - f_b - f_l
+// instead of f_c = (1 - f_b) r_MC. Same number of free parameters (models with a free r keep r). Both
+// engines; every output carries fitEngineTag() + "_lightFixMC", so the nominal files are never overwritten.
+//
+// c / b FIXED AT MC, LIGHT FREE (2026-11-12, user: "a version where we fix the c/b ratio and let light
+// float"): environment BJET_PTREL_CB=mc, or p2d::cbFixMC = 1. The c / b ratio is held at the MC value of
+// the window, r_cb = T_c / T_b (template totals, natural g->bb yields; tagged jets for the cut fits), and
+// light takes the rest:
+//   f_b free in [0, 1 / (1 + r_cb)],  f_c = r_cb f_b,  f_l = 1 - f_b (1 + r_cb)
+// Same number of free parameters; both engines; outputs suffixed "_cbFixMC". Exclusive with the light-fixed
+// switch (the macro stops if both are set).
+//
 // Output: rootFiles/bPurityResults/ptRelCSVv2_2D_PF_pp_<cats>_fit<max>.root
 //         figures/bPurity/PFJets_pp/csvV2_2D/{purity,tagSF,fit_<lo>to<hi>}_<cats>_fit<max>.pdf
 // Usage, from src/plots/bPurity/:  root -l -b -q 'fitPtRelCSVv2_2D_pp_PF.C("4cat", 5.0)'   (0-5 GeV nominal since 2026-10-24, user; 3.0 = the chain's edge)
@@ -47,6 +80,15 @@
 #include "TLegend.h"
 #include "THStack.h"
 #include "TGraphErrors.h"
+#include "RooRealVar.h"
+#include "RooDataHist.h"
+#include "RooParamHistFunc.h"
+#include "RooRealSumPdf.h"
+#include "RooFormulaVar.h"
+#include "RooGaussian.h"
+#include "RooFitResult.h"
+#include "RooMsgService.h"
+#include <memory>
 #include "../../../headers/plotting/plotStyle.h"
 #include "../../../headers/plotting/gridPads.h"
 #include "../../../headers/functions/caloJetBPurityFit_pp.h"   // axisSigmaPPPFFor, axisSmearSigmaPP, projWin
@@ -57,9 +99,33 @@ const char *dataName = "rootFiles/scanningOuput/pp/pp_SingleMuon_manualJEC_mu12_
 const char *mcName = "rootFiles/scanningOuput/PYTHIA/PYTHIA_DiJet_manualJEC_pThat-15_mu12_pTmu-15to999_tight_vzReweight_jetTrkMaxFilter_removeHYDJETjet0p35CutOnGen_WDecayFilter_axisSmearScan_genMuTagFix_2026-10-24.root";
 const char *h3 = "h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn";
 const char *h2 = "h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn";
+// jet-pT windows of the fits; with BJET_PT_7BINS (2026-11-16, the 7-bin nominal) the 7 bins of 80-200 GeV + 200-300,
+// i.e. ptEdges + 3 of caloJetBPurityFitCore.h on either axis
+#ifdef BJET_PT_7BINS
+const int NW = 8;
+const double wLo[NW] = {80., 90., 100., 110., 120., 135., 150., 200.}, wHi[NW] = {90., 100., 110., 120., 135., 150., 200., 300.};
+#else
 const int NW = 5;
 const double wLo[NW] = {80., 100., 120., 150., 200.}, wHi[NW] = {100., 120., 150., 200., 300.};
-const int NPR = 10;                    // ptRel 0.5 GeV over 0-5 GeV
+#endif
+const int NPR = 50;                    // array size: up to 50 ptRel bins (the scans' 0.1 GeV) over 0-5 GeV
+// ptRel BIN WIDTH (2026-11-11, user: "refit with 0.2 GeV wide bins"): environment BJET_PTREL_BIN (GeV), default 0.5;
+// any multiple of the scans' 0.1 GeV that divides 5 GeV (0.1, 0.2, 0.5, 1). nPR = bins over 0-5 GeV. Outputs of a
+// non-default width carry fitEngineTag() "_bin0p5" etc., so the nominal files are never overwritten.
+// NOMINAL WIDTH 0.2 GeV SINCE 2026-11-12 (user: "make the nominal binning option 0.2 GeV from now on"); it was
+// 0.5 GeV before, and the 0.2 GeV outputs of 2026-11-11 carry "_bin0p2". So every UNTAGGED output written
+// before 2026-11-12 (purity files, fit grids, fittedCB, ...) is 0.5 GeV; BJET_PTREL_BIN=0.5 now writes "_bin0p5".
+inline double initPtRelBW(){
+  const char *e = std::getenv("BJET_PTREL_BIN"); if(!e || !*e) return 0.2;
+  const double b = atof(e), n5 = 5./b, n1 = b/0.1;
+  if(b <= 0. || fabs(n5 - TMath::Nint(n5)) > 1e-6 || fabs(n1 - TMath::Nint(n1)) > 1e-6 || TMath::Nint(n5) > NPR){
+    printf("ERROR: BJET_PTREL_BIN=%s: not a multiple of 0.1 GeV dividing 5 GeV; using the nominal 0.2\n", e); return 0.2; }
+  if(fabs(b - 0.2) > 1e-9) printf("PTREL BINNING: %g GeV bins over 0-5 GeV (%d bins, nominal 0.2); outputs suffixed _bin%s\n", b, TMath::Nint(n5), TString::Format("%g", b).ReplaceAll(".", "p").Data());
+  return b;
+}
+double ptRelBW = initPtRelBW();        // ptRel bin width (GeV)
+int nPR = TMath::Nint(5./ptRelBW);     // ptRel bins over 0-5 GeV (25 at the nominal 0.2 GeV)
+inline TString ptRelBinTag(){ return fabs(ptRelBW - 0.2) < 1e-9 ? TString("") : "_bin" + TString::Format("%g", ptRelBW).ReplaceAll(".", "p"); }
 #ifndef P2D_KMAX
 #define P2D_KMAX 8                     // array size only; fitPtRelCSVv2_fineSurface_ppPbPb_PF.C raises it before including this file
 #endif
@@ -70,6 +136,27 @@ const int NF = 3;                      // b, c, light
 const char *flLabel[NF] = {"b", "c", "light"};
 const std::vector<std::vector<const char*>> flMembers = {{"bJets", "bGSJets"}, {"cJets"}, {"dJets", "uJets", "sJets", "gJets"}};
 const double sigmaPrior = 0.3;         // prior on a_ck, a_lk ("full")
+// systematic-variation knobs (2026-10-28, systematics_CSVv2Cut_PF.C); the defaults are the nominal
+double gsShift = 0.175;                // ABSOLUTE g->bb share = natural + this; used only when gsMult = 0 (nominal 2026-11-02 to 2026-11-09; clamped at 0: gsShift <= -1 = flavor creation only)
+double gsMult = 1.175;                 // NOMINAL since 2026-11-09 (user): RELATIVE g->bb share of the b template = natural x gsMult, after the CMS b-jet shapes
+                                       // paper (PLB 844 (2023) 137849: MC g->bb fraction 15-20% below data, relative); systematic x 1.175 (1 -+ 0.2).
+                                       // The 2024 bGS_multiplier = 1.175 had been applied as an ABSOLUTE +0.175. gsMult = 0 -> natural + gsShift
+inline double gsShare(double nat){ return TMath::Max(0., TMath::Min(1., gsMult > 0. ? nat*gsMult : nat + gsShift)); }
+// study macros' g->bb mode switch: "" = nominal (natural x 1.175), "abs" = natural + 0.175 (absolute, the 2026-11-02 to
+// 11-09 nominal and the earlier analyses' convention), "nat" = natural; tag = output suffix ("", "_gsAbs", "_gsNat")
+inline bool setGSMode(const TString &mode, TString &tag){
+  if(mode == ""){ tag = ""; return true; }
+  if(mode == "abs"){ gsMult = 0.; gsShift = 0.175; tag = "_gsAbs"; }
+  else if(mode == "nat"){ gsMult = 0.; gsShift = 0.; tag = "_gsNat"; }
+  else { printf("ERROR: g->bb mode %s (\"\", abs, nat)\n", mode.Data()); return false; }
+  printf("b template g->bb share: %s\n", gsMult > 0. ? Form("natural x %.3f", gsMult) : Form("natural + %.3f", gsShift));
+  return true;
+}
+bool ppAxisSmear = false;              // pp templates smeared by the tuned per-window axis sigma; off since 2026-11-02 (user: nominal has no axis smearing)
+double axisSigmaShiftVar = 0.;         // pp: added to the per-window axis sigma, with ppAxisSmear
+// alternative inputs (2026-10-29, the mu5 scans, fitPtRelCSVv2Cut_pp_PF_mu5.C): a driver repoints
+// dataName / mcName and sets this, which is appended to every output and figure tag; "" = nominal
+TString inputTag = "";
 
 struct Tpl { double n[KMAX][NPR] = {}, e2[KMAX][NPR] = {}, tot = 0., eps[KMAX] = {}; };
 struct Win { double d[KMAX][NPR] = {}; Tpl t[NF]; double truthB = 0., rc = 0., sigma = 0., nData = 0.; };
@@ -95,7 +182,7 @@ bool fillCounts(TFile *f, const std::vector<TString> &names, double lo, double h
     const int y1 = h->GetYaxis()->FindBin(lo + 1e-6), y2 = h->GetYaxis()->FindBin(hi - 1e-6);
     for(int ix = 1; ix <= h->GetNbinsX(); ix++){
       const double x = h->GetXaxis()->GetBinCenter(ix); if(x >= 5.) continue;
-      const int j = (int)(x/0.5);
+      const int j = (int)(x/ptRelBW);
       for(int iz = 1; iz <= h->GetNbinsZ(); iz++){
         const int k = catOf(h->GetZaxis()->GetBinCenter(iz));
         double c = 0., e = 0.;
@@ -118,12 +205,12 @@ bool smearRatio(TFile *f, const std::vector<const char*> &fls, double lo, double
     if(!a || !b || !z) return false;
     for(int i = 1; i <= z->GetNbinsX(); i++){
       const double x = z->GetBinCenter(i); if(x >= 5.) continue;
-      const int j = (int)(x/0.5);
+      const int j = (int)(x/ptRelBW);
       s[j] += (1. - fr)*a->GetBinContent(i) + fr*b->GetBinContent(i); u[j] += z->GetBinContent(i);
     }
     delete a; delete b; delete z;
   }
-  for(int j = 0; j < NPR; j++) ratio[j] = u[j] > 0. ? s[j]/u[j] : 1.;
+  for(int j = 0; j < nPR; j++) ratio[j] = u[j] > 0. ? s[j]/u[j] : 1.;
   return true;
 }
 
@@ -156,7 +243,46 @@ inline void weights(const double *p, double w[NF][KMAX]){
     for(int k = 0; k < K; k++) w[F][k] = e[k]/den;
   }
 }
-inline void fracs(const double *p, double f[NF]){ const double r = cur->freeR ? p[1] : cw->rc; f[0] = p[0]; f[1] = (1. - p[0])*r; f[2] = (1. - p[0])*(1. - r); }
+// light fixed at MC (see the header); -1 = from BJET_PTREL_LIGHT
+int lightFixMC = -1;
+inline bool lightFixed(){
+  if(lightFixMC < 0){
+    const char *e = std::getenv("BJET_PTREL_LIGHT"); const TString s = e ? e : "";
+    lightFixMC = s == "mc" ? 1 : 0;
+    if(s != "" && s != "mc" && s != "free") printf("WARNING: BJET_PTREL_LIGHT=%s unknown (mc); light at the MC c / light ratio as usual\n", s.Data());
+  }
+  static int announced = -1;
+  if(announced != lightFixMC){ announced = lightFixMC; if(lightFixMC) printf("PTREL FIT: LIGHT FRACTION FIXED AT MC, b and c free; outputs suffixed _lightFixMC\n"); }
+  return lightFixMC == 1;
+}
+inline double lightFracMC(const Win &w){ const double s = w.t[0].tot + w.t[1].tot + w.t[2].tot; return s > 0. ? w.t[2].tot/s : 0.; }
+inline bool pinLight(const Model &M){ return lightFixed() && !M.freeR; }
+// c / b fixed at MC, light free (see the header); -1 = from BJET_PTREL_CB
+int cbFixMC = -1;
+inline bool cbFixed(){
+  if(cbFixMC < 0){
+    const char *e = std::getenv("BJET_PTREL_CB"); const TString s = e ? e : "";
+    cbFixMC = s == "mc" ? 1 : 0;
+    if(s != "" && s != "mc") printf("WARNING: BJET_PTREL_CB=%s unknown (mc); c / light at the MC ratio as usual\n", s.Data());
+  }
+  static int announced = -1;
+  if(announced != cbFixMC){ announced = cbFixMC; if(cbFixMC) printf("PTREL FIT: c / b FIXED AT MC, light free; outputs suffixed _cbFixMC\n"); }
+  if(cbFixMC == 1 && lightFixed()){ printf("ERROR: BJET_PTREL_CB=mc and BJET_PTREL_LIGHT=mc are exclusive\n"); gSystem->Exit(1); }
+  return cbFixMC == 1;
+}
+inline double cbRatioMC(const Win &w){ return w.t[0].tot > 0. ? w.t[1].tot/w.t[0].tot : 0.; }
+inline bool pinCB(const Model &M){ return cbFixed() && !M.freeR; }
+// upper limit of f_b under the active constraint
+inline double fbMaxOf(const Model &M, const Win &w){
+  if(pinLight(M)) return TMath::Max(1e-3, 1. - lightFracMC(w));
+  if(pinCB(M)) return 1./(1. + cbRatioMC(w));
+  return 1.;
+}
+inline void fracs(const double *p, double f[NF]){
+  if(pinCB(*cur)){ const double r = cbRatioMC(*cw); f[0] = p[0]; f[1] = r*p[0]; f[2] = TMath::Max(0., 1. - p[0]*(1. + r)); return; }
+  if(pinLight(*cur)){ const double fl = lightFracMC(*cw); f[0] = p[0]; f[2] = fl; f[1] = TMath::Max(0., 1. - p[0] - fl); return; }
+  const double r = cur->freeR ? p[1] : cw->rc; f[0] = p[0]; f[1] = (1. - p[0])*r; f[2] = (1. - p[0])*(1. - r);
+}
 // expectation and template variance of every in-range bin, normalised to the in-range data
 void expectAll(const double *p, double mu[][NPR], double va[][NPR], double comp[][KMAX][NPR] = nullptr){
   double w[NF][KMAX], f[NF]; weights(p, w); fracs(p, f);
@@ -200,13 +326,14 @@ double nll(const double *p){ return nllCore(p); }
 
 struct Result { double par[2 + 3*(KMAX-1)] = {}, err[2 + 3*(KMAX-1)] = {}, pur = 0., epur = 0., dev = 0.; int ndf = 0, status = -1, hesse = -1;
                 double sf[NF][KMAX] = {}, esf[NF][KMAX] = {}; };
-Result fitWin(const Model &M, Win &w, const double (*data)[NPR]){
+Result fitWinMinuit(const Model &M, Win &w, const double (*data)[NPR]){
   cur = &M; cw = &w; cd = data; Kf = M.oneD ? 1 : K;
   ROOT::Math::Minimizer *mn = ROOT::Math::Factory::CreateMinimizer("Minuit2", "Migrad");
   mn->SetPrintLevel(0); mn->SetStrategy(1); mn->SetMaxFunctionCalls(200000);
   mn->SetErrorDef(0.5); mn->SetTolerance(0.1);
   const int np = NPar(); ROOT::Math::Functor fn(&nll, np); mn->SetFunction(fn);
-  mn->SetLimitedVariable(0, "fb", TMath::Min(0.9, TMath::Max(0.1, w.truthB)), 0.02, 0., 1.);
+  const double fbMax = fbMaxOf(M, w);
+  mn->SetLimitedVariable(0, "fb", TMath::Min(0.9*fbMax, TMath::Max(0.1, w.truthB)), 0.02, 0., fbMax);
   if(M.freeR) mn->SetLimitedVariable(1, "r", w.rc, 0.02, 0., 1.); else mn->SetFixedVariable(1, "r", w.rc);
   int nFree = 1 + (M.freeR ? 1 : 0);
   for(int F = 0; F < NF; F++) for(int k = 1; k < K; k++){
@@ -235,13 +362,122 @@ Result fitWin(const Model &M, Win &w, const double (*data)[NPR]){
   delete mn;
   return r;
 }
+
+// ---------------------------------------------------------------- fit engine (see the header)
+int fitEngine = -1;                    // -1 = from BJET_PTREL_FIT; 0 minuit, 1 roofit, 2 roofitNoBB
+inline int engine(){
+  if(fitEngine < 0){
+    const char *e = std::getenv("BJET_PTREL_FIT"); const TString s = e ? e : "";
+    fitEngine = s == "roofit" ? 1 : s == "roofitNoBB" ? 2 : 0;
+    if(s != "" && s != "minuit" && fitEngine == 0) printf("WARNING: BJET_PTREL_FIT=%s unknown (minuit, roofit, roofitNoBB); using minuit\n", s.Data());
+  }
+  static int announced = -1;
+  if(announced != fitEngine){
+    announced = fitEngine;
+    if(fitEngine > 0){
+      printf("PTREL FIT ENGINE: RooFit%s; outputs suffixed %s\n", fitEngine == 1 ? " with Barlow-Beeston lite gammas" : ", no template MC statistics", fitEngine == 1 ? "_roofit" : "_roofitNoBB");
+      RooMsgService::instance().setGlobalKillBelow(RooFit::WARNING);
+    }
+  }
+  return fitEngine;
+}
+inline TString fitEngineTag(){ const int e = engine(); return TString(e == 1 ? "_roofit" : e == 2 ? "_roofitNoBB" : "") + (lightFixed() ? "_lightFixMC" : "") + (cbFixed() ? "_cbFixMC" : "") + ptRelBinTag(); }
+
+// RooFit version of fitWinMinuit for the 1D (ptRel-only) models. The templates are the same counts
+// per 0.5 GeV bin, each flavor divided by its total over 0-5 GeV, so f_b is the b fraction over
+// 0-5 GeV whatever the fit range, exactly as in expectAll(); the fit sees the first nFit bins only.
+int rfUid = 0;
+Result fitWinRooFit(const Model &M, Win &w, const double (*data)[NPR]){
+  cur = &M; cw = &w; cd = data; Kf = 1;
+  const bool bb = engine() == 1;
+  const int id = rfUid++;
+  const double xHi = ptRelBW*nFit;
+  RooRealVar x(Form("rfx%d", id), "p_{T}^{rel}", 0., xHi); x.setBins(nFit);
+  TH1D hD(Form("rfhD%d", id), "", nFit, 0., xHi); hD.SetDirectory(nullptr);
+  for(int j = 0; j < nFit; j++) hD.SetBinContent(j + 1, dN(0, j));
+  RooDataHist dh(Form("rfdh%d", id), "", x, RooFit::Import(hD));
+
+  const bool pinL = pinLight(M), pinC = pinCB(M); const double flMC = lightFracMC(w), rcb = cbRatioMC(w), fbMax = fbMaxOf(M, w);
+  RooRealVar fb(Form("rffb%d", id), "f_{b}", TMath::Min(0.9*fbMax, TMath::Max(0.1, w.truthB)), 0., fbMax);
+  RooRealVar rr(Form("rfr%d", id), "r", w.rc, 0., 1.); rr.setConstant(!M.freeR);
+  RooRealVar flv(Form("rffl%d", id), "f_{l}", flMC); flv.setConstant(true);
+  RooRealVar rcbv(Form("rfrcb%d", id), "r_{cb}", rcb); rcbv.setConstant(true);
+  RooFormulaVar cC(Form("rfcC%d", id), pinC ? "@0*@1" : pinL ? "1-@0-@1" : "(1-@0)*@1", pinC ? RooArgList(fb, rcbv) : pinL ? RooArgList(fb, flv) : RooArgList(fb, rr)),
+                cL(Form("rfcL%d", id), pinC ? "TMath::Max(0.,1-@0*(1+@1))" : "(1-@0)*(1-@1)", pinC ? RooArgList(fb, rcbv) : RooArgList(fb, rr));
+  RooAbsReal *coefOf[NF] = {&fb, &cC, pinL ? (RooAbsReal*) &flv : (RooAbsReal*) &cL};
+
+  // per-flavor templates; a flavor with no PYTHIA jets (light at a tight cut) is left out, as in expectAll()
+  std::vector<std::unique_ptr<TH1D>> hT; std::vector<std::unique_ptr<RooDataHist>> dT; std::vector<std::unique_ptr<RooParamHistFunc>> fT;
+  RooArgList funcs, coefs; int used[NF], nUsed = 0;
+  for(int F = 0; F < NF; F++){
+    if(cw->t[F].tot <= 0.) continue;
+    hT.emplace_back(new TH1D(Form("rfhT%d_%d", id, F), "", nFit, 0., xHi)); hT.back()->SetDirectory(nullptr);
+    for(int j = 0; j < nFit; j++){ hT.back()->SetBinContent(j + 1, tN(F, 0, j)/cw->t[F].tot); hT.back()->SetBinError(j + 1, sqrt(tE(F, 0, j))/cw->t[F].tot); }
+    dT.emplace_back(new RooDataHist(Form("rfdT%d_%d", id, F), "", x, RooFit::Import(*hT.back())));
+    // the first template creates the gammas, the others share them (one gamma per bin on the total)
+    fT.emplace_back(new RooParamHistFunc(Form("rffT%d_%d", id, F), "", *dT.back(), x, fT.empty() ? nullptr : fT.front().get(), true));
+    funcs.add(*fT.back()); coefs.add(*coefOf[F]); used[nUsed++] = F;
+  }
+  RooRealSumPdf model(Form("rfmodel%d", id), "", funcs, coefs);
+  const RooArgList &gam = fT.front()->paramList();
+
+  // Gaussian constraints on the gammas: relative MC error of the total template at f_b
+  std::vector<std::unique_ptr<RooRealVar>> mean, sig; std::vector<std::unique_ptr<RooGaussian>> con;
+  RooArgSet cons;
+  for(int j = 0; j < nFit; j++){
+    RooRealVar *g = (RooRealVar*) gam.at(j);
+    g->setVal(1.); g->setConstant(true);
+    mean.emplace_back(new RooRealVar(Form("rfm%d_%d", id, j), "", 1.));
+    sig.emplace_back(new RooRealVar(Form("rfs%d_%d", id, j), "", 1., 1e-9, 1e9)); sig.back()->setConstant(true); mean.back()->setConstant(true);
+    con.emplace_back(new RooGaussian(Form("rfcon%d_%d", id, j), "", *g, *mean.back(), *sig.back()));
+  }
+  auto setWidths = [&](double f){
+    const double c[NF] = {f, pinC ? rcb*f : pinL ? TMath::Max(0., 1. - f - flMC) : (1. - f)*rr.getVal(),
+                          pinC ? TMath::Max(0., 1. - f*(1. + rcb)) : pinL ? flMC : (1. - f)*(1. - rr.getVal())};
+    cons.removeAll();
+    for(int j = 0; j < nFit; j++){
+      double m = 0., v = 0.;
+      for(int u = 0; u < nUsed; u++){ const int F = used[u]; const double a = c[F]/cw->t[F].tot; m += a*tN(F, 0, j); v += a*a*tE(F, 0, j); }
+      RooRealVar *g = (RooRealVar*) gam.at(j);
+      const double s = m > 0. && v > 0. ? sqrt(v)/m : 0.;
+      if(!bb || s <= 0.){ g->setVal(1.); g->setConstant(true); continue; }   // no MC error in this bin: no gamma
+      sig[j]->setVal(s); g->setRange(TMath::Max(1e-3, 1. - 8.*s), 1. + 8.*s); g->setConstant(false); cons.add(*con[j]);
+    }
+  };
+  std::unique_ptr<RooFitResult> fr;
+  for(int pass = 0; pass < (bb ? 2 : 1); pass++){
+    setWidths(fb.getVal());   // pass 0: the starting f_b; pass 1: the fitted f_b
+    for(int j = 0; j < nFit; j++){ RooRealVar *g = (RooRealVar*) gam.at(j); if(!g->isConstant()) g->setVal(1.); }
+    fr.reset(model.fitTo(dh, RooFit::Save(true), RooFit::PrintLevel(-1), RooFit::Strategy(1), RooFit::SumW2Error(false),
+                         RooFit::ExternalConstraints(cons), RooFit::Minimizer("Minuit2", "Migrad")));
+  }
+
+  Result r;
+  r.status = fr ? fr->status() : -1;
+  r.hesse = -1;
+  if(fr) for(UInt_t i = 0; i < fr->numStatusHistory(); i++) if(TString(fr->statusLabelHistory(i)) == "HESSE") r.hesse = fr->statusCodeHistory(i);
+  r.par[0] = fb.getVal(); r.err[0] = fb.getError(); r.par[1] = rr.getVal(); r.err[1] = M.freeR ? rr.getError() : 0.;
+  r.pur = r.par[0]; r.epur = r.err[0];
+  nllCore(r.par, &r.dev); r.ndf = nFit - 1 - (M.freeR ? 1 : 0);
+  return r;
+}
+
+Result fitWin(const Model &M, Win &w, const double (*data)[NPR]){
+  if(engine() == 0) return fitWinMinuit(M, w, data);
+  if(!M.oneD){
+    static bool warned = false;
+    if(!warned){ printf("WARNING: no RooFit version of the 2D model %s; it is fitted with minuit\n", M.name); warned = true; }
+    return fitWinMinuit(M, w, data);
+  }
+  return fitWinRooFit(M, w, data);
+}
 // Asimov pseudo-data from the templates at the data's size; mult[F][k] mis-models the tagger.
 // Returns the true b fraction over 0-5 GeV.
 double asimov(const Win &w, const double mult[NF][KMAX], double out[][NPR]){
   double tot[NF] = {}, all = 0.;
-  for(int F = 0; F < NF; F++) for(int k = 0; k < K; k++) for(int j = 0; j < NPR; j++) tot[F] += w.t[F].n[k][j]*mult[F][k];
+  for(int F = 0; F < NF; F++) for(int k = 0; k < K; k++) for(int j = 0; j < nPR; j++) tot[F] += w.t[F].n[k][j]*mult[F][k];
   for(int F = 0; F < NF; F++) all += tot[F];
-  for(int k = 0; k < K; k++) for(int j = 0; j < NPR; j++){
+  for(int k = 0; k < K; k++) for(int j = 0; j < nPR; j++){
     out[k][j] = 0.; for(int F = 0; F < NF; F++) out[k][j] += w.t[F].n[k][j]*mult[F][k]*w.nData/all;
   }
   return tot[0]/all;
@@ -251,20 +487,30 @@ bool buildWindows(TFile *fD, TFile *fM){
   for(int w = 0; w < NW; w++) W[w] = Win();
   for(int w = 0; w < NW; w++){
     Win &X = W[w];
-    X.sigma = axisSigmaPPPFFor(wLo[w], wHi[w]);
+    X.sigma = ppAxisSmear ? TMath::Max(0., axisSigmaPPPFFor(wLo[w], wHi[w]) + axisSigmaShiftVar) : 0.;
     double dE2[KMAX][NPR] = {};   // the likelihood uses the data counts only
     if(!fillCounts(fD, {h3}, wLo[w], wHi[w], X.d, dE2)) return false;
     for(int F = 0; F < NF; F++){
       double ratio[NPR]; if(!smearRatio(fM, flMembers[F], wLo[w], wHi[w], X.sigma, ratio)) return false;
-      std::vector<TString> nm; for(const char *fl : flMembers[F]) nm.push_back(Form("%s_%s", h3, fl));
-      if(!fillCounts(fM, nm, wLo[w], wHi[w], X.t[F].n, X.t[F].e2, ratio)) return false;
-      for(int k = 0; k < K; k++) for(int j = 0; j < NPR; j++){ if(X.t[F].n[k][j] < 0.) X.t[F].n[k][j] = 0.; X.t[F].tot += X.t[F].n[k][j]; }
-      for(int k = 0; k < K; k++){ double s = 0; for(int j = 0; j < NPR; j++) s += X.t[F].n[k][j]; X.t[F].eps[k] = s/X.t[F].tot; }
+      if(F == 0){
+        // flavor creation and g->bb apart, recombined at the share g' = gsShare(g) (natural x gsMult)
+        double nFC[KMAX][NPR] = {}, eFC[KMAX][NPR] = {}, nGS[KMAX][NPR] = {}, eGS[KMAX][NPR] = {};
+        if(!fillCounts(fM, {Form("%s_bJets", h3)}, wLo[w], wHi[w], nFC, eFC, ratio)) return false;
+        if(!fillCounts(fM, {Form("%s_bGSJets", h3)}, wLo[w], wHi[w], nGS, eGS, ratio)) return false;
+        double tFC = 0., tGS = 0.; for(int k = 0; k < K; k++) for(int j = 0; j < nPR; j++){ tFC += nFC[k][j]; tGS += nGS[k][j]; }
+        const double g = tGS/(tFC + tGS), g2 = gsShare(g), sF = (1. - g2)/(1. - g), sG = g > 0. ? g2/g : 0.;
+        for(int k = 0; k < K; k++) for(int j = 0; j < nPR; j++){ X.t[0].n[k][j] = sF*nFC[k][j] + sG*nGS[k][j]; X.t[0].e2[k][j] = sF*sF*eFC[k][j] + sG*sG*eGS[k][j]; }
+      } else {
+        std::vector<TString> nm; for(const char *fl : flMembers[F]) nm.push_back(Form("%s_%s", h3, fl));
+        if(!fillCounts(fM, nm, wLo[w], wHi[w], X.t[F].n, X.t[F].e2, ratio)) return false;
+      }
+      for(int k = 0; k < K; k++) for(int j = 0; j < nPR; j++){ if(X.t[F].n[k][j] < 0.) X.t[F].n[k][j] = 0.; X.t[F].tot += X.t[F].n[k][j]; }
+      for(int k = 0; k < K; k++){ double s = 0; for(int j = 0; j < nPR; j++) s += X.t[F].n[k][j]; X.t[F].eps[k] = s/X.t[F].tot; }
     }
     X.truthB = X.t[0].tot/(X.t[0].tot + X.t[1].tot + X.t[2].tot);
     X.rc = X.t[1].tot/(X.t[1].tot + X.t[2].tot);
   }
-  for(int w = 0; w < NW; w++){ double s = 0.; for(int k = 0; k < K; k++) for(int j = 0; j < NPR; j++) s += W[w].d[k][j]; W[w].nData = s; }
+  for(int w = 0; w < NW; w++){ double s = 0.; for(int k = 0; k < K; k++) for(int j = 0; j < nPR; j++) s += W[w].d[k][j]; W[w].nData = s; }
   return true;
 }
 } // namespace p2d
@@ -272,12 +518,12 @@ bool buildWindows(TFile *fD, TFile *fM){
 void fitPtRelCSVv2_2D_pp_PF(TString cats = "4cat", double fitMax = 5.0){
   using namespace p2d;
   if(!setCats(cats)){ printf("ERROR: categories are 4cat or 8cat\n"); return; }
-  nFit = (int)(fitMax/0.5 + 0.5);
-  if(nFit < 2 || nFit > NPR){ printf("ERROR: fitMax in 1-5 GeV\n"); return; }
+  nFit = (int)(fitMax/ptRelBW + 0.5);
+  if(nFit < 2 || nFit > nPR){ printf("ERROR: fitMax in 1-5 GeV\n"); return; }
   setJetCollection("PFJets"); initPlotStyle();
   TFile *fD = TFile::Open(Form("%s/%s", repo, dataName)), *fM = TFile::Open(Form("%s/%s", repo, mcName));
   if(!fD || !fM || fD->IsZombie() || fM->IsZombie()){ printf("ERROR: inputs\n"); return; }
-  const TString tag = Form("%s_fit%g", cats.Data(), fitMax), outDir = Form("%s/figures/bPurity/PFJets_pp/csvV2_2D/", repo);
+  const TString tag = Form("%s_fit%g%s%s", cats.Data(), fitMax, inputTag.Data(), fitEngineTag().Data()), outDir = Form("%s/figures/bPurity/PFJets_pp/csvV2_2D/", repo);
   gSystem->mkdir(outDir, true);
 
   if(!buildWindows(fD, fM)) return;
@@ -289,7 +535,7 @@ void fitPtRelCSVv2_2D_pp_PF(TString cats = "4cat", double fitMax = 5.0){
            wLo[w], wHi[w], W[w].nData, W[w].sigma, W[w].truthB, W[w].rc);
     for(int k = 0; k < K; k++) printf(" %.3f", W[w].t[0].eps[k]); printf("  c:"); for(int k = 0; k < K; k++) printf(" %.3f", W[w].t[1].eps[k]);
     printf("  light:"); for(int k = 0; k < K; k++) printf(" %.3f", W[w].t[2].eps[k]);
-    printf("  data:"); for(int k = 0; k < K; k++){ double s = 0; for(int j = 0; j < NPR; j++) s += W[w].d[k][j]; printf(" %.3f", s/W[w].nData); } printf("\n");
+    printf("  data:"); for(int k = 0; k < K; k++){ double s = 0; for(int j = 0; j < nPR; j++) s += W[w].d[k][j]; printf(" %.3f", s/W[w].nData); } printf("\n");
   }
 
   // ---- Asimov closure
@@ -403,12 +649,12 @@ void fitPtRelCSVv2_2D_pp_PF(TString cats = "4cat", double fitMax = 5.0){
   // ---- figure 3: fit in one window, ptRel per CSVv2 category, "full" model
   for(int w : {1, 3}){
     cur = &models[3]; cw = &W[w]; cd = W[w].d; Kf = K;
-    const int nSave = nFit; nFit = NPR;   // draw over 0-5 GeV with the fitted parameters, normalised to the in-range data
+    const int nSave = nFit; nFit = nPR;   // draw over 0-5 GeV with the fitted parameters, normalised to the in-range data
     double mu[KMAX][NPR], va[KMAX][NPR], comp[NF][KMAX][NPR];
     // normalisation from the fit range, then shapes over 0-5
     nFit = nSave; expectAll(R[3][w].par, mu, va, comp);
     double scIn = 0., muIn = 0.; for(int k = 0; k < K; k++) for(int j = 0; j < nFit; j++) muIn += mu[k][j];
-    nFit = NPR; expectAll(R[3][w].par, mu, va, comp);
+    nFit = nPR; expectAll(R[3][w].par, mu, va, comp);
     for(int k = 0; k < K; k++) for(int j = 0; j < nSave; j++) scIn += mu[k][j];
     const double rs = muIn/scIn;
     nFit = nSave;
@@ -420,11 +666,11 @@ void fitPtRelCSVv2_2D_pp_PF(TString cats = "4cat", double fitMax = 5.0){
       double x1 = pt->GetXlowNDC(), x2 = x1 + pt->GetWNDC();
       pt->SetPad(x1, yS, x2, 1.); pt->SetTopMargin(0.09/(1. - yS)); pt->SetBottomMargin(0.);
       pb->SetPad(x1, 0., x2, yS); pb->SetBottomMargin(0.12/yS); pb->SetTopMargin(0.);
-      TH1D *hd = new TH1D(Form("fd%d_%d", w, k), "", NPR, 0., 5.), *hc[NF], *ht = new TH1D(Form("ft%d_%d", w, k), "", NPR, 0., 5.);
+      TH1D *hd = new TH1D(Form("fd%d_%d", w, k), "", nPR, 0., 5.), *hc[NF], *ht = new TH1D(Form("ft%d_%d", w, k), "", nPR, 0., 5.);
       hd->SetDirectory(nullptr); ht->SetDirectory(nullptr);
-      for(int F = 0; F < NF; F++){ hc[F] = new TH1D(Form("fc%d_%d_%d", w, k, F), "", NPR, 0., 5.); hc[F]->SetDirectory(nullptr); }
+      for(int F = 0; F < NF; F++){ hc[F] = new TH1D(Form("fc%d_%d_%d", w, k, F), "", nPR, 0., 5.); hc[F]->SetDirectory(nullptr); }
       double ymax = 0.;
-      for(int j = 0; j < NPR; j++){
+      for(int j = 0; j < nPR; j++){
         // drawn in thousands of jets
         hd->SetBinContent(j + 1, 1e-3*W[w].d[k][j]); hd->SetBinError(j + 1, 1e-3*sqrt(W[w].d[k][j]));
         for(int F = 0; F < NF; F++) hc[F]->SetBinContent(j + 1, 1e-3*comp[F][k][j]*rs);
@@ -452,12 +698,12 @@ void fitPtRelCSVv2_2D_pp_PF(TString cats = "4cat", double fitMax = 5.0){
       fr2->GetXaxis()->SetLabelSize(0.11); fr2->GetYaxis()->SetLabelSize(k == 0 ? 0.11 : 0.); fr2->GetXaxis()->SetTickLength(0.07);
       TLine *u = new TLine(0., 1., 5., 1.); u->SetLineStyle(2); u->SetLineWidth(2); u->Draw();
       TH1D *r = (TH1D*) hd->Clone(Form("fr%d_%d", w, k)); r->Divide(ht);
-      for(int j = 1; j <= NPR; j++) r->SetBinError(j, ht->GetBinContent(j) > 0. ? hd->GetBinError(j)/ht->GetBinContent(j) : 0.);
+      for(int j = 1; j <= nPR; j++) r->SetBinError(j, ht->GetBinContent(j) > 0. ? hd->GetBinError(j)/ht->GetBinContent(j) : 0.);
       r->Draw("E1 X0 SAME");
     }
     cv->cd(); TLatex a; a.SetNDC(); a.SetTextFont(42); a.SetTextSize(0.045);
     a.SetTextAlign(31); a.DrawLatex(0.98, 0.01, "muon #it{p}_{T}^{rel} (GeV)");
-    a.SetTextAngle(90); a.DrawLatex(0.022, 0.98, "10^{3} jets per 0.5 GeV"); a.DrawLatex(0.022, yS - 0.01, "data / fit");
+    a.SetTextAngle(90); a.DrawLatex(0.022, 0.98, Form("10^{3} jets per %g GeV", ptRelBW)); a.DrawLatex(0.022, yS - 0.01, "data / fit");
     g.cmsLabel(cv, "Internal", Form("pp (5.02 TeV),  %.0f < #it{p}_{T}^{jet} < %.0f GeV", wLo[w], wHi[w]));
     savePdfTight(cv, outDir + Form("fit_%.0fto%.0f_", wLo[w], wHi[w]) + tag + ".pdf");
   }
