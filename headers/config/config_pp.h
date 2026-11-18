@@ -53,6 +53,10 @@ bool doCSVv2Map = true;
 // not evaluate, stored as -1), names h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[_<flavor>]. Additive: the output
 // name is unchanged. ~0.84 MB. Without a discr_deepCSV branch the scan prints so and every jet lands in the underflow.
 bool doDeepCSVMap = true;
+// Z+jet pT balance (headers/AnalysisSetup/zJetBalance.h): x_jZ = pT^jet / pT^Z of the leading back-to-back jet in
+// Z -> mumu events, x Z pT, and the Z pT of every candidate, for an in-situ check of the PbPb jet energy scale against pp
+// (2026-11-18, user). Jets as the scan's own jet selection. Additive: no existing histogram changes, output name unchanged.
+bool doZJetBalance = true;
 // System8 maps for a data measurement of the CSVv2 b-tag efficiency (headers/AnalysisSetup/system8.h:
 // away jet = leading other jet, |eta| < 1.6, pT > 30 GeV, |dphi| > 2.5, tagged if CSVv2 > 0.84; maps in CSVv2
 // working-point categories). Additive: no existing histogram changes, output name unchanged. 2026-10-26.

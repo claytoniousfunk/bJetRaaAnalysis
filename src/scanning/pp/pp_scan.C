@@ -36,6 +36,7 @@
 #include "../../../eventMap/eventMap.h"
 #include "../../../headers/AnalysisSetup/ptRelMuPt3D.h"   // ptRel x muon pT x jet pT (2026-10-09)
 #include "../../../headers/AnalysisSetup/ptRelDeepCSV3D.h" // ptRel x jet pT x CSVv2 (2026-10-22; DeepCSV until the same day)
+#include "../../../headers/AnalysisSetup/zJetBalance.h" // Z+jet pT balance, doZJetBalance (2026-11-18)
 #include "../../../headers/AnalysisSetup/system8.h"      // System8 away-jet and negative-tag maps (2026-10-26)
 #include "../../../headers/AnalysisSetup/muonIP3D.h"     // muon ln|IP3D| maps for the IP3D template fit (2026-10-27)
 // jet corrector
@@ -264,6 +265,8 @@ TH2D *h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn;
 TH3D *h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn;   // ptRelMuPt3D.h
 TH3D *h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = nullptr;   // ptRelDeepCSV3D.h, doCSVv2Map
 TH3D *h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn = nullptr;   // ptRelDeepCSV3D.h, doDeepCSVMap (2026-11-16)
+TH2D *h_zJetXjz_zPt = nullptr;   // zJetBalance.h, doZJetBalance (2026-11-18)
+TH1D *h_zPt_zJet = nullptr;
 TH3D *h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = nullptr, *h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = nullptr;   // system8.h, doSystem8Maps
 TH3D *h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = nullptr, *h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn = nullptr;   // muonIP3D.h, doMuonIP3DMaps
 TH2D *h_mupt_recoJetPt_inclRecoMuonTag_triggerOn;
@@ -629,6 +632,7 @@ void pp_scan(TString inputFile, TString outputFile){
     h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn->Sumw2();
     h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn = bookPtRelMuPt3D("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn", "muon p_{T}^{rel} x muon p_{T} x jet p_{T}", muPtCut);
     if(doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = bookPtRelJetPtCSVv2_3D("h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn", "muon p_{T}^{rel} x jet p_{T} x CSVv2");
+    if(doZJetBalance){ h_zJetXjz_zPt = zjb::bookXjz("h_zJetXjz_zPt", "Z+jet balance"); h_zPt_zJet = zjb::bookZPt("h_zPt_zJet", "Z candidates"); }
     if(doDeepCSVMap) h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn = bookPtRelJetPtDeepCSV3D("h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn", "muon p_{T}^{rel} x jet p_{T} x DeepCSV");
     if(doMuonIP3DMaps){ h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = bookMuIP3DMap("h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn", "muon IP3D, muon-tagged jets"); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn = bookMuPtRelIP3DMap("h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn", "muon ptRel x IP3D, muon-tagged jets"); }
     if(doSystem8Maps){ h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = bookS8Map("h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn", "System8 n: muon jets with an away jet", "CSVv2"); h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn = bookS8Map("h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn", "System8 p: away jet b-tagged", "CSVv2"); }
@@ -1200,6 +1204,7 @@ void pp_scan(TString inputFile, TString outputFile){
       // RECO MUON LOOP
       double leadingMuonPt = 0.0;
       double etaCut_Zloop = 2.4;
+      zjb::ZCand zCand;   // Z+jet balance (zJetBalance.h): highest-pT OS pair in 70-110 GeV
       //if(triggerIsOn(loopTrigger,1) && eventHasGoodJet && leadingRecoJetPt > loopJetPtCut){
       if(triggerIsOn(loopMuonTrigger,1)){
 	for(int m = 0; m < em->nMu; m++){
@@ -1279,6 +1284,7 @@ void pp_scan(TString inputFile, TString outputFile){
 	    if(em->muCharge->at(m)*em->muCharge->at(k) == -1){
 
 	      h_dimuonMass->Fill(calculateDimuonMass(muPt_m,muEta_m,muPhi_m,muPt_k,muEta_k,muPhi_k),w_mk);
+	      if(doZJetBalance) zjb::consider(zCand, muPt_m, muEta_m, muPhi_m, muPt_k, muEta_k, muPhi_k, w_mk);
 	  
 	    }
 
@@ -1290,6 +1296,28 @@ void pp_scan(TString inputFile, TString outputFile){
 	
 	  }
 
+	}
+
+	// Z+jet balance: leading back-to-back jet of the reco-jet loop's own selection
+	if(doZJetBalance && zCand.ok){
+	  h_zPt_zJet->Fill(zCand.pt, zCand.w);
+	  double zjLead = -1.0;
+	  for(int i = 0; i < em->njet; i++){
+	    JEC.SetJetPT(em->rawpt[i]);
+	    JEC.SetJetEta(em->jeteta[i]);
+	    JEC.SetJetPhi(em->jetphi[i]);
+	    double xz = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[i];
+	    double yz = em->jeteta[i], phz = em->jetphi[i];
+	    if(requireCaloJetMatch){ double cRaw; if(closestCaloJetDr(yz, phz, cRaw) >= caloMatchDr) continue; }
+	    if(doJetTrkMaxFilter && !passesJetTrkMaxFilter(em->jetTrkMax[i], xz)) continue;
+	    if(doEtaPhiMask && etaPhiMask(yz, phz)) continue;
+	    if(doJESCorrection) xz = xz * fxn_JES_Corr->Eval(xz);
+	    xz = applyJEU_JER(xz, JEU, JER_fxn, randomGenerator, fitFxn_PYTHIA_JERCorrection, neutrino_tag_fraction, neutrino_energy_map);
+	    if(xz < 0 || TMath::Abs(yz) > etaMax || xz < jetPtCut) continue;
+	    if(zjb::nearZMuon(zCand, yz, phz) || !zjb::backToBack(zCand, phz)) continue;
+	    if(xz > zjLead) zjLead = xz;
+	  }
+	  if(zjLead > 0) h_zJetXjz_zPt->Fill(zjLead/zCand.pt, zCand.pt, zCand.w);
 	}
       }
 
@@ -1400,6 +1428,7 @@ void pp_scan(TString inputFile, TString outputFile){
     h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Write();
     if(doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn->Write();
     if(doDeepCSVMap) h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn->Write();
+    if(doZJetBalance){ h_zJetXjz_zPt->Write(); h_zPt_zJet->Write(); }
     if(doSystem8Maps){ h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn->Write(); h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn->Write(); }
     if(doMuonIP3DMaps){ h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn->Write(); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn->Write(); }
     h_mupt_recoJetPt_inclRecoMuonTag_triggerOn->Write();

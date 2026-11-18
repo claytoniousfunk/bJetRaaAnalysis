@@ -36,6 +36,7 @@
 #include "../../../eventMap/eventMap.h"
 #include "../../../headers/AnalysisSetup/ptRelMuPt3D.h"   // ptRel x muon pT x jet pT (2026-10-09)
 #include "../../../headers/AnalysisSetup/ptRelDeepCSV3D.h" // ptRel x jet pT x CSVv2 (2026-10-24)
+#include "../../../headers/AnalysisSetup/zJetBalance.h" // Z+jet pT balance, doZJetBalance (2026-11-18)
 #include "../../../headers/AnalysisSetup/system8.h"      // System8 away-jet and negative-tag maps (2026-10-26)
 #include "../../../headers/AnalysisSetup/muonIP3D.h"     // muon ln|IP3D| maps for the IP3D template fit (2026-10-27)
 // jet corrector
@@ -279,6 +280,8 @@ TH2D *h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices];
 TH3D *h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices];   // ptRelMuPt3D.h
 TH3D *h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[NCentralityIndices] = {nullptr};   // ptRelDeepCSV3D.h, doCSVv2Map
 TH3D *h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[NCentralityIndices] = {nullptr};   // ptRelDeepCSV3D.h, doDeepCSVMap (2026-11-16)
+TH2D *h_zJetXjz_zPt[NCentralityIndices] = {nullptr};   // zJetBalance.h, doZJetBalance (2026-11-18)
+TH1D *h_zPt_zJet[NCentralityIndices] = {nullptr};
 TH3D *h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[NCentralityIndices] = {nullptr}, *h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[NCentralityIndices] = {nullptr};   // system8.h, doSystem8Maps
 TH3D *h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[NCentralityIndices] = {nullptr}, *h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices] = {nullptr};   // muonIP3D.h, doMuonIP3DMaps
 TH2D *h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[NCentralityIndices];
@@ -734,6 +737,7 @@ void PbPb_scan(int group = 1){
       h_muptrel_recoJetPt_inclRecoMuonTag_triggerOn[i]->Sumw2();
       h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i] = bookPtRelMuPt3D(Form("h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i), Form("muon p_{T}^{rel} x muon p_{T} x jet p_{T}, centrality index %i",i), muPtCut);
       if(doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i] = bookPtRelJetPtCSVv2_3D(Form("h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_C%i",i), Form("muon p_{T}^{rel} x jet p_{T} x CSVv2, centrality index %i",i));
+      if(doZJetBalance){ h_zJetXjz_zPt[i] = zjb::bookXjz(Form("h_zJetXjz_zPt_C%i",i), Form("Z+jet balance, centrality index %i",i)); h_zPt_zJet[i] = zjb::bookZPt(Form("h_zPt_zJet_C%i",i), Form("Z candidates, centrality index %i",i)); }
       if(doDeepCSVMap) h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[i] = bookPtRelJetPtDeepCSV3D(Form("h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn_C%i",i), Form("muon p_{T}^{rel} x jet p_{T} x DeepCSV, centrality index %i",i));
       if(doMuonIP3DMaps){ h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i] = bookMuIP3DMap(Form("h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_C%i",i), Form("muon IP3D, centrality index %i",i)); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[i] = bookMuPtRelIP3DMap(Form("h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn_C%i",i), Form("muon ptRel x IP3D, centrality index %i",i)); }
       if(doSystem8Maps){ h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i] = bookS8Map(Form("h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_C%i",i), Form("System8 n, centrality index %i",i), "CSVv2"); h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i] = bookS8Map(Form("h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn_C%i",i), Form("System8 p, centrality index %i",i), "CSVv2"); }
@@ -1502,6 +1506,7 @@ void PbPb_scan(int group = 1){
       double etaCut_Zloop = 2.4;
     
       //if(triggerIsOn(loopMuonTrigger,1) && triggerIsOn(loopJetTrigger,1) && leadingRecoJetPt > loopJetPtCut){
+      zjb::ZCand zCand;   // Z+jet balance (zJetBalance.h): highest-pT OS pair in 70-110 GeV
       if(triggerIsOn(loopMuonTrigger,1)){
 	for(int m = 0; m < em->nMu; m++){
 
@@ -1584,6 +1589,7 @@ void PbPb_scan(int group = 1){
 	      //h_dimuonMass[0]->Fill(calculateDimuonMass(muPt_m,muEta_m,muPhi_m,muPt_k,muEta_k,muPhi_k,em->runNumber,em->lumiSection,em->evtNumber),w_mk);
 	      h_dimuonMass[0]->Fill(calculateDimuonMass(muPt_m,muEta_m,muPhi_m,muPt_k,muEta_k,muPhi_k),w_mk);
 	      h_dimuonMass[CentralityIndex]->Fill(calculateDimuonMass(muPt_m,muEta_m,muPhi_m,muPt_k,muEta_k,muPhi_k),w_mk);
+	      if(doZJetBalance) zjb::consider(zCand, muPt_m, muEta_m, muPhi_m, muPt_k, muEta_k, muPhi_k, w_mk);
 	  
 	    }
 
@@ -1596,6 +1602,32 @@ void PbPb_scan(int group = 1){
 	
 	  }
 
+	}
+
+	// Z+jet balance: leading back-to-back jet of the reco-jet loop's own selection
+	if(doZJetBalance && zCand.ok){
+	  h_zPt_zJet[0]->Fill(zCand.pt, zCand.w);
+	  h_zPt_zJet[CentralityIndex]->Fill(zCand.pt, zCand.w);
+	  double zjLead = -1.0;
+	  for(int i = 0; i < em->njet; i++){
+	    JEC.SetJetPT(em->rawpt[i]);
+	    JEC.SetJetEta(em->jeteta[i]);
+	    JEC.SetJetPhi(em->jetphi[i]);
+	    double xz = useManualJEC ? JEC.GetCorrectedPT() : em->jetpt[i];
+	    double yz = em->jeteta[i], phz = em->jetphi[i];
+	    double cRaw = -1.0;
+	    if(requireCaloJetMatch && !(closestCaloJetDr(yz, phz, cRaw) < caloMatchDr)) continue;
+	    if(doJetTrkMaxFilter && !passesJetTrkMaxFilter(em->jetTrkMax[i], xz)) continue;
+	    if(doEtaPhiMask && etaPhiMask(yz, phz)) continue;
+	    xz = applyJEU_JER(xz, JEU, JER_fxn, randomGenerator, fitFxn_PYTHIA_JERCorrection, neutrino_tag_fraction, neutrino_energy_map);
+	    if(xz < 0 || TMath::Abs(yz) > etaMax || xz < jetPtCut) continue;
+	    if(zjb::nearZMuon(zCand, yz, phz) || !zjb::backToBack(zCand, phz)) continue;
+	    if(xz > zjLead) zjLead = xz;
+	  }
+	  if(zjLead > 0){
+	    h_zJetXjz_zPt[0]->Fill(zjLead/zCand.pt, zCand.pt, zCand.w);
+	    h_zJetXjz_zPt[CentralityIndex]->Fill(zjLead/zCand.pt, zCand.pt, zCand.w);
+	  }
 	}
       }
 
@@ -1694,6 +1726,7 @@ void PbPb_scan(int group = 1){
       h_muptrel_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
       if(doCSVv2Map) h_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i]->Write();
       if(doDeepCSVMap) h_muptrel_recoJetPt_deepCSV_inclRecoMuonTag_triggerOn[i]->Write();
+      if(doZJetBalance){ h_zJetXjz_zPt[i]->Write(); h_zPt_zJet[i]->Write(); }
       if(doSystem8Maps){ h_s8n_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i]->Write(); h_s8p_muptrel_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i]->Write(); }
       if(doMuonIP3DMaps){ h_muLnIP3D_recoJetPt_csvV2_inclRecoMuonTag_triggerOn[i]->Write(); h_muptrel_muLnIP3D_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write(); }
       h_mupt_recoJetPt_inclRecoMuonTag_triggerOn[i]->Write();
