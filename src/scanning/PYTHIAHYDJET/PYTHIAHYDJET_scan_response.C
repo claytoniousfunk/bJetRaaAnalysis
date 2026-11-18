@@ -433,6 +433,18 @@ void PYTHIAHYDJET_scan_response(int group = 1, int parity = -1, int sample = 0){
     // together. z = dR in [0, 0.6): real dR capped at 0.5499; the last bin [0.55, 0.6) =
     // reference gen jet not found in the gen collection (refpt != any genjetpt).
     TH3D *h_matchedRecoJetPt_genJetPt_dRref[NCentralityIndices];
+    // Response entries against |eta| of the RECO jet (2026-11-17), so the unfolding can
+    // use a response restricted to the same reco |eta| range as the data: the PbPb jet
+    // triggers are HLT ...Eta1p5 and lose offline jets beyond |eta| ~ 1.4, and the
+    // 1.0 < |eta| < 1.5 response differs from the barrel's in central events.
+    // [.][0] = the same jets, weight and (reco pT, refpt) as h_matchedRecoJetPt_genJetPt_allJets,
+    // [.][1] = as h_matchedRecoJetPt_genJetPt_bJets_C<i>_muTagged; same 5 GeV pT bins, so a
+    // projection over an |eta| range is a drop-in matrix. |eta| edges below (respAbsEtaEdges).
+    TH3D *h_matchedRecoJetPt_genJetPt_absEta[NCentralityIndices][2];
+    const int kNRespAbsEta = 8;
+    const double respAbsEtaEdges[kNRespAbsEta+1] = {0., 0.5, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6};
+    std::vector<double> respPtEdges(NPtBins+1);
+    for(int b = 0; b <= NPtBins; b++) respPtEdges[b] = ptMin + b*(ptMax - ptMin)/NPtBins;
     TH1D *h_unmatchedGenJetPt[NCentralityIndices];
 
     // distorted-truth response + misses for unfoldClosureTest.C's "tilt" mode --
@@ -544,6 +556,10 @@ void PYTHIAHYDJET_scan_response(int group = 1, int parity = -1, int sample = 0){
       h_recoPt_dRnearestGen[i]->Sumw2();
       h_recoPt_nearestGenPt[i]->Sumw2();
       h_matchedRecoJetPt_genJetPt_dRref[i]->Sumw2();
+      h_matchedRecoJetPt_genJetPt_absEta[i][0] = new TH3D(Form("h_matchedRecoJetPt_genJetPt_absEta_allJets_C%i",i),"response entries vs |#eta| of the reco jet, allJets; reco p_{T} [GeV]; gen p_{T} [GeV]; |#eta^{reco}|",NPtBins,respPtEdges.data(),NPtBins,respPtEdges.data(),kNRespAbsEta,respAbsEtaEdges);
+      h_matchedRecoJetPt_genJetPt_absEta[i][1] = new TH3D(Form("h_matchedRecoJetPt_genJetPt_absEta_bJets_C%i_muTagged",i),"response entries vs |#eta| of the reco jet, bJets, muon-tagged; reco p_{T} [GeV]; gen p_{T} [GeV]; |#eta^{reco}|",NPtBins,respPtEdges.data(),NPtBins,respPtEdges.data(),kNRespAbsEta,respAbsEtaEdges);
+      h_matchedRecoJetPt_genJetPt_absEta[i][0]->Sumw2();
+      h_matchedRecoJetPt_genJetPt_absEta[i][1]->Sumw2();
       h_matchedRecoJetPt_genJetPt[i][0]->Sumw2();
       h_matchedRecoJetPt_genJetPt[i][1]->Sumw2();
       h_matchedRecoJetPt_genJetPt[i][2]->Sumw2();
@@ -1108,6 +1124,8 @@ double leadingMatchedRecoJetPt = -999.0;
 	    h_matchedRecoJetPt_genJetPt_dRref[0]->Fill(matchedRecoJetPt,x,dRref,w_jet);
 	    h_matchedRecoJetPt_genJetPt_dRref[CentralityIndex]->Fill(matchedRecoJetPt,x,dRref,w_jet);
 	  }
+	  h_matchedRecoJetPt_genJetPt_absEta[0][0]->Fill(matchedRecoJetPt,x,TMath::Abs(recoJetEta_i),w_jet);
+	  h_matchedRecoJetPt_genJetPt_absEta[CentralityIndex][0]->Fill(matchedRecoJetPt,x,TMath::Abs(recoJetEta_i),w_jet);
 	  for(int t = 0; t < kNDistTilt; t++){
 	    double wd = w_jet*distTiltWeight(x,kDistTiltExpo[t]);
 	    h_matchedRecoJetPt_genJetPt_distTilt[0][0][0][t]->Fill(matchedRecoJetPt,x,wd);
@@ -1161,6 +1179,8 @@ double leadingMatchedRecoJetPt = -999.0;
 	    if(hasRecoJetMuon){
 	      h_matchedRecoJetPt_genJetPt_muTagged[0][1]->Fill(matchedRecoJetPt,x,w_jet);
 	      h_matchedRecoJetPt_genJetPt_muTagged[CentralityIndex][1]->Fill(matchedRecoJetPt,x,w_jet);
+	      h_matchedRecoJetPt_genJetPt_absEta[0][1]->Fill(matchedRecoJetPt,x,TMath::Abs(recoJetEta_i),w_jet);
+	      h_matchedRecoJetPt_genJetPt_absEta[CentralityIndex][1]->Fill(matchedRecoJetPt,x,TMath::Abs(recoJetEta_i),w_jet);
 	      h_matchedRecoJetPt_genJetPt_var_muTagged[0][1]->Fill(matchedRecoJetPt,x,w_jet);
 	      h_matchedRecoJetPt_genJetPt_var_muTagged[CentralityIndex][1]->Fill(matchedRecoJetPt,x,w_jet);
 	    }
@@ -1344,6 +1364,8 @@ double leadingMatchedRecoJetPt = -999.0;
       h_recoPt_dRnearestGen[j]->Write();
       h_recoPt_nearestGenPt[j]->Write();
       h_matchedRecoJetPt_genJetPt_dRref[j]->Write();
+      h_matchedRecoJetPt_genJetPt_absEta[j][0]->Write();
+      h_matchedRecoJetPt_genJetPt_absEta[j][1]->Write();
       // h_unmatchedRecoJetPt[j][1]->Write();
       // h_unmatchedRecoJetPt[j][2]->Write();
       // h_unmatchedRecoJetPt[j][3]->Write();

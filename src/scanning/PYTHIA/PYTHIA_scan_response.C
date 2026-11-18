@@ -19,6 +19,7 @@
 #include "TMath.h"
 #include "TH2F.h"
 #include "TH2D.h"
+#include "TH3D.h"
 #include "TMath.h"
 #include <TNtuple.h>
 #include "TChain.h"
@@ -405,6 +406,21 @@ void PYTHIA_scan_response(int group = 1, int parity = -1){
   // the odd half) needs this baseline alongside the distTilt histograms above.
   TH2D *h_matchedRecoJetPt_genJetPt_muTagged[2];       // [flavor], fixed bins
   TH2D *h_matchedRecoJetPt_genJetPt_var_muTagged[2];   // [flavor], variable bins
+  // Response entries against |eta| of the matched RECO jet (2026-11-17), as in
+  // PYTHIAHYDJET_scan_response.C: [0] = the jets, weight and (reco pT, gen pT) of
+  // h_matchedRecoJetPt_genJetPt_allJets, [1] = of h_matchedRecoJetPt_genJetPt_bJets_muTagged;
+  // same 5 GeV pT bins, so a projection over an |eta| range is a drop-in matrix.
+  TH3D *h_matchedRecoJetPt_genJetPt_absEta[2];
+  const int kNRespAbsEta = 8;
+  const double respAbsEtaEdges[kNRespAbsEta+1] = {0., 0.5, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6};
+  {
+    std::vector<double> respPtEdges(NPtBins+1);
+    for(int b = 0; b <= NPtBins; b++) respPtEdges[b] = ptMin + b*(ptMax - ptMin)/NPtBins;
+    h_matchedRecoJetPt_genJetPt_absEta[0] = new TH3D("h_matchedRecoJetPt_genJetPt_absEta_allJets","response entries vs |#eta| of the reco jet, allJets; reco p_{T} [GeV]; gen p_{T} [GeV]; |#eta^{reco}|",NPtBins,respPtEdges.data(),NPtBins,respPtEdges.data(),kNRespAbsEta,respAbsEtaEdges);
+    h_matchedRecoJetPt_genJetPt_absEta[1] = new TH3D("h_matchedRecoJetPt_genJetPt_absEta_bJets_muTagged","response entries vs |#eta| of the reco jet, bJets, muon-tagged; reco p_{T} [GeV]; gen p_{T} [GeV]; |#eta^{reco}|",NPtBins,respPtEdges.data(),NPtBins,respPtEdges.data(),kNRespAbsEta,respAbsEtaEdges);
+    h_matchedRecoJetPt_genJetPt_absEta[0]->Sumw2();
+    h_matchedRecoJetPt_genJetPt_absEta[1]->Sumw2();
+  }
 
   // debug histograms
   TH1D *h_weight_jetPT_200to250 = new TH1D("h_weight_jetPT_200to250","h_weight_jetPT_200to250",10000,0,1);
@@ -1085,6 +1101,7 @@ void PYTHIA_scan_response(int group = 1, int parity = -1){
 	}
 	
 	h_matchedRecoJetPt_genJetPt[0]->Fill(matchedRecoJetPt,x,w);
+	h_matchedRecoJetPt_genJetPt_absEta[0]->Fill(matchedRecoJetPt,x,TMath::Abs(em->jeteta[recoJetFlavorFlag]),w);
 	for(int t = 0; t < kNDistTilt; t++){
 	  double wd = w*distTiltWeight(x,kDistTiltExpo[t]);
 	  h_matchedRecoJetPt_genJetPt_distTilt[0][0][t]->Fill(matchedRecoJetPt,x,wd);
@@ -1133,6 +1150,7 @@ void PYTHIA_scan_response(int group = 1, int parity = -1){
 	  }
 	  if(hasRecoJetMuon){
 	    h_matchedRecoJetPt_genJetPt_muTagged[1]->Fill(matchedRecoJetPt,x,w);
+	    h_matchedRecoJetPt_genJetPt_absEta[1]->Fill(matchedRecoJetPt,x,TMath::Abs(em->jeteta[recoJetFlavorFlag]),w);
 	    h_matchedRecoJetPt_genJetPt_var_muTagged[1]->Fill(matchedRecoJetPt,x,w);
 	  }
 	  h_matchedNeutrinoPt_recoJetPt[1]->Fill(matchedNeutrinoPt,matchedRecoJetPt,w);
@@ -1276,6 +1294,8 @@ void PYTHIA_scan_response(int group = 1, int parity = -1){
     h_matchedRecoJetPt_genJetPt_muTagged[f]->Write();
     h_matchedRecoJetPt_genJetPt_var_muTagged[f]->Write();
   }
+  h_matchedRecoJetPt_genJetPt_absEta[0]->Write();
+  h_matchedRecoJetPt_genJetPt_absEta[1]->Write();
   for(int i = 0; i < 6; i++){
     h_unmatchedRecoJetPt[i]->Write();
     h_matchedRecoJetPt_genJetPt[i]->Write();
